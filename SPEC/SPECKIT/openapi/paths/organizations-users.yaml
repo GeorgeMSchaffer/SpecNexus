@@ -1,0 +1,89 @@
+paths:
+  /api/v1/organizations:
+    get:
+      summary: List organizations
+      responses:
+        '200':
+          description: Paginated organizations
+    post:
+      summary: Create an organization
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/organizations-users.yaml#/OrganizationCreateRequest
+      responses:
+        '201':
+          description: Organization created
+  /api/v1/organizations/{organizationId}:
+    get:
+      summary: Get organization detail
+      parameters:
+        - $ref: ../components/parameters.yaml#/OrganizationId
+      responses:
+        '200':
+          description: Organization detail
+    put:
+      summary: Update organization detail
+      parameters:
+        - $ref: ../components/parameters.yaml#/OrganizationId
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/organizations-users.yaml#/OrganizationCreateRequest
+      responses:
+        '200':
+          description: Organization updated
+  /api/v1/organizations/{organizationId}/archive:
+    post:
+      summary: Archive an organization
+      parameters:
+        - $ref: ../components/parameters.yaml#/OrganizationId
+      responses:
+        '204':
+          description: Organization archived
+  /api/v1/organizations/{organizationId}/users:
+    get:
+      summary: List users in an organization
+      parameters:
+        - $ref: ../components/parameters.yaml#/OrganizationId
+      responses:
+        '200':
+          description: Paginated users
+    post:
+      summary: Create a user in an organization
+      parameters:
+        - $ref: ../components/parameters.yaml#/OrganizationId
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/organizations-users.yaml#/UserCreateRequest
+      responses:
+        '201':
+          description: User created
+  /api/v1/users/{userId}:
+    get:
+      summary: Get user detail
+      parameters:
+        - $ref: ../components/parameters.yaml#/UserId
+      responses:
+        '200':
+          description: User detail
+    put:
+      summary: Update user detail
+      parameters:
+        - $ref: ../components/parameters.yaml#/UserId
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/organizations-users.yaml#/UserUpdateRequest
+      responses:
+        '200':
+          description: User updated

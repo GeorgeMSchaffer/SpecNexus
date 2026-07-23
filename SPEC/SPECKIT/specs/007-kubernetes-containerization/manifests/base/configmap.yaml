@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sargentnexus-runtime-config
+data:
+  EnvironmentName: base
+  PublicBaseUrl: https://sargentnexus.example.com
+  ApiPublicBaseUrl: https://sargentnexus.example.com/api/v1
+  ApiPathBase: /api
+  AspNetCoreEnvironment: Production
+  ApiLogLevelDefault: Information
+  ClientLogLevelDefault: Information
+  SqlServerHost: sargentnexus-sql
+  SqlServerPort: "1433"
+  SqlServerDatabase: SargentNexus
+  SqlServerStorageSize: 20Gi
+  SqlServerStorageClassName: standard

@@ -1,0 +1,43 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: sargentnexus-migration
+spec:
+  backoffLimit: 1
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: sargentnexus-migration
+        app.kubernetes.io/part-of: sargentnexus
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: migration
+          image: ghcr.io/example/sargentnexus-api:0.1.0
+          imagePullPolicy: IfNotPresent
+          command:
+            - dotnet
+            - SargentNexus.API.dll
+            - --run-migrations
+            - --seed-site-admin
+          env:
+            - name: ASPNETCORE_ENVIRONMENT
+              valueFrom:
+                configMapKeyRef:
+                  name: sargentnexus-runtime-config
+                  key: AspNetCoreEnvironment
+            - name: ConnectionStrings__DefaultConnection
+              valueFrom:
+                secretKeyRef:
+                  name: sargentnexus-runtime-secrets
+                  key: ConnectionStrings__DefaultConnection
+            - name: Seed__SiteAdminPassword
+              valueFrom:
+                secretKeyRef:
+                  name: sargentnexus-runtime-secrets
+                  key: Seed__SiteAdminPassword
+            - name: Auth__SigningKey
+              valueFrom:
+                secretKeyRef:
+                  name: sargentnexus-runtime-secrets
+                  key: Auth__SigningKey

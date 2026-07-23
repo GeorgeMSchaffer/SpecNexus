@@ -1,0 +1,63 @@
+# Draft template only.
+# This SPEC workspace does not include the application source tree referenced below.
+# Copy this file into the eventual application repository root and confirm the `src/`
+# paths and `Dockerfile.dev` locations before trying to run `skaffold dev`.
+apiVersion: skaffold/v4beta11
+kind: Config
+metadata:
+  name: sargentnexus
+build:
+  artifacts:
+    - image: ghcr.io/example/sargentnexus-api-dev
+      context: ../../..
+      docker:
+        dockerfile: src/SargentNexus.API/Dockerfile.dev
+      sync:
+        manual:
+          - src: src/SargentNexus.API/**/*.cs
+            dest: /workspace/src/SargentNexus.API
+          - src: src/SargentNexus.Application/**/*.cs
+            dest: /workspace/src/SargentNexus.Application
+          - src: src/SargentNexus.Domain/**/*.cs
+            dest: /workspace/src/SargentNexus.Domain
+          - src: src/SargentNexus.Infrastructure/**/*.cs
+            dest: /workspace/src/SargentNexus.Infrastructure
+          - src: src/**/*.razor
+            dest: /workspace/src
+    - image: ghcr.io/example/sargentnexus-client-dev
+      context: ../../..
+      docker:
+        dockerfile: src/SargentNexus.Client/Dockerfile.dev
+      sync:
+        manual:
+          - src: src/SargentNexus.Client/**/*.cs
+            dest: /workspace/src/SargentNexus.Client
+          - src: src/SargentNexus.Client/**/*.razor
+            dest: /workspace/src/SargentNexus.Client
+          - src: src/SargentNexus.Client/wwwroot/**
+            dest: /workspace/src/SargentNexus.Client/wwwroot
+manifests:
+  kustomize:
+    paths:
+      - manifests/overlays/dev
+deploy:
+  kubectl: {}
+portForward:
+  - resourceType: service
+    resourceName: sargentnexus-api
+    namespace: sargentnexus-dev
+    port: 80
+    localPort: 5000
+  - resourceType: service
+    resourceName: sargentnexus-client
+    namespace: sargentnexus-dev
+    port: 80
+    localPort: 5001
+profiles:
+  - name: dev
+    activation:
+      - command: dev
+    manifests:
+      kustomize:
+        paths:
+          - manifests/overlays/dev

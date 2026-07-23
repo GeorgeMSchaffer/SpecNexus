@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: sargentnexus-api
+spec:
+  selector:
+    app.kubernetes.io/name: sargentnexus-api
+  ports:
+    - name: http
+      port: 80
+      targetPort: http

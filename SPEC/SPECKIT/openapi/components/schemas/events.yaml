@@ -1,0 +1,64 @@
+NotificationEvent:
+  type: object
+  required: [eventId, eventType, organizationId, boardId, ideaId, actorUserId, recipientUserId, occurredAtUtc, ideaLink, message]
+  properties:
+    eventId:
+      type: string
+      format: uuid
+    eventType:
+      type: string
+      enum: [IdeaMentioned, CommentMentioned, IdeaCommented, IdeaStatusChanged]
+    organizationId:
+      type: string
+      format: uuid
+    boardId:
+      type: string
+      format: uuid
+    ideaId:
+      type: string
+      format: uuid
+    actorUserId:
+      type: string
+      format: uuid
+    recipientUserId:
+      type: string
+      format: uuid
+    occurredAtUtc:
+      type: string
+      format: date-time
+    ideaLink:
+      type: string
+    message:
+      type: string
+    metadata:
+      type: object
+      additionalProperties: true
+AuditEvent:
+  type: object
+  required: [auditEventId, actorUserId, eventType, entityType, entityId, occurredAtUtc, message]
+  properties:
+    auditEventId:
+      type: string
+      format: uuid
+    organizationId:
+      type: string
+      format: uuid
+      nullable: true
+    actorUserId:
+      type: string
+      format: uuid
+    eventType:
+      type: string
+    entityType:
+      type: string
+    entityId:
+      type: string
+      format: uuid
+    occurredAtUtc:
+      type: string
+      format: date-time
+    message:
+      type: string
+    metadata:
+      type: object
+      additionalProperties: true

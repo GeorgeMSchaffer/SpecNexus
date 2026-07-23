@@ -1,0 +1,13 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: sargentnexus-sql
+spec:
+  volumeClaimTemplates:
+    - metadata:
+        name: sql-data
+      spec:
+        storageClassName: standard
+        resources:
+          requests:
+            storage: 10Gi

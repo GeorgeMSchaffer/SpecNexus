@@ -1,0 +1,11 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sargentnexus-api
+spec:
+  replicas: 1
+  template:
+    spec:
+      containers:
+        - name: api
+          image: ghcr.io/example/sargentnexus-api:0.1.0-nonprod

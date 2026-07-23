@@ -1,0 +1,26 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: sargentnexus-nonprod
+resources:
+  - ../../base
+patches:
+  - target:
+      kind: ConfigMap
+      name: sargentnexus-runtime-config
+    path: patch-configmap.yaml
+  - target:
+      kind: StatefulSet
+      name: sargentnexus-sql
+    path: patch-sql-statefulset.yaml
+  - target:
+      kind: Deployment
+      name: sargentnexus-api
+    path: patch-api-deployment.yaml
+  - target:
+      kind: Deployment
+      name: sargentnexus-client
+    path: patch-client-deployment.yaml
+  - target:
+      kind: Ingress
+      name: sargentnexus
+    path: patch-ingress.yaml

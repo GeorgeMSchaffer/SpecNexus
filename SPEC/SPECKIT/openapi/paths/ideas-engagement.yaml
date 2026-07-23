@@ -1,0 +1,81 @@
+paths:
+  /api/v1/boards/{boardId}/ideas:
+    get:
+      summary: List ideas on a board
+      responses:
+        '200':
+          description: Paginated ideas
+    post:
+      summary: Create an idea
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/ideas-engagement.yaml#/IdeaWriteRequest
+      responses:
+        '201':
+          description: Idea created
+  /api/v1/ideas/{ideaId}:
+    get:
+      summary: Get full idea detail
+      responses:
+        '200':
+          description: Idea detail
+    put:
+      summary: Update idea content
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/ideas-engagement.yaml#/IdeaWriteRequest
+      responses:
+        '200':
+          description: Idea updated
+  /api/v1/ideas/{ideaId}/status:
+    post:
+      summary: Move an idea to a new status
+      responses:
+        '204':
+          description: Status updated
+  /api/v1/ideas/{ideaId}/comments:
+    get:
+      summary: List comments for an idea
+      responses:
+        '200':
+          description: Paginated comments
+    post:
+      summary: Create a comment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/ideas-engagement.yaml#/CommentWriteRequest
+      responses:
+        '201':
+          description: Comment created
+  /api/v1/comments/{commentId}:
+    put:
+      summary: Edit a comment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/ideas-engagement.yaml#/CommentWriteRequest
+      responses:
+        '200':
+          description: Comment updated
+    delete:
+      summary: Delete a comment
+      responses:
+        '204':
+          description: Comment deleted
+  /api/v1/ideas/{ideaId}/upvote/toggle:
+    post:
+      summary: Toggle the caller's upvote
+      responses:
+        '200':
+          description: New upvote state

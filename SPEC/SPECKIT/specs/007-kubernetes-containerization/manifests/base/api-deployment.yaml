@@ -1,0 +1,82 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sargentnexus-api
+spec:
+  replicas: 2
+  revisionHistoryLimit: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: sargentnexus-api
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: sargentnexus-api
+        app.kubernetes.io/part-of: sargentnexus
+    spec:
+      containers:
+        - name: api
+          image: ghcr.io/example/sargentnexus-api:0.1.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+              name: http
+          env:
+            - name: ASPNETCORE_URLS
+              value: http://+:8080
+            - name: ASPNETCORE_ENVIRONMENT
+              valueFrom:
+                configMapKeyRef:
+                  name: sargentnexus-runtime-config
+                  key: AspNetCoreEnvironment
+            - name: Logging__LogLevel__Default
+              valueFrom:
+                configMapKeyRef:
+                  name: sargentnexus-runtime-config
+                  key: ApiLogLevelDefault
+            - name: ConnectionStrings__DefaultConnection
+              valueFrom:
+                secretKeyRef:
+                  name: sargentnexus-runtime-secrets
+                  key: ConnectionStrings__DefaultConnection
+            - name: Seed__SiteAdminPassword
+              valueFrom:
+                secretKeyRef:
+                  name: sargentnexus-runtime-secrets
+                  key: Seed__SiteAdminPassword
+            - name: Auth__SigningKey
+              valueFrom:
+                secretKeyRef:
+                  name: sargentnexus-runtime-secrets
+                  key: Auth__SigningKey
+            - name: App__PublicBaseUrl
+              valueFrom:
+                configMapKeyRef:
+                  name: sargentnexus-runtime-config
+                  key: PublicBaseUrl
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            failureThreshold: 6
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: http
+            initialDelaySeconds: 20
+            periodSeconds: 15
+            failureThreshold: 3

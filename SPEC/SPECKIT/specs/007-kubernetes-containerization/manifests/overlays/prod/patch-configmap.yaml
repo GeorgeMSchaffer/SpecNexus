@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sargentnexus-runtime-config
+data:
+  EnvironmentName: prod
+  PublicBaseUrl: https://sargentnexus.example.com
+  ApiPublicBaseUrl: https://sargentnexus.example.com/api/v1
+  AspNetCoreEnvironment: Production
+  ApiLogLevelDefault: Information
+  ClientLogLevelDefault: Information
+  SqlServerStorageSize: 100Gi
+  SqlServerStorageClassName: premium-rwo

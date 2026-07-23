@@ -1,0 +1,67 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sargentnexus-client
+spec:
+  replicas: 2
+  revisionHistoryLimit: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: sargentnexus-client
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: sargentnexus-client
+        app.kubernetes.io/part-of: sargentnexus
+    spec:
+      containers:
+        - name: client
+          image: ghcr.io/example/sargentnexus-client:0.1.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+              name: http
+          env:
+            - name: ASPNETCORE_URLS
+              value: http://+:8080
+            - name: Logging__LogLevel__Default
+              valueFrom:
+                configMapKeyRef:
+                  name: sargentnexus-runtime-config
+                  key: ClientLogLevelDefault
+            - name: Client__PublicBaseUrl
+              valueFrom:
+                configMapKeyRef:
+                  name: sargentnexus-runtime-config
+                  key: PublicBaseUrl
+            - name: Client__ApiBaseUrl
+              valueFrom:
+                configMapKeyRef:
+                  name: sargentnexus-runtime-config
+                  key: ApiPublicBaseUrl
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 250m
+              memory: 256Mi
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 6
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 20
+            periodSeconds: 30
+            failureThreshold: 3

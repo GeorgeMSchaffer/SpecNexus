@@ -1,0 +1,27 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: sargentnexus
+spec:
+  tls:
+    - hosts:
+        - sargentnexus.example.com
+      secretName: sargentnexus-tls
+  rules:
+    - host: sargentnexus.example.com
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: sargentnexus-api
+                port:
+                  number: 80
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: sargentnexus-client
+                port:
+                  number: 80

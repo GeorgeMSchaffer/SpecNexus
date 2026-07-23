@@ -1,0 +1,86 @@
+openapi: 3.0.3
+info:
+  title: SargentNexus API
+  version: 1.0.0
+paths:
+  /api/v1/auth/login:
+    $ref: ./paths/auth.yaml#/paths/~1api~1v1~1auth~1login
+  /api/v1/auth/me:
+    $ref: ./paths/auth.yaml#/paths/~1api~1v1~1auth~1me
+  /api/v1/auth/change-password:
+    $ref: ./paths/auth.yaml#/paths/~1api~1v1~1auth~1change-password
+  /api/v1/organizations:
+    $ref: ./paths/organizations-users.yaml#/paths/~1api~1v1~1organizations
+  /api/v1/organizations/{organizationId}:
+    $ref: ./paths/organizations-users.yaml#/paths/~1api~1v1~1organizations~1{organizationId}
+  /api/v1/organizations/{organizationId}/archive:
+    $ref: ./paths/organizations-users.yaml#/paths/~1api~1v1~1organizations~1{organizationId}~1archive
+  /api/v1/organizations/{organizationId}/users:
+    $ref: ./paths/organizations-users.yaml#/paths/~1api~1v1~1organizations~1{organizationId}~1users
+  /api/v1/users/{userId}:
+    $ref: ./paths/organizations-users.yaml#/paths/~1api~1v1~1users~1{userId}
+  /api/v1/organizations/{organizationId}/statuses:
+    $ref: ./paths/boards-statuses.yaml#/paths/~1api~1v1~1organizations~1{organizationId}~1statuses
+  /api/v1/statuses/{statusId}:
+    $ref: ./paths/boards-statuses.yaml#/paths/~1api~1v1~1statuses~1{statusId}
+  /api/v1/organizations/{organizationId}/boards:
+    $ref: ./paths/boards-statuses.yaml#/paths/~1api~1v1~1organizations~1{organizationId}~1boards
+  /api/v1/boards/{boardId}:
+    $ref: ./paths/boards-statuses.yaml#/paths/~1api~1v1~1boards~1{boardId}
+  /api/v1/boards/{boardId}/swimlanes/reorder:
+    $ref: ./paths/boards-statuses.yaml#/paths/~1api~1v1~1boards~1{boardId}~1swimlanes~1reorder
+  /api/v1/boards/{boardId}/ideas:
+    $ref: ./paths/ideas-engagement.yaml#/paths/~1api~1v1~1boards~1{boardId}~1ideas
+  /api/v1/ideas/{ideaId}:
+    $ref: ./paths/ideas-engagement.yaml#/paths/~1api~1v1~1ideas~1{ideaId}
+  /api/v1/ideas/{ideaId}/status:
+    $ref: ./paths/ideas-engagement.yaml#/paths/~1api~1v1~1ideas~1{ideaId}~1status
+  /api/v1/ideas/{ideaId}/comments:
+    $ref: ./paths/ideas-engagement.yaml#/paths/~1api~1v1~1ideas~1{ideaId}~1comments
+  /api/v1/comments/{commentId}:
+    $ref: ./paths/ideas-engagement.yaml#/paths/~1api~1v1~1comments~1{commentId}
+  /api/v1/ideas/{ideaId}/upvote/toggle:
+    $ref: ./paths/ideas-engagement.yaml#/paths/~1api~1v1~1ideas~1{ideaId}~1upvote~1toggle
+components:
+  parameters:
+    OrganizationId:
+      $ref: ./components/parameters.yaml#/OrganizationId
+    UserId:
+      $ref: ./components/parameters.yaml#/UserId
+    BoardId:
+      $ref: ./components/parameters.yaml#/BoardId
+    IdeaId:
+      $ref: ./components/parameters.yaml#/IdeaId
+    CommentId:
+      $ref: ./components/parameters.yaml#/CommentId
+    StatusId:
+      $ref: ./components/parameters.yaml#/StatusId
+  schemas:
+    LoginRequest:
+      $ref: ./components/schemas/auth.yaml#/LoginRequest
+    LoginSuccessResponse:
+      $ref: ./components/schemas/auth.yaml#/LoginSuccessResponse
+    ChangePasswordRequest:
+      $ref: ./components/schemas/auth.yaml#/ChangePasswordRequest
+    UserSummary:
+      $ref: ./components/schemas/common.yaml#/UserSummary
+    OrganizationCreateRequest:
+      $ref: ./components/schemas/organizations-users.yaml#/OrganizationCreateRequest
+    UserCreateRequest:
+      $ref: ./components/schemas/organizations-users.yaml#/UserCreateRequest
+    UserUpdateRequest:
+      $ref: ./components/schemas/organizations-users.yaml#/UserUpdateRequest
+    BoardWriteRequest:
+      $ref: ./components/schemas/boards-statuses.yaml#/BoardWriteRequest
+    ReorderRequest:
+      $ref: ./components/schemas/boards-statuses.yaml#/ReorderRequest
+    Swimlane:
+      $ref: ./components/schemas/boards-statuses.yaml#/Swimlane
+    IdeaWriteRequest:
+      $ref: ./components/schemas/ideas-engagement.yaml#/IdeaWriteRequest
+    CommentWriteRequest:
+      $ref: ./components/schemas/ideas-engagement.yaml#/CommentWriteRequest
+    NotificationEvent:
+      $ref: ./components/schemas/events.yaml#/NotificationEvent
+    AuditEvent:
+      $ref: ./components/schemas/events.yaml#/AuditEvent

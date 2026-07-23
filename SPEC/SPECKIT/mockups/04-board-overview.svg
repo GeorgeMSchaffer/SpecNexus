@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1680" height="1024" viewBox="0 0 1680 1024" role="img" aria-labelledby="title desc">
+  <title id="title">SargentNexus board overview mockup</title>
+  <desc id="desc">A Fluent UI inspired board screen with command bar, filters, swimlanes, idea cards, and an add-idea action.</desc>
+  <rect width="1680" height="1024" fill="#eef2f7"/>
+  <rect width="1680" height="72" fill="#ffffff"/>
+  <text x="28" y="46" font-family="Segoe UI, Arial, sans-serif" font-size="28" font-weight="700" fill="#0f172a">SargentNexus</text>
+  <rect x="0" y="72" width="220" height="952" fill="#ffffff"/>
+  <text x="28" y="118" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="700" fill="#64748b">WORKSPACE</text>
+  <text x="28" y="154" font-family="Segoe UI, Arial, sans-serif" font-size="16" fill="#475569">Boards</text>
+  <rect x="16" y="172" width="188" height="42" rx="10" fill="#e0f2fe"/>
+  <text x="32" y="199" font-family="Segoe UI, Arial, sans-serif" font-size="16" font-weight="700" fill="#0f172a">Default Board</text>
+  <text x="28" y="246" font-family="Segoe UI, Arial, sans-serif" font-size="16" fill="#475569">Ideas</text>
+  <text x="28" y="286" font-family="Segoe UI, Arial, sans-serif" font-size="16" fill="#475569">Reports</text>
+  <text x="252" y="126" font-family="Segoe UI, Arial, sans-serif" font-size="32" font-weight="700" fill="#0f172a">Default Board</text>
+  <text x="252" y="154" font-family="Segoe UI, Arial, sans-serif" font-size="16" fill="#475569">Ideas are organized by swimlane status. Users can move any idea on this board when board configuration allows it.</text>
+  <rect x="252" y="182" width="1400" height="64" rx="16" fill="#ffffff" stroke="#d0d7de"/>
+  <rect x="276" y="198" width="260" height="34" rx="8" fill="#ffffff" stroke="#94a3b8"/>
+  <text x="294" y="220" font-family="Segoe UI, Arial, sans-serif" font-size="14" fill="#64748b">Search ideas or tags</text>
+  <rect x="558" y="198" width="126" height="34" rx="17" fill="#e0f2fe"/>
+  <text x="621" y="220" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="700" fill="#0f172a">All ideas</text>
+  <rect x="1494" y="194" width="134" height="40" rx="8" fill="#0f6cbd"/>
+  <text x="1561" y="220" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="15" font-weight="700" fill="#ffffff">New idea</text>
+  <g>
+    <rect x="252" y="274" width="252" height="694" rx="18" fill="#f8fafc" stroke="#d0d7de"/>
+    <rect x="524" y="274" width="252" height="694" rx="18" fill="#f8fafc" stroke="#d0d7de"/>
+    <rect x="796" y="274" width="252" height="694" rx="18" fill="#f8fafc" stroke="#d0d7de"/>
+    <rect x="1068" y="274" width="252" height="694" rx="18" fill="#f8fafc" stroke="#d0d7de"/>
+    <rect x="1340" y="274" width="252" height="694" rx="18" fill="#f8fafc" stroke="#d0d7de"/>
+  </g>
+  <g font-family="Segoe UI, Arial, sans-serif" fill="#0f172a">
+    <text x="278" y="320" font-size="18" font-weight="700">New / Pending</text>
+    <text x="550" y="320" font-size="18" font-weight="700">In Review</text>
+    <text x="822" y="320" font-size="18" font-weight="700">In Progress</text>
+    <text x="1094" y="320" font-size="18" font-weight="700">Client Review</text>
+    <text x="1366" y="320" font-size="18" font-weight="700">Complete</text>
+  </g>
+  <g fill="#ffffff" stroke="#d0d7de">
+    <rect x="270" y="348" width="216" height="156" rx="16"/>
+    <rect x="270" y="522" width="216" height="156" rx="16"/>
+    <rect x="542" y="348" width="216" height="170" rx="16"/>
+    <rect x="814" y="348" width="216" height="186" rx="16"/>
+    <rect x="1086" y="348" width="216" height="156" rx="16"/>
+    <rect x="1358" y="348" width="216" height="144" rx="16"/>
+  </g>
+  <g font-family="Segoe UI, Arial, sans-serif">
+    <text x="286" y="380" font-size="16" font-weight="700" fill="#0f172a">Reduce part approval lag</text>
+    <text x="286" y="404" font-size="13" fill="#475569">Short idea summary shown on card to support scanning and triage.</text>
+    <rect x="286" y="430" width="74" height="24" rx="12" fill="#e0f2fe"/>
+    <text x="323" y="446" text-anchor="middle" font-size="12" font-weight="700" fill="#1d4ed8">routing</text>
+    <rect x="366" y="430" width="84" height="24" rx="12" fill="#dcfce7"/>
+    <text x="408" y="446" text-anchor="middle" font-size="12" font-weight="700" fill="#166534">quality</text>
+    <text x="286" y="476" font-size="13" fill="#64748b">12 comments • 18 upvotes</text>
+
+    <text x="558" y="380" font-size="16" font-weight="700" fill="#0f172a">Standardize vendor intake</text>
+    <text x="558" y="404" font-size="13" fill="#475569">Mention chips and metadata surface collaboration without opening the full panel.</text>
+    <text x="558" y="476" font-size="13" fill="#64748b">@jamie.flores@northwind.com</text>
+    <text x="558" y="498" font-size="13" fill="#64748b">9 comments • 11 upvotes</text>
+
+    <text x="830" y="380" font-size="16" font-weight="700" fill="#0f172a">Automate downtime alerting</text>
+    <text x="830" y="404" font-size="13" fill="#475569">In-progress work keeps enough summary detail to support drag-and-drop workflow changes.</text>
+    <text x="830" y="520" font-size="13" fill="#64748b">Owner: Chris Singh • 6 upvotes</text>
+
+    <text x="1102" y="380" font-size="16" font-weight="700" fill="#0f172a">Streamline client change orders</text>
+    <text x="1102" y="404" font-size="13" fill="#475569">Client review cards show concise status and action readiness.</text>
+    <text x="1102" y="476" font-size="13" fill="#64748b">Awaiting external feedback</text>
+
+    <text x="1374" y="380" font-size="16" font-weight="700" fill="#0f172a">Digitize shift handoff</text>
+    <text x="1374" y="404" font-size="13" fill="#475569">Completed ideas remain editable and collaborative per spec.</text>
+    <text x="1374" y="462" font-size="13" fill="#64748b">Archived lane item remains interactive</text>
+  </g>
+</svg>

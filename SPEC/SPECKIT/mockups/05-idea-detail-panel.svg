@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1000" viewBox="0 0 1600 1000" role="img" aria-labelledby="title desc">
+  <title id="title">SargentNexus idea detail panel mockup</title>
+  <desc id="desc">A Fluent UI style idea detail screen with tags, mentions, comments, status control, and upvote summary.</desc>
+  <rect width="1600" height="1000" fill="#eef2f7"/>
+  <rect x="70" y="60" width="1460" height="880" rx="24" fill="#ffffff" stroke="#d0d7de"/>
+  <text x="110" y="120" font-family="Segoe UI, Arial, sans-serif" font-size="14" fill="#64748b">Default Board / In Progress</text>
+  <text x="110" y="170" font-family="Segoe UI, Arial, sans-serif" font-size="34" font-weight="700" fill="#0f172a">Automate downtime alerting</text>
+  <text x="110" y="206" font-family="Segoe UI, Arial, sans-serif" font-size="16" fill="#475569">Idea detail uses a wide reading column, a narrow action rail, and strong section headings to support review and editing without overload.</text>
+  <rect x="110" y="238" width="910" height="180" rx="16" fill="#f8fafc" stroke="#d0d7de"/>
+  <text x="140" y="280" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" fill="#334155">Description</text>
+  <text x="140" y="314" font-family="Segoe UI, Arial, sans-serif" font-size="15" fill="#0f172a">Create a system that identifies repeated machine downtime patterns, notifies the shift lead, and records a standard root-cause note for recurring events.</text>
+  <text x="140" y="342" font-family="Segoe UI, Arial, sans-serif" font-size="15" fill="#0f172a">The editor should respect the plain-text rule for comments and preserve simple readability for idea content and mention context.</text>
+  <rect x="110" y="438" width="910" height="86" rx="16" fill="#ffffff" stroke="#d0d7de"/>
+  <text x="140" y="474" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" fill="#334155">Tags</text>
+  <rect x="140" y="488" width="82" height="26" rx="13" fill="#e0f2fe"/>
+  <text x="181" y="505" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="700" fill="#1d4ed8">downtime</text>
+  <rect x="232" y="488" width="72" height="26" rx="13" fill="#dcfce7"/>
+  <text x="268" y="505" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="700" fill="#166534">alerts</text>
+  <rect x="314" y="488" width="86" height="26" rx="13" fill="#f3e8ff"/>
+  <text x="357" y="505" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="700" fill="#7c3aed">telemetry</text>
+  <rect x="110" y="544" width="910" height="314" rx="16" fill="#ffffff" stroke="#d0d7de"/>
+  <text x="140" y="580" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" fill="#334155">Comments</text>
+  <rect x="140" y="596" width="850" height="70" rx="10" fill="#f8fafc" stroke="#d0d7de"/>
+  <text x="160" y="624" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" fill="#0f172a">Jamie Flores</text>
+  <text x="254" y="624" font-family="Segoe UI, Arial, sans-serif" font-size="13" fill="#64748b">2 hours ago</text>
+  <text x="160" y="650" font-family="Segoe UI, Arial, sans-serif" font-size="14" fill="#0f172a">Can we notify @chris.singh@northwind.com when the same downtime pattern appears three times in a week?</text>
+  <rect x="140" y="684" width="850" height="70" rx="10" fill="#f8fafc" stroke="#d0d7de"/>
+  <text x="160" y="712" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" fill="#0f172a">Chris Singh</text>
+  <text x="246" y="712" font-family="Segoe UI, Arial, sans-serif" font-size="13" fill="#64748b">58 minutes ago</text>
+  <text x="160" y="738" font-family="Segoe UI, Arial, sans-serif" font-size="14" fill="#0f172a">Yes. We should also capture the machine ID automatically for the audit trail.</text>
+  <rect x="140" y="778" width="680" height="52" rx="8" fill="#ffffff" stroke="#94a3b8"/>
+  <text x="160" y="810" font-family="Segoe UI, Arial, sans-serif" font-size="14" fill="#64748b">Add a comment (plain text, up to 2000 characters)</text>
+  <rect x="842" y="778" width="148" height="52" rx="8" fill="#0f6cbd"/>
+  <text x="916" y="810" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="15" font-weight="700" fill="#ffffff">Post comment</text>
+  <rect x="1060" y="238" width="410" height="620" rx="18" fill="#f8fafc" stroke="#d0d7de"/>
+  <text x="1090" y="280" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" fill="#334155">Status</text>
+  <rect x="1090" y="294" width="210" height="42" rx="8" fill="#ffffff" stroke="#94a3b8"/>
+  <text x="1110" y="320" font-family="Segoe UI, Arial, sans-serif" font-size="15" fill="#0f172a">In Progress</text>
+  <text x="1090" y="376" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" fill="#334155">Mentions</text>
+  <rect x="1090" y="392" width="320" height="42" rx="8" fill="#ffffff" stroke="#94a3b8"/>
+  <text x="1110" y="418" font-family="Segoe UI, Arial, sans-serif" font-size="15" fill="#64748b">@email lookup</text>
+  <text x="1090" y="474" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" fill="#334155">Engagement</text>
+  <rect x="1090" y="490" width="140" height="44" rx="8" fill="#0f6cbd"/>
+  <text x="1160" y="518" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="15" font-weight="700" fill="#ffffff">Upvote 18</text>
+  <text x="1090" y="570" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" fill="#334155">Audit and workflow cues</text>
+  <rect x="1090" y="586" width="340" height="132" rx="12" fill="#eff6ff" stroke="#93c5fd"/>
+  <text x="1110" y="618" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" fill="#1d4ed8">Spec-backed behaviors</text>
+  <text x="1110" y="644" font-family="Segoe UI, Arial, sans-serif" font-size="13" fill="#1e3a8a">• Completed ideas stay editable.</text>
+  <text x="1110" y="667" font-family="Segoe UI, Arial, sans-serif" font-size="13" fill="#1e3a8a">• Comment mentions resolve by email.</text>
+  <text x="1110" y="690" font-family="Segoe UI, Arial, sans-serif" font-size="13" fill="#1e3a8a">• Idea edits and upvote toggles generate audit events.</text>
+</svg>

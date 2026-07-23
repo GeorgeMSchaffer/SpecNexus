@@ -1,0 +1,42 @@
+OrganizationId:
+  name: organizationId
+  in: path
+  required: true
+  schema:
+    type: string
+    format: uuid
+UserId:
+  name: userId
+  in: path
+  required: true
+  schema:
+    type: string
+    format: uuid
+BoardId:
+  name: boardId
+  in: path
+  required: true
+  schema:
+    type: string
+    format: uuid
+IdeaId:
+  name: ideaId
+  in: path
+  required: true
+  schema:
+    type: string
+    format: uuid
+CommentId:
+  name: commentId
+  in: path
+  required: true
+  schema:
+    type: string
+    format: uuid
+StatusId:
+  name: statusId
+  in: path
+  required: true
+  schema:
+    type: string
+    format: uuid

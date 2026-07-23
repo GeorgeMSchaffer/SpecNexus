@@ -1,0 +1,31 @@
+IdeaWriteRequest:
+  type: object
+  required: [title, description]
+  properties:
+    title:
+      type: string
+      maxLength: 150
+    description:
+      type: string
+      maxLength: 4000
+    statusId:
+      type: string
+      format: uuid
+    tagNames:
+      type: array
+      items:
+        type: string
+        maxLength: 100
+    mentionEmails:
+      type: array
+      items:
+        type: string
+        format: email
+CommentWriteRequest:
+  type: object
+  required: [body]
+  properties:
+    body:
+      type: string
+      maxLength: 2000
+      description: Plain text only. Line breaks allowed.

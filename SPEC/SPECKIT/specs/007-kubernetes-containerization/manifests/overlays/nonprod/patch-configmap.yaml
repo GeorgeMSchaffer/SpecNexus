@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sargentnexus-runtime-config
+data:
+  EnvironmentName: nonprod
+  PublicBaseUrl: https://sargentnexus-nonprod.example.com
+  ApiPublicBaseUrl: https://sargentnexus-nonprod.example.com/api/v1
+  AspNetCoreEnvironment: Staging
+  ApiLogLevelDefault: Debug
+  ClientLogLevelDefault: Debug
+  SqlServerStorageSize: 20Gi
+  SqlServerStorageClassName: standard

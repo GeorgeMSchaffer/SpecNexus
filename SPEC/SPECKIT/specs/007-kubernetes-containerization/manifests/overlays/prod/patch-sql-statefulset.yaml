@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: sargentnexus-sql
+spec:
+  template:
+    spec:
+      containers:
+        - name: sqlserver
+          env:
+            - name: MSSQL_PID
+              value: Standard
+          resources:
+            requests:
+              cpu: 500m
+              memory: 2Gi
+            limits:
+              cpu: "2"
+              memory: 4Gi
+  volumeClaimTemplates:
+    - metadata:
+        name: sql-data
+      spec:
+        storageClassName: premium-rwo
+        resources:
+          requests:
+            storage: 100Gi

@@ -1,0 +1,22 @@
+UserSummary:
+  type: object
+  required: [userId, role, firstName, lastName, email, status]
+  properties:
+    userId:
+      type: string
+      format: uuid
+    organizationId:
+      type: string
+      format: uuid
+      nullable: true
+    role:
+      type: string
+    firstName:
+      type: string
+    lastName:
+      type: string
+    email:
+      type: string
+      format: email
+    status:
+      type: string

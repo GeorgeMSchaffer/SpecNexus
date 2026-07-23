@@ -1,0 +1,145 @@
+openapi: 3.0.3
+info:
+  title: SargentNexus Organizations and Users API
+  version: 1.0.0
+paths:
+  /api/v1/organizations:
+    get:
+      summary: List organizations
+      responses:
+        '200':
+          description: Paginated organizations
+    post:
+      summary: Create an organization
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrganizationCreateRequest'
+      responses:
+        '201':
+          description: Organization created
+  /api/v1/organizations/{organizationId}:
+    get:
+      summary: Get organization detail
+      parameters:
+        - $ref: '#/components/parameters/OrganizationId'
+      responses:
+        '200':
+          description: Organization detail
+    put:
+      summary: Update organization detail
+      parameters:
+        - $ref: '#/components/parameters/OrganizationId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrganizationCreateRequest'
+      responses:
+        '200':
+          description: Organization updated
+  /api/v1/organizations/{organizationId}/archive:
+    post:
+      summary: Archive an organization
+      parameters:
+        - $ref: '#/components/parameters/OrganizationId'
+      responses:
+        '204':
+          description: Organization archived
+  /api/v1/organizations/{organizationId}/users:
+    get:
+      summary: List users in an organization
+      parameters:
+        - $ref: '#/components/parameters/OrganizationId'
+      responses:
+        '200':
+          description: Paginated users
+    post:
+      summary: Create a user in an organization
+      parameters:
+        - $ref: '#/components/parameters/OrganizationId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserCreateRequest'
+      responses:
+        '201':
+          description: User created
+  /api/v1/users/{userId}:
+    get:
+      summary: Get user detail
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      responses:
+        '200':
+          description: User detail
+    put:
+      summary: Update user detail
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserUpdateRequest'
+      responses:
+        '200':
+          description: User updated
+components:
+  parameters:
+    OrganizationId:
+      name: organizationId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    UserId:
+      name: userId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+  schemas:
+    OrganizationCreateRequest:
+      type: object
+      required: [companyName, address, city, state, zip, phone, primaryContactFirstName, primaryContactLastName]
+      properties:
+        companyName: { type: string }
+        address: { type: string }
+        city: { type: string }
+        state: { type: string }
+        zip: { type: string }
+        phone: { type: string }
+        primaryContactFirstName: { type: string }
+        primaryContactLastName: { type: string }
+    UserCreateRequest:
+      type: object
+      required: [firstName, lastName, email, role, initialPassword]
+      properties:
+        firstName: { type: string }
+        lastName: { type: string }
+        email:
+          type: string
+          format: email
+        role: { type: string }
+        initialPassword: { type: string }
+        status: { type: string }
+    UserUpdateRequest:
+      type: object
+      required: [firstName, lastName, email, role, status]
+      properties:
+        firstName: { type: string }
+        lastName: { type: string }
+        email:
+          type: string
+          format: email
+        role: { type: string }
+        status: { type: string }

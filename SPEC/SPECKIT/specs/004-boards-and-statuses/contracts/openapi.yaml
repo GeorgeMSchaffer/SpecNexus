@@ -1,0 +1,113 @@
+openapi: 3.0.3
+info:
+  title: SargentNexus Boards and Statuses API
+  version: 1.0.0
+paths:
+  /api/v1/organizations/{organizationId}/statuses:
+    get:
+      summary: List statuses for an organization
+      responses:
+        '200':
+          description: Status list
+    post:
+      summary: Create a status
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+      responses:
+        '201':
+          description: Status created
+  /api/v1/statuses/{statusId}:
+    put:
+      summary: Update a status
+      responses:
+        '200':
+          description: Status updated
+    delete:
+      summary: Soft-delete a status
+      responses:
+        '204':
+          description: Status deleted
+  /api/v1/organizations/{organizationId}/boards:
+    get:
+      summary: List boards for an organization
+      responses:
+        '200':
+          description: Board list
+    post:
+      summary: Create a board
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BoardWriteRequest'
+      responses:
+        '201':
+          description: Board created
+  /api/v1/boards/{boardId}:
+    get:
+      summary: Get board detail
+      responses:
+        '200':
+          description: Board detail
+    put:
+      summary: Update a board
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BoardWriteRequest'
+      responses:
+        '200':
+          description: Board updated
+  /api/v1/boards/{boardId}/swimlanes/reorder:
+    post:
+      summary: Persist swimlane reorder
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReorderRequest'
+      responses:
+        '204':
+          description: Reorder persisted
+components:
+  schemas:
+    BoardWriteRequest:
+      type: object
+      required: [name, swimlanes]
+      properties:
+        name:
+          type: string
+        swimlanes:
+          type: array
+          minItems: 2
+          items:
+            $ref: '#/components/schemas/Swimlane'
+    ReorderRequest:
+      type: object
+      required: [swimlanes]
+      properties:
+        swimlanes:
+          type: array
+          items:
+            $ref: '#/components/schemas/Swimlane'
+    Swimlane:
+      type: object
+      required: [statusId, order]
+      properties:
+        statusId:
+          type: string
+          format: uuid
+        order:
+          type: integer

@@ -1,0 +1,28 @@
+BoardWriteRequest:
+  type: object
+  required: [name, swimlanes]
+  properties:
+    name:
+      type: string
+    swimlanes:
+      type: array
+      minItems: 2
+      items:
+        $ref: '#/Swimlane'
+ReorderRequest:
+  type: object
+  required: [swimlanes]
+  properties:
+    swimlanes:
+      type: array
+      items:
+        $ref: '#/Swimlane'
+Swimlane:
+  type: object
+  required: [statusId, order]
+  properties:
+    statusId:
+      type: string
+      format: uuid
+    order:
+      type: integer

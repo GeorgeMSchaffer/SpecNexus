@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sargentnexus-client
+spec:
+  replicas: 1
+  template:
+    spec:
+      containers:
+        - name: client
+          image: ghcr.io/example/sargentnexus-client-dev:0.1.0-dev
+          command:
+            - dotnet
+            - watch
+            - --project
+            - src/SargentNexus.Client/SargentNexus.Client.csproj
+            - run
+            - --urls
+            - http://0.0.0.0:8080
+            - --non-interactive
+          env:
+            - name: DOTNET_USE_POLLING_FILE_WATCHER
+              value: "true"
+            - name: DOTNET_WATCH_SUPPRESS_EMOJIS
+              value: "true"
