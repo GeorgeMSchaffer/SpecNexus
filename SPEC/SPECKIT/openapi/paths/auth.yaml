@@ -11,10 +11,24 @@ paths:
       responses:
         '200':
           description: Authenticated response
+        '400':
+          description: Malformed request body or invalid request shape
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ValidationProblemDetails
         '401':
-          description: Invalid credentials
+          description: Invalid credentials or missing authentication
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
         '403':
           description: Inactive account
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
         '429':
           description: Account locked out
   /api/v1/auth/me:
@@ -23,6 +37,12 @@ paths:
       responses:
         '200':
           description: Current user summary
+        '401':
+          description: Missing, expired, or invalid authentication
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
   /api/v1/auth/change-password:
     post:
       summary: Change the current user's password
@@ -35,3 +55,21 @@ paths:
       responses:
         '204':
           description: Password changed
+        '400':
+          description: Malformed request body or invalid password policy
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ValidationProblemDetails
+        '401':
+          description: Invalid current password or missing authentication
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '403':
+          description: Authenticated caller is not allowed to change this password
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails

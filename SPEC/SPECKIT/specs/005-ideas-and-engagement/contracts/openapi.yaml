@@ -9,6 +9,12 @@ paths:
       responses:
         '200':
           description: Paginated ideas
+        '401':
+          description: Missing, expired, or invalid authentication
+        '403':
+          description: Authenticated caller is not allowed to list ideas for this board
+        '404':
+          description: Board not found
     post:
       summary: Create an idea
       requestBody:
@@ -20,12 +26,26 @@ paths:
       responses:
         '201':
           description: Idea created
+        '400':
+          description: Bad Request
+        '401':
+          description: Missing, expired, or invalid authentication
+        '403':
+          description: Authenticated caller is not allowed to create ideas for this board
+        '404':
+          description: Board not found
   /api/v1/ideas/{ideaId}:
     get:
       summary: Get full idea detail
       responses:
         '200':
           description: Idea detail
+        '401':
+          description: Missing, expired, or invalid authentication
+        '403':
+          description: Authenticated caller is not allowed to view this idea
+        '404':
+          description: Idea not found
     put:
       summary: Update idea content
       requestBody:
@@ -37,6 +57,15 @@ paths:
       responses:
         '200':
           description: Idea updated
+        '400':
+          description: Bad Request
+        '401':
+          description: Missing, expired, or invalid authentication
+        '403':
+          description: Authenticated caller is not allowed to update this idea
+        '404':
+          description: Idea not found
+
   /api/v1/ideas/{ideaId}/status:
     post:
       summary: Move an idea to a new status
@@ -54,12 +83,26 @@ paths:
       responses:
         '204':
           description: Status updated
+        '400':
+          description: Bad Request
+        '401':
+          description: Missing, expired, or invalid authentication
+        '403':
+          description: Authenticated caller is not allowed to move this idea
+        '404':
+          description: Idea not found
   /api/v1/ideas/{ideaId}/comments:
     get:
       summary: List comments for an idea
       responses:
         '200':
           description: Paginated comments
+        '401':
+          description: Missing, expired, or invalid authentication
+        '403':
+          description: Authenticated caller is not allowed to view comments for this idea
+        '404':
+          description: Idea not found
     post:
       summary: Create a comment
       requestBody:
@@ -71,6 +114,14 @@ paths:
       responses:
         '201':
           description: Comment created
+        '400':
+          description: Bad Request
+        '401':
+          description: Missing, expired, or invalid authentication
+        '403':
+          description: Authenticated caller is not allowed to create comments for this idea
+        '404':
+          description: Idea not found
   /api/v1/comments/{commentId}:
     put:
       summary: Edit a comment
@@ -83,19 +134,59 @@ paths:
       responses:
         '200':
           description: Comment updated
+        '400':
+          description: Bad Request
+        '401':
+          description: Missing, expired, or invalid authentication
+        '403':
+          description: Authenticated caller is not allowed to edit this comment
+        '404':
+          description: Comment not found
     delete:
       summary: Delete a comment
       responses:
         '204':
           description: Comment deleted
+        '401':
+          description: Missing, expired, or invalid authentication
+        '403':
+          description: Authenticated caller is not allowed to delete this comment
+        '404':
+          description: Comment not found
   /api/v1/ideas/{ideaId}/upvote/toggle:
     post:
       summary: Toggle the caller's upvote
       responses:
         '200':
           description: New upvote state
+        '401':
+          description: Missing, expired, or invalid authentication
+        '403':
+          description: Authenticated caller is not allowed to upvote this idea
+        '404':
+          description: Idea not found
 components:
   schemas:
+    ProblemDetails:
+      type: object
+      required: [title, status]
+      properties:
+        type: { type: string, format: uri, nullable: true }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string, nullable: true }
+        instance: { type: string, nullable: true }
+    ValidationProblemDetails:
+      allOf:
+        - $ref: '#/components/schemas/ProblemDetails'
+        - type: object
+          properties:
+            errors:
+              type: object
+              additionalProperties:
+                type: array
+                items:
+                  type: string
     IdeaWriteRequest:
       type: object
       required: [title, description]

@@ -56,6 +56,10 @@ components:
     StatusId:
       $ref: ./components/parameters.yaml#/StatusId
   schemas:
+    ProblemDetails:
+      $ref: ./components/schemas/common.yaml#/ProblemDetails
+    ValidationProblemDetails:
+      $ref: ./components/schemas/common.yaml#/ValidationProblemDetails
     LoginRequest:
       $ref: ./components/schemas/auth.yaml#/LoginRequest
     LoginSuccessResponse:

@@ -5,28 +5,150 @@ paths:
       responses:
         '200':
           description: Status list
+        '401':
+          description: Missing, expired, or invalid authentication
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '403':
+          description: Authenticated caller is not allowed to list statuses for this organization
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '404':
+          description: Organization not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
     post:
       summary: Create a status
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
       responses:
         '201':
           description: Status created
+        '400':
+          description: Malformed request body or invalid field constraints
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ValidationProblemDetails
+        '401':
+          description: Missing, expired, or invalid authentication
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '403':
+          description: Authenticated caller is not allowed to create statuses for this organization
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '404':
+          description: Organization not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
   /api/v1/statuses/{statusId}:
     put:
       summary: Update a status
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
       responses:
         '200':
           description: Status updated
+        '400':
+          description: Malformed request body or invalid field constraints
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ValidationProblemDetails
+        '401':
+          description: Missing, expired, or invalid authentication
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '403':
+          description: Authenticated caller is not allowed to update this status
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '404':
+          description: Status not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
     delete:
       summary: Soft-delete a status
       responses:
         '204':
           description: Status deleted
+        '401':
+          description: Missing, expired, or invalid authentication
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '403':
+          description: Authenticated caller is not allowed to delete this status
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '404':
+          description: Status not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
   /api/v1/organizations/{organizationId}/boards:
     get:
       summary: List boards for an organization
       responses:
         '200':
           description: Board list
+        '401':
+          description: Missing, expired, or invalid authentication
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '403':
+          description: Authenticated caller is not allowed to list boards for this organization
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '404':
+          description: Organization not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
     post:
       summary: Create a board
       requestBody:
@@ -38,12 +160,54 @@ paths:
       responses:
         '201':
           description: Board created
+        '400':
+          description: Malformed request body or invalid field constraints
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ValidationProblemDetails
+        '401':
+          description: Missing, expired, or invalid authentication
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '403':
+          description: Authenticated caller is not allowed to create boards for this organization
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '404':
+          description: Organization not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
   /api/v1/boards/{boardId}:
     get:
       summary: Get board detail
       responses:
         '200':
           description: Board detail
+        '401':
+          description: Missing, expired, or invalid authentication
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '403':
+          description: Authenticated caller is not allowed to view this board
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '404':
+          description: Board not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
     put:
       summary: Update a board
       requestBody:
@@ -55,6 +219,30 @@ paths:
       responses:
         '200':
           description: Board updated
+        '400':
+          description: Malformed request body or invalid field constraints
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ValidationProblemDetails
+        '401':
+          description: Missing, expired, or invalid authentication
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '403':
+          description: Authenticated caller is not allowed to update this board
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '404':
+          description: Board not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
   /api/v1/boards/{boardId}/swimlanes/reorder:
     post:
       summary: Persist swimlane reorder
@@ -67,3 +255,27 @@ paths:
       responses:
         '204':
           description: Reorder persisted
+        '400':
+          description: Malformed request body or invalid field constraints
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ValidationProblemDetails
+        '401':
+          description: Missing, expired, or invalid authentication
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '403':
+          description: Authenticated caller is not allowed to reorder swimlanes for this board
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '404':
+          description: Board not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails

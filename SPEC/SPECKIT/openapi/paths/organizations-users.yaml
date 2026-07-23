@@ -5,6 +5,18 @@ paths:
       responses:
         '200':
           description: Paginated organizations
+        '401':
+          description: Missing, expired, or invalid authentication
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '403':
+          description: Authenticated caller is not allowed to list organizations
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
     post:
       summary: Create an organization
       requestBody:
@@ -16,6 +28,24 @@ paths:
       responses:
         '201':
           description: Organization created
+        '400':
+          description: Malformed request body or invalid field constraints
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ValidationProblemDetails
+        '401':
+          description: Missing, expired, or invalid authentication
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '403':
+          description: Authenticated caller is not allowed to create organizations
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
   /api/v1/organizations/{organizationId}:
     get:
       summary: Get organization detail
@@ -24,6 +54,24 @@ paths:
       responses:
         '200':
           description: Organization detail
+        '401':
+          description: Missing, expired, or invalid authentication
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '403':
+          description: Authenticated caller is not allowed to view this organization
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '404':
+          description: Organization not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
     put:
       summary: Update organization detail
       parameters:
@@ -37,6 +85,30 @@ paths:
       responses:
         '200':
           description: Organization updated
+        '400':
+          description: Malformed request body or invalid field constraints
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ValidationProblemDetails
+        '401':
+          description: Missing, expired, or invalid authentication
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '403':
+          description: Authenticated caller is not allowed to update this organization
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '404':
+          description: Organization not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
   /api/v1/organizations/{organizationId}/archive:
     post:
       summary: Archive an organization
@@ -45,6 +117,24 @@ paths:
       responses:
         '204':
           description: Organization archived
+        '401':
+          description: Missing, expired, or invalid authentication
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '403':
+          description: Authenticated caller is not allowed to archive this organization
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '404':
+          description: Organization not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
   /api/v1/organizations/{organizationId}/users:
     get:
       summary: List users in an organization
@@ -53,6 +143,24 @@ paths:
       responses:
         '200':
           description: Paginated users
+        '401':
+          description: Missing, expired, or invalid authentication
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '403':
+          description: Authenticated caller is not allowed to list users for this organization
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '404':
+          description: Organization not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
     post:
       summary: Create a user in an organization
       parameters:
@@ -66,6 +174,30 @@ paths:
       responses:
         '201':
           description: User created
+        '400':
+          description: Malformed request body or invalid field constraints
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ValidationProblemDetails
+        '401':
+          description: Missing, expired, or invalid authentication
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '403':
+          description: Authenticated caller is not allowed to create users for this organization
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '404':
+          description: Organization not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
   /api/v1/users/{userId}:
     get:
       summary: Get user detail
@@ -74,6 +206,24 @@ paths:
       responses:
         '200':
           description: User detail
+        '401':
+          description: Missing, expired, or invalid authentication
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '403':
+          description: Authenticated caller is not allowed to view this user
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '404':
+          description: User not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
     put:
       summary: Update user detail
       parameters:
@@ -87,3 +237,27 @@ paths:
       responses:
         '200':
           description: User updated
+        '400':
+          description: Malformed request body or invalid field constraints
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ValidationProblemDetails
+        '401':
+          description: Missing, expired, or invalid authentication
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '403':
+          description: Authenticated caller is not allowed to update this user
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '404':
+          description: User not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails

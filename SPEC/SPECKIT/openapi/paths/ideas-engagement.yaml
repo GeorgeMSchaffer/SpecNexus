@@ -5,6 +5,24 @@ paths:
       responses:
         '200':
           description: Paginated ideas
+        '401':
+          description: Missing, expired, or invalid authentication
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '403':
+          description: Authenticated caller is not allowed to list ideas for this board
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '404':
+          description: Board not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
     post:
       summary: Create an idea
       requestBody:
@@ -16,12 +34,54 @@ paths:
       responses:
         '201':
           description: Idea created
+        '400':
+          description: Malformed request body or invalid field constraints
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ValidationProblemDetails
+        '401':
+          description: Missing, expired, or invalid authentication
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '403':
+          description: Authenticated caller is not allowed to create ideas for this board
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '404':
+          description: Board not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
   /api/v1/ideas/{ideaId}:
     get:
       summary: Get full idea detail
       responses:
         '200':
           description: Idea detail
+        '401':
+          description: Missing, expired, or invalid authentication
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '403':
+          description: Authenticated caller is not allowed to view this idea
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '404':
+          description: Idea not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
     put:
       summary: Update idea content
       requestBody:
@@ -33,18 +93,95 @@ paths:
       responses:
         '200':
           description: Idea updated
+        '400':
+          description: Malformed request body or invalid field constraints
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ValidationProblemDetails
+        '401':
+          description: Missing, expired, or invalid authentication
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '403':
+          description: Authenticated caller is not allowed to update this idea
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '404':
+          description: Idea not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
   /api/v1/ideas/{ideaId}/status:
     post:
       summary: Move an idea to a new status
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [statusId]
+              properties:
+                statusId:
+                  type: string
+                  format: uuid
       responses:
         '204':
           description: Status updated
+        '400':
+          description: Malformed request body or invalid field constraints
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ValidationProblemDetails
+        '401':
+          description: Missing, expired, or invalid authentication
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '403':
+          description: Authenticated caller is not allowed to move this idea
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '404':
+          description: Idea not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
   /api/v1/ideas/{ideaId}/comments:
     get:
       summary: List comments for an idea
       responses:
         '200':
           description: Paginated comments
+        '401':
+          description: Missing, expired, or invalid authentication
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '403':
+          description: Authenticated caller is not allowed to view comments for this idea
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '404':
+          description: Idea not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
     post:
       summary: Create a comment
       requestBody:
@@ -56,6 +193,30 @@ paths:
       responses:
         '201':
           description: Comment created
+        '400':
+          description: Malformed request body or invalid field constraints
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ValidationProblemDetails
+        '401':
+          description: Missing, expired, or invalid authentication
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '403':
+          description: Authenticated caller is not allowed to create comments for this idea
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '404':
+          description: Idea not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
   /api/v1/comments/{commentId}:
     put:
       summary: Edit a comment
@@ -68,14 +229,74 @@ paths:
       responses:
         '200':
           description: Comment updated
+        '400':
+          description: Malformed request body or invalid field constraints
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ValidationProblemDetails
+        '401':
+          description: Missing, expired, or invalid authentication
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '403':
+          description: Authenticated caller is not allowed to edit this comment
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '404':
+          description: Comment not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
     delete:
       summary: Delete a comment
       responses:
         '204':
           description: Comment deleted
+        '401':
+          description: Missing, expired, or invalid authentication
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '403':
+          description: Authenticated caller is not allowed to delete this comment
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '404':
+          description: Comment not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
   /api/v1/ideas/{ideaId}/upvote/toggle:
     post:
       summary: Toggle the caller's upvote
       responses:
         '200':
           description: New upvote state
+        '401':
+          description: Missing, expired, or invalid authentication
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '403':
+          description: Authenticated caller is not allowed to upvote this idea
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '404':
+          description: Idea not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails

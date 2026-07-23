@@ -20,3 +20,34 @@ UserSummary:
       format: email
     status:
       type: string
+
+ProblemDetails:
+  type: object
+  required: [title, status]
+  properties:
+    type:
+      type: string
+      format: uri
+      nullable: true
+    title:
+      type: string
+    status:
+      type: integer
+    detail:
+      type: string
+      nullable: true
+    instance:
+      type: string
+      nullable: true
+
+ValidationProblemDetails:
+  allOf:
+    - $ref: '#/ProblemDetails'
+    - type: object
+      properties:
+        errors:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string

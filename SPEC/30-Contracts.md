@@ -13,6 +13,12 @@ Defines the system contracts that implementations must follow.
 - Standard fields are `type`, `title`, `status`, `detail`, and `instance`.
 - Validation failures may include an additional `errors` object keyed by field name.
 
+## Standard Error Responses
+- `400 Bad Request`: request JSON is malformed, required fields are missing, field values violate contract constraints, or the request shape is otherwise invalid.
+- `401 Unauthorized`: the caller is not authenticated or the authentication token is missing, expired, or invalid.
+- `403 Forbidden`: the caller is authenticated but not permitted to perform the requested action in the current scope.
+- `404 Not Found`: the targeted resource does not exist or is not visible within the caller's authorized scope.
+
 ## Collection Conventions
 - Organization, user, idea, and comment list endpoints support pagination in MVP.
 - Smaller configuration collections such as statuses, boards, and tags may return full result sets unless a feature-specific contract says otherwise.
@@ -86,6 +92,9 @@ Success response `200`:
 - `email`
 - `status`
 
+Error responses:
+- `401` caller is not authenticated
+
 ### `POST /api/v1/auth/change-password`
 Purpose: Change the current user's password, including the first-login Site Admin password change.
 
@@ -99,6 +108,7 @@ Success response:
 Error responses:
 - `400` invalid password policy
 - `401` invalid current password
+- `403` caller is authenticated but not allowed to change the password in the current state
 
 ### `POST /api/v1/users/{userId}/temporary-password`
 Purpose: Later-phase admin-issued temporary password reset.
@@ -139,6 +149,10 @@ Success response `200` paged item shape:
 Default list behavior:
 - archived organizations are excluded unless explicitly filtered in
 
+Error responses:
+- `401` caller is not authenticated
+- `403` caller is authenticated but not allowed to list organizations
+
 ### `POST /api/v1/organizations`
 Purpose: Create an organization and provision default statuses plus one default board.
 
@@ -157,8 +171,18 @@ Success response `201`:
 - `defaultBoardId`
 - `defaultStatusCount`
 
+Error responses:
+- `400` request body is malformed or violates field constraints
+- `401` caller is not authenticated
+- `403` caller is authenticated but not allowed to create organizations
+
 ### `GET /api/v1/organizations/{organizationId}`
 Purpose: Return organization detail.
+
+Error responses:
+- `401` caller is not authenticated
+- `403` caller is authenticated but not allowed to view this organization
+- `404` organization does not exist or is outside caller scope
 
 ### `PUT /api/v1/organizations/{organizationId}`
 Purpose: Update organization detail.
@@ -169,11 +193,22 @@ Request body:
 Success response:
 - `200` updated organization detail
 
+Error responses:
+- `400` request body is malformed or violates field constraints
+- `401` caller is not authenticated
+- `403` caller is authenticated but not allowed to update this organization
+- `404` organization does not exist or is outside caller scope
+
 ### `POST /api/v1/organizations/{organizationId}/archive`
 Purpose: Archive an organization without hard deletion.
 
 Success response:
 - `204 No Content`
+
+Error responses:
+- `401` caller is not authenticated
+- `403` caller is authenticated but not allowed to archive this organization
+- `404` organization does not exist or is outside caller scope
 
 ## User Contracts
 
@@ -198,6 +233,11 @@ Success response `200` paged item shape:
 - `role`
 - `status`
 
+Error responses:
+- `401` caller is not authenticated
+- `403` caller is authenticated but not allowed to list users in this organization
+- `404` organization does not exist or is outside caller scope
+
 ### `POST /api/v1/organizations/{organizationId}/users`
 Purpose: Create a user within an organization.
 
@@ -216,8 +256,19 @@ Success response `201`:
 - `role`
 - `status`
 
+Error responses:
+- `400` request body is malformed or violates field constraints
+- `401` caller is not authenticated
+- `403` caller is authenticated but not allowed to create users in this organization
+- `404` organization does not exist or is outside caller scope
+
 ### `GET /api/v1/users/{userId}`
 Purpose: Return user detail.
+
+Error responses:
+- `401` caller is not authenticated
+- `403` caller is authenticated but not allowed to view this user
+- `404` user does not exist or is outside caller scope
 
 ### `PUT /api/v1/users/{userId}`
 Purpose: Update user profile, role, or status within the caller's authorized scope.
@@ -231,6 +282,12 @@ Request body:
 
 Success response:
 - `200` updated user detail
+
+Error responses:
+- `400` request body is malformed or violates field constraints
+- `401` caller is not authenticated
+- `403` caller is authenticated but not allowed to update this user
+- `404` user does not exist or is outside caller scope
 
 ## Status Contracts
 

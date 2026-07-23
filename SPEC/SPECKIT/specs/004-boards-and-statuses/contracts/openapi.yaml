@@ -9,6 +9,12 @@ paths:
       responses:
         '200':
           description: Status list
+        '401':
+          description: Missing, expired, or invalid authentication
+        '403':
+          description: Authenticated caller is not allowed to list statuses for this organization
+        '404':
+          description: Organization not found
     post:
       summary: Create a status
       requestBody:
@@ -24,23 +30,61 @@ paths:
       responses:
         '201':
           description: Status created
+        '400':
+          description: Malformed request body or invalid field constraints
+        '401':
+          description: Missing, expired, or invalid authentication
+        '403':
+          description: Authenticated caller is not allowed to create statuses for this organization
+        '404':
+          description: Organization not found
   /api/v1/statuses/{statusId}:
     put:
       summary: Update a status
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
       responses:
         '200':
           description: Status updated
+        '400':
+          description: Malformed request body or invalid field constraints
+        '401':
+          description: Missing, expired, or invalid authentication
+        '403':
+          description: Authenticated caller is not allowed to update this status
+        '404':
+          description: Status not found
     delete:
       summary: Soft-delete a status
       responses:
         '204':
           description: Status deleted
+        '401':
+          description: Missing, expired, or invalid authentication
+        '403':
+          description: Authenticated caller is not allowed to delete this status
+        '404':
+          description: Status not found
   /api/v1/organizations/{organizationId}/boards:
     get:
       summary: List boards for an organization
       responses:
         '200':
           description: Board list
+        '401':
+          description: Missing, expired, or invalid authentication
+        '403':
+          description: Authenticated caller is not allowed to list boards for this organization
+        '404':
+          description: Organization not found
     post:
       summary: Create a board
       requestBody:
@@ -52,12 +96,26 @@ paths:
       responses:
         '201':
           description: Board created
+        '400':
+          description: Malformed request body or invalid field constraints
+        '401':
+          description: Missing, expired, or invalid authentication
+        '403':
+          description: Authenticated caller is not allowed to create boards for this organization
+        '404':
+          description: Organization not found
   /api/v1/boards/{boardId}:
     get:
       summary: Get board detail
       responses:
         '200':
           description: Board detail
+        '401':
+          description: Missing, expired, or invalid authentication
+        '403':
+          description: Authenticated caller is not allowed to view this board
+        '404':
+          description: Board not found
     put:
       summary: Update a board
       requestBody:
@@ -69,6 +127,14 @@ paths:
       responses:
         '200':
           description: Board updated
+        '400':
+          description: Malformed request body or invalid field constraints
+        '401':
+          description: Missing, expired, or invalid authentication
+        '403':
+          description: Authenticated caller is not allowed to update this board
+        '404':
+          description: Board not found
   /api/v1/boards/{boardId}/swimlanes/reorder:
     post:
       summary: Persist swimlane reorder
@@ -81,8 +147,36 @@ paths:
       responses:
         '204':
           description: Reorder persisted
+        '400':
+          description: Malformed request body or invalid field constraints
+        '401':
+          description: Missing, expired, or invalid authentication
+        '403':
+          description: Authenticated caller is not allowed to reorder swimlanes for this board
+        '404':
+          description: Board not found
 components:
   schemas:
+    ProblemDetails:
+      type: object
+      required: [title, status]
+      properties:
+        type: { type: string, format: uri, nullable: true }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string, nullable: true }
+        instance: { type: string, nullable: true }
+    ValidationProblemDetails:
+      allOf:
+        - $ref: '#/components/schemas/ProblemDetails'
+        - type: object
+          properties:
+            errors:
+              type: object
+              additionalProperties:
+                type: array
+                items:
+                  type: string
     BoardWriteRequest:
       type: object
       required: [name, swimlanes]

@@ -19,10 +19,24 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/LoginSuccessResponse'
+        '400':
+          description: Malformed request body or invalid request shape
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
         '401':
           description: Invalid credentials
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
         '403':
           description: Inactive account
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
         '429':
           description: Account locked out
   /api/v1/auth/me:
@@ -35,6 +49,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/UserSummary'
+        '401':
+          description: Missing, expired, or invalid authentication
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
   /api/v1/auth/change-password:
     post:
       summary: Change the current user's password
@@ -47,8 +67,55 @@ paths:
       responses:
         '204':
           description: Password changed
+        '400':
+          description: Malformed request body or invalid password policy
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+        '401':
+          description: Invalid current password or missing authentication
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '403':
+          description: Authenticated caller is not allowed to change this password
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
 components:
   schemas:
+    ProblemDetails:
+      type: object
+      required: [title, status]
+      properties:
+        type:
+          type: string
+          format: uri
+          nullable: true
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+          nullable: true
+        instance:
+          type: string
+          nullable: true
+    ValidationProblemDetails:
+      allOf:
+        - $ref: '#/components/schemas/ProblemDetails'
+        - type: object
+          properties:
+            errors:
+              type: object
+              additionalProperties:
+                type: array
+                items:
+                  type: string
     LoginRequest:
       type: object
       required: [email, password]

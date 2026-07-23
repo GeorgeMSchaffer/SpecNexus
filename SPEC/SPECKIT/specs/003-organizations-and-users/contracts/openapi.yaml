@@ -9,6 +9,10 @@ paths:
       responses:
         '200':
           description: Paginated organizations
+        '401':
+          description: Missing, expired, or invalid authentication
+        '403':
+          description: Authenticated caller is not allowed to list organizations
     post:
       summary: Create an organization
       requestBody:
@@ -20,6 +24,12 @@ paths:
       responses:
         '201':
           description: Organization created
+        '400':
+          description: Malformed request body or invalid field constraints
+        '401':
+          description: Missing, expired, or invalid authentication
+        '403':
+          description: Authenticated caller is not allowed to create organizations
   /api/v1/organizations/{organizationId}:
     get:
       summary: Get organization detail
@@ -28,6 +38,12 @@ paths:
       responses:
         '200':
           description: Organization detail
+        '401':
+          description: Missing, expired, or invalid authentication
+        '403':
+          description: Authenticated caller is not allowed to view this organization
+        '404':
+          description: Organization not found
     put:
       summary: Update organization detail
       parameters:
@@ -41,6 +57,14 @@ paths:
       responses:
         '200':
           description: Organization updated
+        '400':
+          description: Malformed request body or invalid field constraints
+        '401':
+          description: Missing, expired, or invalid authentication
+        '403':
+          description: Authenticated caller is not allowed to update this organization
+        '404':
+          description: Organization not found
   /api/v1/organizations/{organizationId}/archive:
     post:
       summary: Archive an organization
@@ -49,6 +73,12 @@ paths:
       responses:
         '204':
           description: Organization archived
+        '401':
+          description: Missing, expired, or invalid authentication
+        '403':
+          description: Authenticated caller is not allowed to archive this organization
+        '404':
+          description: Organization not found
   /api/v1/organizations/{organizationId}/users:
     get:
       summary: List users in an organization
@@ -57,6 +87,12 @@ paths:
       responses:
         '200':
           description: Paginated users
+        '401':
+          description: Missing, expired, or invalid authentication
+        '403':
+          description: Authenticated caller is not allowed to list users for this organization
+        '404':
+          description: Organization not found
     post:
       summary: Create a user in an organization
       parameters:
@@ -70,6 +106,14 @@ paths:
       responses:
         '201':
           description: User created
+        '400':
+          description: Malformed request body or invalid field constraints
+        '401':
+          description: Missing, expired, or invalid authentication
+        '403':
+          description: Authenticated caller is not allowed to create users for this organization
+        '404':
+          description: Organization not found
   /api/v1/users/{userId}:
     get:
       summary: Get user detail
@@ -78,6 +122,12 @@ paths:
       responses:
         '200':
           description: User detail
+        '401':
+          description: Missing, expired, or invalid authentication
+        '403':
+          description: Authenticated caller is not allowed to view this user
+        '404':
+          description: User not found
     put:
       summary: Update user detail
       parameters:
@@ -91,6 +141,14 @@ paths:
       responses:
         '200':
           description: User updated
+        '400':
+          description: Malformed request body or invalid field constraints
+        '401':
+          description: Missing, expired, or invalid authentication
+        '403':
+          description: Authenticated caller is not allowed to update this user
+        '404':
+          description: User not found
 components:
   parameters:
     OrganizationId:
@@ -108,6 +166,26 @@ components:
         type: string
         format: uuid
   schemas:
+    ProblemDetails:
+      type: object
+      required: [title, status]
+      properties:
+        type: { type: string, format: uri, nullable: true }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string, nullable: true }
+        instance: { type: string, nullable: true }
+    ValidationProblemDetails:
+      allOf:
+        - $ref: '#/components/schemas/ProblemDetails'
+        - type: object
+          properties:
+            errors:
+              type: object
+              additionalProperties:
+                type: array
+                items:
+                  type: string
     OrganizationCreateRequest:
       type: object
       required: [companyName, address, city, state, zip, phone, primaryContactFirstName, primaryContactLastName]
