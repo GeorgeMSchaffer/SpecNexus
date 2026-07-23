@@ -1,11 +1,11 @@
 # Feature Specification: Authentication and Access
 
 ## Summary
-Implement organization-scoped authentication with globally unique email credentials, seeded global Site Admin bootstrap, password rules, inactive-account denial, and account lockout behavior.
+Implement organization-scoped authentication with optional organization selection for duplicate emails across organizations, seeded global Site Admin bootstrap, password rules, inactive-account denial, and account lockout behavior.
 
 ## Requirements
 - Users authenticate with email and password.
-- User email is globally unique across the system.
+- User accounts are organization-scoped, and duplicate emails across organizations can require an organization-selection step during login.
 - Passwords follow the defined complexity policy.
 - Five failed login attempts within 15 minutes cause a 15-minute lockout.
 - Inactive accounts cannot log in.

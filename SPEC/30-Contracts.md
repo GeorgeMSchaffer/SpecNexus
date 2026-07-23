@@ -120,6 +120,11 @@ Success response `200`:
 - `temporaryPassword` string
 - `mustChangePassword` boolean
 
+Error responses:
+- `401` caller is not authenticated
+- `403` caller is authenticated but not allowed to issue a temporary password for the target user
+- `404` target user does not exist or is outside caller scope
+
 Behavior rules:
 - the temporary password is displayed one time only
 - the temporary password expires after 24 hours if unused

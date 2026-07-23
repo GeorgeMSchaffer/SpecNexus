@@ -4,8 +4,8 @@
 Track implementation work that Copilot-driven implementation agents should complete, what is currently active, and what has already been finished.
 
 ## Current Status
-- Current implementation slice: T005 Implement login request handling with optional organization resolution.
-- Current owner: foundation implementation agent
+- Current implementation slice: T011 Implement admin-issued temporary password reset as the P1 extension path.
+- Current owner: auth implementation agent
 - Current state: Ready
 - Last updated: 2026-07-23
 
@@ -14,12 +14,19 @@ Track implementation work that Copilot-driven implementation agents should compl
 - T002 Add the EF Core DbContext, migrations, and audit storage foundations.
 - T003 Implement shared `/api/v1` routing conventions and problem-details error handling.
 - T004 Implement API validation plumbing and OpenAPI scaffolding.
+- T005 Implement login request handling with optional organization resolution.
+- T006 Implement password hashing and verification.
+- T007 Enforce password complexity, inactive-account denial, and 5-in-15 lockout rules.
+- T008 Seed the global Site Admin from an environment-provided initial credential.
+- T009 Implement forced first-login password change.
+- T010 Emit audit events for authentication outcomes and password changes.
+- T011 Implement admin-issued temporary password reset as the P1 extension path.
 
 ## In Progress
 - None.
 
 ## Ready Next
-- T005 Implement login request handling with optional organization resolution.
+- T012 Implement organization create, detail, list, edit, and archive flows.
 
 ## Progress Notes
 - T001 completed: created `SargentNexus.sln`, `global.json`, and the five core projects under `src/`.
@@ -27,6 +34,16 @@ Track implementation work that Copilot-driven implementation agents should compl
 - T003 completed: removed the default weather sample, added a shared `api/v1` controller base, added `GET /api/v1/health`, and wired ASP.NET Core problem-details services into the API host.
 - Local fix applied during T002: repaired a malformed `appsettings.Development.json` file that blocked EF tooling from loading host configuration.
 - T004 completed: added explicit 400/401/403/404 contract coverage across written contracts and OpenAPI specs, configured API validation problem-details responses, enabled Swagger generation in development, and refactored domain and infrastructure placeholders into named files and folders.
+- T005 completed: added the application login flow, persistence lookup, login endpoint, and contract alignment for optional organization selection when duplicate emails exist across organizations.
+- T006 completed: replaced placeholder password comparison with a PBKDF2 password hasher that can hash and verify stored passwords.
+- T007 completed: added failed-attempt tracking, 15-minute rolling lockout behavior after 5 failures, `429` lockout responses, and the corresponding EF migration for user lockout fields.
+- T008 completed: added startup seeding for the global Site Admin using `Seed:SiteAdminPassword` from configuration and automatic database migration during startup initialization.
+- T009 completed: added bearer-token-backed `auth/me` and `auth/change-password` flows, password policy enforcement, and clearing of `MustChangePassword` after a successful password change.
+- Runtime validation note: startup seeding reached EF migration and attempted to open the LocalDB connection when run with a temporary `Seed__SiteAdminPassword`, but LocalDB stalled before full startup could be observed in this environment.
+- Remaining auth placeholder: bearer tokens are still opaque in-memory session tokens rather than durable signed tokens.
+- T010 completed: auth flows now persist audit events for login success, login failure, lockout-related failure, and password change success or failure using the existing `audit_events` table.
+- T011 completed: added temporary password issuance, 24-hour expiry tracking, login consumption of valid temporary passwords, and the admin-issued `/api/v1/users/{userId}/temporary-password` endpoint.
+- Project layout note: the solution and source tree were moved from `SPEC/` to the project root, and the relocated solution builds successfully from there.
 
 ## Backlog By Slice
 

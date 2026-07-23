@@ -224,6 +224,42 @@ paths:
             application/problem+json:
               schema:
                 $ref: ../components/schemas/common.yaml#/ProblemDetails
+  /api/v1/users/{userId}/temporary-password:
+    post:
+      summary: Issue a one-time display temporary password for a user
+      parameters:
+        - $ref: ../components/parameters.yaml#/UserId
+      responses:
+        '200':
+          description: Temporary password issued
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [temporaryPassword, mustChangePassword]
+                properties:
+                  temporaryPassword:
+                    type: string
+                  mustChangePassword:
+                    type: boolean
+        '401':
+          description: Missing, expired, or invalid authentication
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '403':
+          description: Authenticated caller is not allowed to issue a temporary password for this user
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '404':
+          description: User not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
     put:
       summary: Update user detail
       parameters:

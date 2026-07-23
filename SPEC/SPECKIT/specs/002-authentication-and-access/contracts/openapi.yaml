@@ -18,7 +18,9 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/LoginSuccessResponse'
+                oneOf:
+                  - $ref: '#/components/schemas/LoginSuccessResponse'
+                  - $ref: '#/components/schemas/OrganizationSelectionResponse'
         '400':
           description: Malformed request body or invalid request shape
           content:
@@ -39,6 +41,10 @@ paths:
                 $ref: '#/components/schemas/ProblemDetails'
         '429':
           description: Account locked out
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
   /api/v1/auth/me:
     get:
       summary: Get current authenticated user
@@ -85,7 +91,45 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/ProblemDetails'
+  /api/v1/users/{userId}/temporary-password:
+    post:
+      summary: Issue a one-time display temporary password for a user
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      responses:
+        '200':
+          description: Temporary password issued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TemporaryPasswordResponse'
+        '401':
+          description: Missing, expired, or invalid authentication
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '403':
+          description: Authenticated caller is not allowed to issue a temporary password for this user
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '404':
+          description: User not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
 components:
+  parameters:
+    UserId:
+      name: userId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
   schemas:
     ProblemDetails:
       type: object
@@ -125,6 +169,10 @@ components:
           format: email
         password:
           type: string
+        organizationId:
+          type: string
+          format: uuid
+          nullable: true
     LoginSuccessResponse:
       type: object
       required: [accessToken, expiresInSeconds, requiresPasswordChange, user]
@@ -137,6 +185,25 @@ components:
           type: boolean
         user:
           $ref: '#/components/schemas/UserSummary'
+    OrganizationSelectionResponse:
+      type: object
+      required: [requiresOrganizationSelection, organizations]
+      properties:
+        requiresOrganizationSelection:
+          type: boolean
+        organizations:
+          type: array
+          items:
+            $ref: '#/components/schemas/LoginOrganizationOption'
+    LoginOrganizationOption:
+      type: object
+      required: [organizationId, organizationName]
+      properties:
+        organizationId:
+          type: string
+          format: uuid
+        organizationName:
+          type: string
     ChangePasswordRequest:
       type: object
       required: [currentPassword, newPassword]
@@ -145,6 +212,14 @@ components:
           type: string
         newPassword:
           type: string
+    TemporaryPasswordResponse:
+      type: object
+      required: [temporaryPassword, mustChangePassword]
+      properties:
+        temporaryPassword:
+          type: string
+        mustChangePassword:
+          type: boolean
     UserSummary:
       type: object
       required: [userId, role, firstName, lastName, email, status]

@@ -149,6 +149,20 @@ paths:
           description: Authenticated caller is not allowed to update this user
         '404':
           description: User not found
+  /api/v1/users/{userId}/temporary-password:
+    post:
+      summary: Issue a one-time display temporary password for a user
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      responses:
+        '200':
+          description: Temporary password issued
+        '401':
+          description: Missing, expired, or invalid authentication
+        '403':
+          description: Authenticated caller is not allowed to issue a temporary password for this user
+        '404':
+          description: User not found
 components:
   parameters:
     OrganizationId:
@@ -221,3 +235,9 @@ components:
           format: email
         role: { type: string }
         status: { type: string }
+    TemporaryPasswordResponse:
+      type: object
+      required: [temporaryPassword, mustChangePassword]
+      properties:
+        temporaryPassword: { type: string }
+        mustChangePassword: { type: boolean }

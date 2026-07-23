@@ -1,7 +1,7 @@
 paths:
   /api/v1/auth/login:
     post:
-      summary: Authenticate a user with globally unique email credentials
+      summary: Authenticate a user with organization-scoped credentials
       requestBody:
         required: true
         content:
@@ -10,7 +10,13 @@ paths:
               $ref: ../components/schemas/auth.yaml#/LoginRequest
       responses:
         '200':
-          description: Authenticated response
+          description: Authenticated response or organization selection response
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: ../components/schemas/auth.yaml#/LoginSuccessResponse
+                  - $ref: ../components/schemas/auth.yaml#/OrganizationSelectionResponse
         '400':
           description: Malformed request body or invalid request shape
           content:
@@ -31,6 +37,10 @@ paths:
                 $ref: ../components/schemas/common.yaml#/ProblemDetails
         '429':
           description: Account locked out
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
   /api/v1/auth/me:
     get:
       summary: Get current authenticated user

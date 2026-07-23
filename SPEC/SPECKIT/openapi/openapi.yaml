@@ -19,6 +19,8 @@ paths:
     $ref: ./paths/organizations-users.yaml#/paths/~1api~1v1~1organizations~1{organizationId}~1users
   /api/v1/users/{userId}:
     $ref: ./paths/organizations-users.yaml#/paths/~1api~1v1~1users~1{userId}
+  /api/v1/users/{userId}/temporary-password:
+    $ref: ./paths/organizations-users.yaml#/paths/~1api~1v1~1users~1{userId}~1temporary-password
   /api/v1/organizations/{organizationId}/statuses:
     $ref: ./paths/boards-statuses.yaml#/paths/~1api~1v1~1organizations~1{organizationId}~1statuses
   /api/v1/statuses/{statusId}:
