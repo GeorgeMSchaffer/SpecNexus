@@ -2,6 +2,8 @@ using SargentNexus.Infrastructure;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
+using SargentNexus.Application.Auth;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -40,11 +42,48 @@ var app = builder.Build();
 app.UseExceptionHandler();
 app.UseStatusCodePages();
 
+await using (var scope = app.Services.CreateAsyncScope())
+{
+	var authSeeder = scope.ServiceProvider.GetRequiredService<IAuthSeeder>();
+	await authSeeder.SeedSiteAdminAsync(CancellationToken.None);
+}
+
 if (app.Environment.IsDevelopment())
 {
 	app.UseSwagger();
 	app.UseSwaggerUI();
 }
+
+app.Use(async (context, next) =>
+{
+	var authorizationHeader = context.Request.Headers.Authorization.ToString();
+
+	if (authorizationHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+	{
+		var accessToken = authorizationHeader["Bearer ".Length..].Trim();
+		var accessTokenReader = context.RequestServices.GetRequiredService<IAccessTokenReader>();
+		var principal = accessTokenReader.Read(accessToken);
+
+		if (principal is not null)
+		{
+			var claims = new List<Claim>
+			{
+				new(ClaimTypes.NameIdentifier, principal.UserId.ToString()),
+				new(ClaimTypes.Role, principal.Role),
+				new(ClaimTypes.Email, principal.Email)
+			};
+
+			if (principal.OrganizationId.HasValue)
+			{
+				claims.Add(new Claim("organization_id", principal.OrganizationId.Value.ToString()));
+			}
+
+			context.User = new ClaimsPrincipal(new ClaimsIdentity(claims, "Bearer"));
+		}
+	}
+
+	await next();
+});
 
 app.UseAuthorization();
 

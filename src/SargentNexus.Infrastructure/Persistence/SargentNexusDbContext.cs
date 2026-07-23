@@ -60,6 +60,8 @@ public sealed class SargentNexusDbContext : DbContext
             entity.Property(item => item.LastName).HasMaxLength(100).IsRequired();
             entity.Property(item => item.Email).HasMaxLength(320).IsRequired();
             entity.Property(item => item.PasswordHash).HasMaxLength(500).IsRequired();
+            entity.Property(item => item.TemporaryPasswordHash).HasMaxLength(500);
+            entity.Property(item => item.FailedLoginAttemptCount).HasDefaultValue(0);
             entity.HasIndex(item => new { item.OrganizationId, item.Email }).IsUnique();
             entity.HasOne(item => item.Organization)
                 .WithMany(item => item.Users)

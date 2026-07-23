@@ -49,6 +49,16 @@ public sealed class User : EntityBase
 
     public bool MustChangePassword { get; set; }
 
+    public int FailedLoginAttemptCount { get; set; }
+
+    public DateTime? LastFailedLoginAttemptUtc { get; set; }
+
+    public DateTime? LockoutEndUtc { get; set; }
+
+    public string? TemporaryPasswordHash { get; set; }
+
+    public DateTime? TemporaryPasswordExpiresAtUtc { get; set; }
+
     public ICollection<Idea> AuthoredIdeas { get; set; } = new List<Idea>();
 
     public ICollection<Comment> Comments { get; set; } = new List<Comment>();
