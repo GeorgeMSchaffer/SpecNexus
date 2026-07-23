@@ -1,0 +1,6 @@
+@SargentNexus.API_HostAddress = http://localhost:5027
+
+GET {{SargentNexus.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
