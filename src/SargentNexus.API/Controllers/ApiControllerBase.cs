@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
+using SargentNexus.Application.Workflow;
 
 namespace SargentNexus.API.Controllers;
 
@@ -14,5 +15,24 @@ public abstract class ApiControllerBase : ControllerBase
 		return Guid.TryParse(userIdClaim, out var userId)
 			? userId
 			: null;
+	}
+
+	protected Guid? GetCurrentOrganizationId()
+	{
+		var organizationIdClaim = User.FindFirstValue("organization_id");
+
+		return Guid.TryParse(organizationIdClaim, out var organizationId)
+			? organizationId
+			: null;
+	}
+
+	protected WorkflowActorContext GetWorkflowActorContext()
+	{
+		return new WorkflowActorContext
+		{
+			UserId = GetCurrentUserId() ?? Guid.Empty,
+			OrganizationId = GetCurrentOrganizationId(),
+			Role = User.FindFirstValue(ClaimTypes.Role) ?? string.Empty
+		};
 	}
 }

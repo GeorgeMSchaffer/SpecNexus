@@ -485,7 +485,7 @@ namespace SargentNexus.Infrastructure.Persistence.Migrations
                     b.HasOne("SargentNexus.Domain.Status", "Status")
                         .WithMany("BoardSwimlanes")
                         .HasForeignKey("StatusId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("Board");
@@ -498,7 +498,7 @@ namespace SargentNexus.Infrastructure.Persistence.Migrations
                     b.HasOne("SargentNexus.Domain.User", "AuthorUser")
                         .WithMany("Comments")
                         .HasForeignKey("AuthorUserId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("SargentNexus.Domain.Idea", "Idea")
@@ -529,13 +529,13 @@ namespace SargentNexus.Infrastructure.Persistence.Migrations
                     b.HasOne("SargentNexus.Domain.Organization", "Organization")
                         .WithMany("Ideas")
                         .HasForeignKey("OrganizationId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("SargentNexus.Domain.Status", "Status")
                         .WithMany("Ideas")
                         .HasForeignKey("StatusId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("AuthorUser");
@@ -558,7 +558,7 @@ namespace SargentNexus.Infrastructure.Persistence.Migrations
                     b.HasOne("SargentNexus.Domain.Tag", "Tag")
                         .WithMany("IdeaTags")
                         .HasForeignKey("TagId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("Idea");
@@ -579,13 +579,13 @@ namespace SargentNexus.Infrastructure.Persistence.Migrations
                     b.HasOne("SargentNexus.Domain.User", "MentionedUser")
                         .WithMany()
                         .HasForeignKey("MentionedUserId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("SargentNexus.Domain.Organization", "Organization")
                         .WithMany()
                         .HasForeignKey("OrganizationId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("Comment");
@@ -630,7 +630,7 @@ namespace SargentNexus.Infrastructure.Persistence.Migrations
                     b.HasOne("SargentNexus.Domain.User", "User")
                         .WithMany("Upvotes")
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("Idea");

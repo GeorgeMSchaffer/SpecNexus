@@ -1,0 +1,8 @@
+@inject IAuthSessionService AuthSessionService
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        await AuthSessionService.InitializeAsync();
+    }
+}

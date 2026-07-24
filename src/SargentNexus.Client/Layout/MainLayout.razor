@@ -6,7 +6,18 @@
 
     <main>
         <div class="top-row px-4">
-            <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a>
+            <AuthorizeView>
+                <Authorized>
+                    <span>@DisplayName</span>
+                    @if (AuthSessionService.RequiresPasswordChange)
+                    {
+                        <span class="text-danger fw-semibold">Password update required</span>
+                    }
+                </Authorized>
+                <NotAuthorized>
+                    <a href="/login">Sign in</a>
+                </NotAuthorized>
+            </AuthorizeView>
         </div>
 
         <article class="content px-4">
@@ -14,3 +25,15 @@
         </article>
     </main>
 </div>
+
+@code {
+    [Inject]
+    private IAuthSessionService AuthSessionService { get; set; } = null!;
+
+    private string DisplayName =>
+        AuthSessionService.User is null
+            ? "Authenticated user"
+            : string.IsNullOrWhiteSpace($"{AuthSessionService.User.FirstName} {AuthSessionService.User.LastName}".Trim())
+                ? AuthSessionService.User.Email
+                : $"{AuthSessionService.User.FirstName} {AuthSessionService.User.LastName}".Trim();
+}

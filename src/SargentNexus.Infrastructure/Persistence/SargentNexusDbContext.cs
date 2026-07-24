@@ -75,6 +75,10 @@ public sealed class SargentNexusDbContext : DbContext
             entity.HasKey(item => item.Id);
             entity.Property(item => item.Name).HasMaxLength(100).IsRequired();
             entity.HasIndex(item => new { item.OrganizationId, item.Name }).IsUnique();
+            entity.HasOne(item => item.Organization)
+                .WithMany(item => item.Statuses)
+                .HasForeignKey(item => item.OrganizationId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<Board>(entity =>
@@ -82,6 +86,10 @@ public sealed class SargentNexusDbContext : DbContext
             entity.ToTable("boards");
             entity.HasKey(item => item.Id);
             entity.Property(item => item.Name).HasMaxLength(150).IsRequired();
+            entity.HasOne(item => item.Organization)
+                .WithMany(item => item.Boards)
+                .HasForeignKey(item => item.OrganizationId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<BoardSwimlane>(entity =>
@@ -89,6 +97,14 @@ public sealed class SargentNexusDbContext : DbContext
             entity.ToTable("board_swimlanes");
             entity.HasKey(item => new { item.BoardId, item.StatusId });
             entity.HasIndex(item => new { item.BoardId, item.Order }).IsUnique();
+            entity.HasOne(item => item.Board)
+                .WithMany(item => item.Swimlanes)
+                .HasForeignKey(item => item.BoardId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(item => item.Status)
+                .WithMany(item => item.BoardSwimlanes)
+                .HasForeignKey(item => item.StatusId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<Idea>(entity =>
@@ -97,6 +113,22 @@ public sealed class SargentNexusDbContext : DbContext
             entity.HasKey(item => item.Id);
             entity.Property(item => item.Title).HasMaxLength(150).IsRequired();
             entity.Property(item => item.Description).HasMaxLength(4000).IsRequired();
+            entity.HasOne(item => item.Board)
+                .WithMany(item => item.Ideas)
+                .HasForeignKey(item => item.BoardId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(item => item.Organization)
+                .WithMany(item => item.Ideas)
+                .HasForeignKey(item => item.OrganizationId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(item => item.AuthorUser)
+                .WithMany(item => item.AuthoredIdeas)
+                .HasForeignKey(item => item.AuthorUserId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(item => item.Status)
+                .WithMany(item => item.Ideas)
+                .HasForeignKey(item => item.StatusId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<Tag>(entity =>
@@ -106,12 +138,24 @@ public sealed class SargentNexusDbContext : DbContext
             entity.Property(item => item.Name).HasMaxLength(100).IsRequired();
             entity.Property(item => item.NormalizedName).HasMaxLength(100).IsRequired();
             entity.HasIndex(item => new { item.OrganizationId, item.NormalizedName }).IsUnique();
+            entity.HasOne(item => item.Organization)
+                .WithMany()
+                .HasForeignKey(item => item.OrganizationId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<IdeaTag>(entity =>
         {
             entity.ToTable("idea_tags");
             entity.HasKey(item => new { item.IdeaId, item.TagId });
+            entity.HasOne(item => item.Idea)
+                .WithMany(item => item.IdeaTags)
+                .HasForeignKey(item => item.IdeaId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(item => item.Tag)
+                .WithMany(item => item.IdeaTags)
+                .HasForeignKey(item => item.TagId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<Mention>(entity =>
@@ -119,6 +163,22 @@ public sealed class SargentNexusDbContext : DbContext
             entity.ToTable("mentions");
             entity.HasKey(item => item.Id);
             entity.Property(item => item.SourceText).HasMaxLength(500).IsRequired();
+            entity.HasOne(item => item.Comment)
+                .WithMany(item => item.Mentions)
+                .HasForeignKey(item => item.CommentId)
+                .OnDelete(DeleteBehavior.NoAction);
+            entity.HasOne(item => item.Idea)
+                .WithMany(item => item.Mentions)
+                .HasForeignKey(item => item.IdeaId)
+                .OnDelete(DeleteBehavior.NoAction);
+            entity.HasOne(item => item.MentionedUser)
+                .WithMany()
+                .HasForeignKey(item => item.MentionedUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(item => item.Organization)
+                .WithMany()
+                .HasForeignKey(item => item.OrganizationId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<Comment>(entity =>
@@ -126,12 +186,28 @@ public sealed class SargentNexusDbContext : DbContext
             entity.ToTable("comments");
             entity.HasKey(item => item.Id);
             entity.Property(item => item.Body).HasMaxLength(2000).IsRequired();
+            entity.HasOne(item => item.Idea)
+                .WithMany(item => item.Comments)
+                .HasForeignKey(item => item.IdeaId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(item => item.AuthorUser)
+                .WithMany(item => item.Comments)
+                .HasForeignKey(item => item.AuthorUserId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<Upvote>(entity =>
         {
             entity.ToTable("upvotes");
             entity.HasKey(item => new { item.IdeaId, item.UserId });
+            entity.HasOne(item => item.Idea)
+                .WithMany(item => item.Upvotes)
+                .HasForeignKey(item => item.IdeaId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(item => item.User)
+                .WithMany(item => item.Upvotes)
+                .HasForeignKey(item => item.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<AuditEvent>(entity =>

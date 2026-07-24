@@ -2,6 +2,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using SargentNexus.Application.Auth;
+using SargentNexus.Application.Workflow;
+using SargentNexus.Infrastructure.Workflow;
 
 namespace SargentNexus.Infrastructure;
 
@@ -25,6 +27,9 @@ public static class DependencyInjection
         services.AddScoped<ILoginService, LoginService>();
         services.AddScoped<IAuthAccountService, AuthAccountService>();
         services.AddScoped<IAuthSeeder, AuthSeeder>();
+        services.AddScoped<IWorkflowDataAccess, WorkflowDataAccess>();
+        services.AddScoped<IWorkflowAuditWriter, WorkflowAuditWriter>();
+        services.AddScoped<IWorkflowManagementService, WorkflowManagementService>();
 
         return services;
     }

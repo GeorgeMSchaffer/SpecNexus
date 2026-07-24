@@ -1,0 +1,102 @@
+@page "/login"
+@inject IAuthSessionService AuthSessionService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Sign In</PageTitle>
+
+<h1>Sign in</h1>
+
+<EditForm Model="_model" OnValidSubmit="HandleSubmitAsync">
+    <DataAnnotationsValidator />
+
+    <div class="mb-3">
+        <label class="form-label" for="email">Email</label>
+        <InputText id="email" class="form-control" @bind-Value="_model.Email" />
+        <ValidationMessage For="() => _model.Email" />
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label" for="password">Password</label>
+        <InputText id="password" type="password" class="form-control" @bind-Value="_model.Password" />
+        <ValidationMessage For="() => _model.Password" />
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(_errorTitle))
+    {
+        <div class="alert alert-danger" role="alert">
+            <strong>@_errorTitle</strong>
+            @if (!string.IsNullOrWhiteSpace(_errorDetail))
+            {
+                <div>@_errorDetail</div>
+            }
+        </div>
+    }
+
+    <button class="btn btn-primary" type="submit" disabled="@_isSubmitting">
+        @(_isSubmitting ? "Signing in..." : "Sign in")
+    </button>
+</EditForm>
+
+@code {
+    private readonly LoginFormModel _model = new();
+    private bool _isSubmitting;
+    private string? _errorTitle;
+    private string? _errorDetail;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await AuthSessionService.InitializeAsync();
+
+        if (AuthSessionService.IsAuthenticated)
+        {
+            NavigationManager.NavigateTo(AuthSessionService.RequiresPasswordChange ? "/change-password" : "/");
+        }
+    }
+
+    private async Task HandleSubmitAsync()
+    {
+        _isSubmitting = true;
+        _errorTitle = null;
+        _errorDetail = null;
+
+        try
+        {
+            var response = await AuthSessionService.LoginAsync(_model.Email.Trim(), _model.Password);
+
+            if (response.RequiresOrganizationSelection == true)
+            {
+                _errorTitle = "Organization selection is required.";
+                _errorDetail = "This client currently supports globally unique email login only.";
+                await AuthSessionService.LogoutAsync();
+                return;
+            }
+
+            if (response.RequiresPasswordChange == true)
+            {
+                NavigationManager.NavigateTo("/change-password", forceLoad: false);
+                return;
+            }
+
+            NavigationManager.NavigateTo("/", forceLoad: false);
+        }
+        catch (AuthApiException ex)
+        {
+            _errorTitle = ex.Title;
+            _errorDetail = ex.Detail;
+        }
+        finally
+        {
+            _isSubmitting = false;
+        }
+    }
+
+    private sealed class LoginFormModel
+    {
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.EmailAddress]
+        public string Email { get; set; } = string.Empty;
+
+        [System.ComponentModel.DataAnnotations.Required]
+        public string Password { get; set; } = string.Empty;
+    }
+}

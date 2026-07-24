@@ -101,12 +101,12 @@ if (isSwaggerEnabled)
 		options.DocumentTitle = "SargentNexus API Playground";
 	});
 
+
+}
 	if (app.Environment.IsDevelopment())
 	{
 		app.UseDeveloperExceptionPage();
 	}
-}
-
 app.Use(async (context, next) =>
 {
 	var authorizationHeader = context.Request.Headers.Authorization.ToString();

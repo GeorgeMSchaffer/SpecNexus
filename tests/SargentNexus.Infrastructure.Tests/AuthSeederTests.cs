@@ -80,6 +80,21 @@ public sealed class AuthSeederTests
         Assert.True(hasher.Verify("Abc123!Demo", siteAdmin.PasswordHash));
     }
 
+    [Fact]
+    public void DbModel_CommentAuthorForeignKey_UsesRestrictDeleteBehavior()
+    {
+        using var dbContext = CreateDbContext();
+
+        var commentEntityType = dbContext.Model.FindEntityType(typeof(Comment));
+        Assert.NotNull(commentEntityType);
+
+        var authorForeignKey = commentEntityType!
+            .GetForeignKeys()
+            .Single(item => item.PrincipalEntityType.ClrType == typeof(User) && item.Properties.Any(property => property.Name == nameof(Comment.AuthorUserId)));
+
+        Assert.Equal(DeleteBehavior.Restrict, authorForeignKey.DeleteBehavior);
+    }
+
     private static SargentNexusDbContext CreateDbContext()
     {
         var options = new DbContextOptionsBuilder<SargentNexusDbContext>()

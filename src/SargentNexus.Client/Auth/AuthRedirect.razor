@@ -1,0 +1,37 @@
+@inject NavigationManager NavigationManager
+@inject IAuthSessionService AuthSessionService
+
+@if (_ready)
+{
+    <p>Redirecting...</p>
+}
+
+@code {
+    private bool _ready;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await AuthSessionService.InitializeAsync();
+        _ready = true;
+
+        var relative = NavigationManager.ToBaseRelativePath(NavigationManager.Uri);
+        var path = relative.Split('?', '#')[0].Trim('/').ToLowerInvariant();
+
+        if (AuthSessionService.IsAuthenticated)
+        {
+            if (AuthSessionService.RequiresPasswordChange && path != "change-password")
+            {
+                NavigationManager.NavigateTo("/change-password");
+            }
+
+            return;
+        }
+
+        if (path == "login")
+        {
+            return;
+        }
+
+        NavigationManager.NavigateTo("/login");
+    }
+}
