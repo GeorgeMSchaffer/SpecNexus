@@ -2,6 +2,7 @@ using SargentNexus.Infrastructure;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.OpenApi.Models;
 using System.Security.Claims;
 using SargentNexus.Application.Auth;
 
@@ -33,10 +34,45 @@ builder.Services.Configure<ApiBehaviorOptions>(options =>
 	};
 });
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(options =>
+{
+	options.SwaggerDoc("v1", new OpenApiInfo
+	{
+		Title = "SargentNexus API",
+		Version = "v1",
+		Description = "Developer playground for exploring and testing SargentNexus API endpoints."
+	});
+
+	options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+	{
+		Description = "Paste access token here. Example: Bearer {token}",
+		Name = "Authorization",
+		In = ParameterLocation.Header,
+		Type = SecuritySchemeType.Http,
+		Scheme = "bearer",
+		BearerFormat = "JWT"
+	});
+
+	options.AddSecurityRequirement(new OpenApiSecurityRequirement
+	{
+		{
+			new OpenApiSecurityScheme
+			{
+				Reference = new OpenApiReference
+				{
+					Type = ReferenceType.SecurityScheme,
+					Id = "Bearer"
+				}
+			},
+			Array.Empty<string>()
+		}
+	});
+});
 builder.Services.AddInfrastructure(builder.Configuration);
 
 var app = builder.Build();
+var swaggerRoutePrefix = app.Configuration["Swagger:RoutePrefix"] ?? "playground";
+var isSwaggerEnabled = app.Environment.IsDevelopment() || app.Configuration.GetValue<bool>("Swagger:Enabled");
 
 // Configure the HTTP request pipeline.
 app.UseExceptionHandler();
@@ -53,10 +89,22 @@ await using (var scope = app.Services.CreateAsyncScope())
 	}
 }
 
-if (app.Environment.IsDevelopment())
+if (isSwaggerEnabled)
 {
 	app.UseSwagger();
-	app.UseSwaggerUI();
+	app.UseSwaggerUI(options =>
+	{
+		options.RoutePrefix = swaggerRoutePrefix;
+		options.SwaggerEndpoint("/swagger/v1/swagger.json", "SargentNexus API v1");
+		options.DisplayRequestDuration();
+		options.EnableTryItOutByDefault();
+		options.DocumentTitle = "SargentNexus API Playground";
+	});
+
+	if (app.Environment.IsDevelopment())
+	{
+		app.UseDeveloperExceptionPage();
+	}
 }
 
 app.Use(async (context, next) =>

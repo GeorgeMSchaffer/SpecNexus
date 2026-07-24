@@ -272,6 +272,7 @@ internal sealed class AuthSeeder : IAuthSeeder
     private readonly SargentNexusDbContext _dbContext;
     private readonly IPasswordHasher _passwordHasher;
     private readonly AuthSeedOptions _options;
+    private bool _databaseEnsured;
 
     public AuthSeeder(
         SargentNexusDbContext dbContext,
@@ -343,13 +344,20 @@ internal sealed class AuthSeeder : IAuthSeeder
 
     private async Task EnsureDatabaseAsync(CancellationToken cancellationToken)
     {
+        if (_databaseEnsured)
+        {
+            return;
+        }
+
         if (_dbContext.Database.IsRelational())
         {
             await _dbContext.Database.MigrateAsync(cancellationToken);
+            _databaseEnsured = true;
             return;
         }
 
         await _dbContext.Database.EnsureCreatedAsync(cancellationToken);
+        _databaseEnsured = true;
     }
 
     private async Task<Organization> FindOrCreateOrganizationAsync(

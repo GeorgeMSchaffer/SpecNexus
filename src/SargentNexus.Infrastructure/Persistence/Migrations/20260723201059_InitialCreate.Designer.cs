@@ -483,7 +483,7 @@ namespace SargentNexus.Infrastructure.Persistence.Migrations
                     b.HasOne("SargentNexus.Domain.User", "AuthorUser")
                         .WithMany("Comments")
                         .HasForeignKey("AuthorUserId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("SargentNexus.Domain.Idea", "Idea")

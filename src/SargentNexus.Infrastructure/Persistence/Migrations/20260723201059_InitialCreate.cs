@@ -175,7 +175,7 @@ namespace SargentNexus.Infrastructure.Persistence.Migrations
                         column: x => x.StatusId,
                         principalTable: "statuses",
                         principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
+                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateTable(
@@ -206,13 +206,13 @@ namespace SargentNexus.Infrastructure.Persistence.Migrations
                         column: x => x.OrganizationId,
                         principalTable: "organizations",
                         principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
+                        onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "FK_ideas_statuses_StatusId",
                         column: x => x.StatusId,
                         principalTable: "statuses",
                         principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
+                        onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "FK_ideas_users_AuthorUserId",
                         column: x => x.AuthorUserId,
@@ -246,7 +246,7 @@ namespace SargentNexus.Infrastructure.Persistence.Migrations
                         column: x => x.AuthorUserId,
                         principalTable: "users",
                         principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
+                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateTable(
@@ -270,7 +270,7 @@ namespace SargentNexus.Infrastructure.Persistence.Migrations
                         column: x => x.TagId,
                         principalTable: "tags",
                         principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
+                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateTable(
@@ -295,7 +295,7 @@ namespace SargentNexus.Infrastructure.Persistence.Migrations
                         column: x => x.UserId,
                         principalTable: "users",
                         principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
+                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateTable(
@@ -327,13 +327,13 @@ namespace SargentNexus.Infrastructure.Persistence.Migrations
                         column: x => x.OrganizationId,
                         principalTable: "organizations",
                         principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
+                        onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "FK_mentions_users_MentionedUserId",
                         column: x => x.MentionedUserId,
                         principalTable: "users",
                         principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
+                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateIndex(
