@@ -1,0 +1,49 @@
+@inject IAuthSessionService AuthSessionService
+@inject NavigationManager NavigationManager
+
+@if (_isAllowed)
+{
+    @ChildContent
+}
+else
+{
+    <p>Redirecting...</p>
+}
+
+@code {
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    [Parameter]
+    public bool RequirePasswordChange { get; set; }
+
+    private bool _isAllowed;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await AuthSessionService.InitializeAsync();
+
+        var relative = NavigationManager.ToBaseRelativePath(NavigationManager.Uri);
+        var path = relative.Split('?', '#')[0].Trim('/').ToLowerInvariant();
+
+        if (!AuthSessionService.IsAuthenticated)
+        {
+            if (path != "login")
+            {
+                NavigationManager.NavigateTo("/login");
+            }
+
+            _isAllowed = false;
+            return;
+        }
+
+        if (!RequirePasswordChange && AuthSessionService.RequiresPasswordChange && path != "change-password")
+        {
+            NavigationManager.NavigateTo("/change-password");
+            _isAllowed = false;
+            return;
+        }
+
+        _isAllowed = true;
+    }
+}

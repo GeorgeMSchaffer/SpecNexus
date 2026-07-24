@@ -43,11 +43,11 @@ public sealed class SargentNexusDbContext : DbContext
             entity.ToTable("organizations");
             entity.HasKey(item => item.Id);
             entity.Property(item => item.CompanyName).HasMaxLength(200).IsRequired();
-            entity.Property(item => item.Address).HasMaxLength(250).IsRequired();
+            entity.Property(item => item.Address).HasMaxLength(200).IsRequired();
             entity.Property(item => item.City).HasMaxLength(100).IsRequired();
             entity.Property(item => item.State).HasMaxLength(50).IsRequired();
             entity.Property(item => item.Zip).HasMaxLength(20).IsRequired();
-            entity.Property(item => item.Phone).HasMaxLength(50).IsRequired();
+            entity.Property(item => item.Phone).HasMaxLength(25).IsRequired();
             entity.Property(item => item.PrimaryContactFirstName).HasMaxLength(100).IsRequired();
             entity.Property(item => item.PrimaryContactLastName).HasMaxLength(100).IsRequired();
         });
@@ -62,7 +62,7 @@ public sealed class SargentNexusDbContext : DbContext
             entity.Property(item => item.PasswordHash).HasMaxLength(500).IsRequired();
             entity.Property(item => item.TemporaryPasswordHash).HasMaxLength(500);
             entity.Property(item => item.FailedLoginAttemptCount).HasDefaultValue(0);
-            entity.HasIndex(item => new { item.OrganizationId, item.Email }).IsUnique();
+            entity.HasIndex(item => item.Email).IsUnique();
             entity.HasOne(item => item.Organization)
                 .WithMany(item => item.Users)
                 .HasForeignKey(item => item.OrganizationId)

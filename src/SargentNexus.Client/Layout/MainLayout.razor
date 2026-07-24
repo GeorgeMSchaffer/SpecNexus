@@ -6,18 +6,18 @@
 
     <main>
         <div class="top-row px-4">
-            <AuthorizeView>
-                <Authorized>
-                    <span>@DisplayName</span>
-                    @if (AuthSessionService.RequiresPasswordChange)
-                    {
-                        <span class="text-danger fw-semibold">Password update required</span>
-                    }
-                </Authorized>
-                <NotAuthorized>
-                    <a href="/login">Sign in</a>
-                </NotAuthorized>
-            </AuthorizeView>
+            @if (AuthSessionService.IsAuthenticated)
+            {
+                <span>@DisplayName</span>
+                @if (AuthSessionService.RequiresPasswordChange)
+                {
+                    <span class="text-danger fw-semibold">Password update required</span>
+                }
+            }
+            else
+            {
+                <a href="/login">Sign in</a>
+            }
         </div>
 
         <article class="content px-4">
@@ -30,10 +30,20 @@
     [Inject]
     private IAuthSessionService AuthSessionService { get; set; } = null!;
 
+    protected override void OnInitialized()
+    {
+        AuthSessionService.StateChanged += HandleAuthStateChanged;
+    }
+
     private string DisplayName =>
         AuthSessionService.User is null
             ? "Authenticated user"
             : string.IsNullOrWhiteSpace($"{AuthSessionService.User.FirstName} {AuthSessionService.User.LastName}".Trim())
                 ? AuthSessionService.User.Email
                 : $"{AuthSessionService.User.FirstName} {AuthSessionService.User.LastName}".Trim();
+
+    private void HandleAuthStateChanged()
+    {
+        _ = InvokeAsync(StateHasChanged);
+    }
 }

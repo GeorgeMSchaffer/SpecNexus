@@ -5,7 +5,7 @@ using SargentNexus.Domain;
 
 namespace SargentNexus.Infrastructure.Workflow;
 
-internal sealed class WorkflowDataAccess : IWorkflowDataAccess
+public sealed class WorkflowDataAccess : IWorkflowDataAccess
 {
     private readonly SargentNexusDbContext _dbContext;
 
@@ -104,7 +104,7 @@ internal sealed class WorkflowDataAccess : IWorkflowDataAccess
     }
 }
 
-internal sealed class WorkflowAuditWriter : IWorkflowAuditWriter
+public sealed class WorkflowAuditWriter : IWorkflowAuditWriter
 {
     private readonly SargentNexusDbContext _dbContext;
     private readonly TimeProvider _timeProvider;

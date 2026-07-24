@@ -8,7 +8,6 @@ public sealed class WorkflowActorContext
 
     public Guid? OrganizationId { get; init; }
 
-    [Required]
     public string Role { get; init; } = string.Empty;
 }
 
