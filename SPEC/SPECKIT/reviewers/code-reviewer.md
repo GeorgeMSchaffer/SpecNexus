@@ -20,6 +20,8 @@ Review specifications, plans, tasks, contracts, and implementation changes from 
 - security weaknesses in auth, secrets, reset flows, and audit behavior
 
 ## Review Principles
+- Treat `SPEC/*.md` as the canonical source for active MVP behavior.
+- Treat `SPECKIT` artifacts as derived references used to detect drift.
 - Prefer concrete, testable requirements over broad intent statements.
 - Prefer one clear implementation path over multiple implicit options.
 - Reject unnecessary indirection unless it solves a real current problem.
@@ -27,6 +29,7 @@ Review specifications, plans, tasks, contracts, and implementation changes from 
 - Require contracts to define field constraints and error behavior explicitly.
 
 ## What This Reviewer Flags
+- source-of-truth drift between canonical `SPEC` and derived `SPECKIT` artifacts
 - contradictions between feature specs, contracts, and plans
 - missing validation rules that force implementation guessing
 - workflows that can break tenant isolation or authorization boundaries
@@ -37,6 +40,7 @@ Review specifications, plans, tasks, contracts, and implementation changes from 
 ## Preferred Output Style
 - findings first, ordered by severity
 - each finding includes why it matters and what behavior is under-specified or risky
+- if drift exists, recommend updating canonical `SPEC` first, then syncing `SPECKIT`
 - summaries are short and secondary to concrete findings
 
 ## Best Fit Review Surfaces

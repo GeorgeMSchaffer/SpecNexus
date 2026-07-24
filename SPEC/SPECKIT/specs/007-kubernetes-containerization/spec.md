@@ -1,5 +1,7 @@
 # Feature Specification: Kubernetes Containerization
 
+> Future/non-MVP exploratory scope. This artifact is intentionally outside current MVP implementation commitment.
+
 ## Summary
 Define how SargentNexus is packaged and deployed as containerized workloads on Kubernetes without changing the published API contract, tenant boundaries, or SQL Server system-of-record assumptions from the existing technical plan.
 

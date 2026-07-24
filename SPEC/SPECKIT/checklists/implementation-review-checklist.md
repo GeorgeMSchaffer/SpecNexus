@@ -2,6 +2,7 @@
 
 ## Source-of-Truth Alignment
 - [ ] Each critical behavior has one authoritative source document.
+- [ ] Canonical `SPEC/*.md` docs are used as the active MVP authority.
 - [ ] Split feature specs agree with umbrella MVP docs on auth and identity rules.
 - [ ] Contracts and OpenAPI artifacts encode current rule decisions.
 - [ ] Roadmap and backlog wording matches current business constraints.
@@ -23,6 +24,7 @@
 - [ ] Change-risk areas have explicit rollback or mitigation notes.
 - [ ] Drift checks exist between contracts and implementation docs.
 - [ ] Milestone exits are measurable with existing tests or diagnostics.
+- [ ] Drift remediation order is explicit: update canonical `SPEC` first, then sync `SPECKIT` artifacts.
 
 ## Verification
 - [ ] Every high-risk rule maps to at least one integration or contract test target.

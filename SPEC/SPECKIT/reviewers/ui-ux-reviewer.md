@@ -19,6 +19,8 @@ Review specifications, mockups, plans, and implemented UI from the perspective o
 - layouts that obscure important system state or action priority
 
 ## Review Principles
+- Treat canonical `SPEC/20-feature-*.md` behavior as authoritative for workflow intent.
+- Treat `SPECKIT` mockups and UI planning artifacts as derived references that must align.
 - Every major screen should make the primary task obvious.
 - Empty states should teach the next step, not just state that nothing exists.
 - Validation feedback should appear close to the source of the problem and clearly explain how to recover.
@@ -26,6 +28,7 @@ Review specifications, mockups, plans, and implemented UI from the perspective o
 - Historical or archived state should remain understandable, not silently disappear.
 
 ## What This Reviewer Flags
+- behavior drift between canonical specs and derived UI artifacts
 - admin flows that require too much scanning or hidden knowledge
 - collaboration screens that bury the main action or status context
 - input experiences with weak validation feedback
@@ -36,6 +39,7 @@ Review specifications, mockups, plans, and implemented UI from the perspective o
 ## Preferred Output Style
 - findings first, ordered by user impact and workflow disruption
 - each finding includes the user-facing failure mode and why it matters
+- drift findings specify canonical-first remediation before mockup synchronization
 - recommendations focus on practical interaction improvements rather than visual taste
 
 ## Best Fit Review Surfaces

@@ -13,3 +13,8 @@ Use these personas when reviewing:
 - contracts and OpenAPI artifacts
 - implementation plans and tasks
 - UI mockups and implemented screens
+
+Policy:
+- treat `SPEC/*.md` as the canonical source for active MVP behavior
+- treat `SPECKIT` artifacts as derived consistency surfaces
+- if drift exists, recommend canonical `SPEC` updates first, then `SPECKIT` sync

@@ -4,6 +4,7 @@ This directory contains the canonical product and delivery specifications for ac
 
 ## Canonical Spec Set
 
+- `Specs Overview.md` (single-document AI entrypoint that aggregates canonical behavior)
 - `10-requirements.md`
 - `20-feature-*.md`
 - `30-Contracts.md`
@@ -17,3 +18,8 @@ This directory contains the canonical product and delivery specifications for ac
 
 - Update these `SPEC/*.md` files first when implementation decisions change behavior.
 - Sync derivative artifacts under `SPEC/SPECKIT` after canonical updates.
+
+## AI Usage
+
+- Start implementation work by reading `Specs Overview.md` first.
+- For endpoint and payload details, cross-check `30-Contracts.md` and `SPECKIT/openapi/openapi.yaml`.

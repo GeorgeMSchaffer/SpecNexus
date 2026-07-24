@@ -8,6 +8,8 @@ These checklists are intended to be used with the reviewer personas in `SPECKIT/
 - `implementation-review-checklist.md`
 
 ## How To Use
+- run reviews against canonical `SPEC/*.md` first
+- use `SPECKIT` artifacts as derived consistency checks
 - run the relevant checklist against specs before planning
 - run it again against plans and contracts before implementation
 - run it one more time against implementation artifacts or mockups before sign-off

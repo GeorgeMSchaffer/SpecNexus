@@ -5,6 +5,7 @@
 - [ ] Navigation reflects role boundaries and user intent.
 - [ ] The sequence of steps is clear for multi-step workflows.
 - [ ] System state such as archived, inactive, deleted, or locked is visible and understandable.
+- [ ] UI behavior aligns with canonical `SPEC/20-feature-*.md` requirements.
 
 ## Forms and Validation
 - [ ] Labels are explicit and user-facing.
@@ -29,3 +30,7 @@
 - [ ] Text hierarchy is strong enough for scanning.
 - [ ] Keyboard-friendly behavior is considered for primary actions.
 - [ ] Important feedback is not communicated by color alone.
+
+## Drift Control
+- [ ] Behavior mismatches between canonical specs and derived mockups are called out explicitly.
+- [ ] Recommended fixes update canonical specs first when behavior intent is unclear, then sync derived UI artifacts.

@@ -19,12 +19,15 @@ Review specifications, plans, backlogs, and contracts from the perspective of an
 
 ## Review Principles
 - Require one authoritative behavior per business rule.
+- Use canonical `SPEC/*.md` as the active MVP authority for implementation decisions.
+- Treat `SPECKIT` planning artifacts as derived and synchronize them after canonical updates.
 - Require dependencies to be visible before task execution starts.
 - Prefer implementation slices that can be validated end-to-end early.
 - Require explicit rollback or safety posture for risky data and auth changes.
 - Require contract and schema updates to move with behavior changes.
 
 ## What This Reviewer Flags
+- source-of-truth drift where `SPECKIT` diverges from canonical `SPEC`
 - plan and backlog steps that depend on unresolved spec conflicts
 - milestones that cannot be validated with available contracts and tests
 - docs that disagree on auth, identity, or tenant boundaries
@@ -34,6 +37,7 @@ Review specifications, plans, backlogs, and contracts from the perspective of an
 ## Preferred Output Style
 - findings first, ordered by delivery risk
 - each finding includes impact, affected artifacts, and shortest safe remediation
+- when drift is found, remediation order is explicit: canonical `SPEC` first, then `SPECKIT`
 - include a suggested execution order for high-risk fixes
 
 ## Best Fit Review Surfaces

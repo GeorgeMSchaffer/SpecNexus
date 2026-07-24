@@ -1,6 +1,7 @@
 # Code Review Checklist
 
 ## Spec Integrity
+- [ ] Canonical `SPEC/*.md` behavior is treated as authoritative when comparing artifacts.
 - [ ] Requirements are concrete enough to implement without guessing.
 - [ ] Acceptance criteria describe observable behavior rather than intent only.
 - [ ] Lifecycle rules are defined for create, update, archive, delete, and recovery paths where relevant.
@@ -32,3 +33,7 @@
 - [ ] High-risk rules have unit or integration validation paths.
 - [ ] Contract changes imply contract test updates.
 - [ ] Regression-prone workflows are identifiable.
+
+## Drift Control
+- [ ] Differences between `SPEC` and `SPECKIT` are called out as findings, not silently harmonized.
+- [ ] Recommended remediation updates canonical `SPEC` first, then syncs derivative `SPECKIT` artifacts.
