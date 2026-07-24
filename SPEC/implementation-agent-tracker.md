@@ -4,10 +4,10 @@
 Track implementation work that Copilot-driven implementation agents should complete, what is currently active, and what has already been finished.
 
 ## Current Status
-- Current implementation slice: T011 Implement admin-issued temporary password reset as the P1 extension path.
-- Current owner: auth implementation agent
-- Current state: Ready
-- Last updated: 2026-07-23
+- Current implementation slice: T051 Implement Development-only demo environment seed and startup gating.
+- Current owner: infrastructure implementation agent
+- Current state: In Progress
+- Last updated: 2026-07-24
 
 ## Completed
 - T001 Create the solution structure and project references.
@@ -23,10 +23,10 @@ Track implementation work that Copilot-driven implementation agents should compl
 - T011 Implement admin-issued temporary password reset as the P1 extension path.
 
 ## In Progress
-- None.
+- T051 Implement Development-only demo environment seed and startup gating.
 
 ## Ready Next
-- T012 Implement organization create, detail, list, edit, and archive flows.
+- T052 Add unit and integration coverage for demo seed idempotency and dataset validation.
 
 ## Progress Notes
 - T001 completed: created `SargentNexus.sln`, `global.json`, and the five core projects under `src/`.
@@ -44,6 +44,7 @@ Track implementation work that Copilot-driven implementation agents should compl
 - T010 completed: auth flows now persist audit events for login success, login failure, lockout-related failure, and password change success or failure using the existing `audit_events` table.
 - T011 completed: added temporary password issuance, 24-hour expiry tracking, login consumption of valid temporary passwords, and the admin-issued `/api/v1/users/{userId}/temporary-password` endpoint.
 - Project layout note: the solution and source tree were moved from `SPEC/` to the project root, and the relocated solution builds successfully from there.
+- T051 started: added Development-only startup hook and Infrastructure seeding implementation for 3 demo organizations, role users, board swimlane idea coverage, and example comments.
 
 ## Backlog By Slice
 
@@ -112,6 +113,8 @@ Track implementation work that Copilot-driven implementation agents should compl
 - T048 Implement integration tests for auth, organization scope, and collaboration flows.
 - T049 Implement contract tests for schema and problem-details error behavior.
 - T050 Verify seed behavior, organization bootstrap, audit generation, and deferred-scope boundaries end-to-end.
+- T051 Implement Development-only demo environment seed and startup gating.
+- T052 Validate demo seed idempotency and seeded graph coverage with automated tests.
 
 ## Notes For Next Agent
 - This workspace started as specs only; implementation begins by scaffolding the .NET solution and project references.

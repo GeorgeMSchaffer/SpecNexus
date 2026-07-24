@@ -12,6 +12,9 @@
 - `phone`
 - `primaryContactFirstName`
 - `primaryContactLastName`
+- `logoUrl` nullable
+- `logoThumbnailUrl` nullable
+- `logoHeightPx` nullable
 - `isArchived`
 
 Rules:

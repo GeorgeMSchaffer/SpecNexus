@@ -3,6 +3,11 @@
 ## Purpose
 Define when to use the reviewer personas and checklists during the SargentNexus spec and implementation lifecycle.
 
+## Source-of-Truth Rule
+- Review canonical `SPEC/*.md` artifacts first for implementation intent and behavior.
+- Use `SPECKIT` artifacts as derived cross-checks and workflow helpers.
+- If drift is found, resolve canonical `SPEC` docs first, then sync `SPECKIT`.
+
 ## Review Stages
 
 ### 1. Spec Review
@@ -14,6 +19,7 @@ Run:
 - `Implementation Reviewer`
 
 Focus:
+- canonical-first correctness against `SPEC/*.md`
 - completeness of product rules
 - implementation ambiguity
 - workflow clarity
@@ -63,10 +69,11 @@ Focus:
 - usability regressions
 
 ## Suggested Sequence
-1. Review feature specs.
+1. Review canonical feature specs under `SPEC/`.
 2. Review contracts and implementation plan.
-3. Review UI mockups or client behavior.
-4. Review implemented changes before sign-off.
+3. Review SPECKIT artifacts for derivative consistency and review readiness.
+4. Review UI mockups or client behavior.
+5. Review implemented changes before sign-off.
 
 ## Spec-Kit Style Invocation
 Use prompt files in `.specify/prompts` and command wrappers in `.specify/commands` to run consistent reviews:

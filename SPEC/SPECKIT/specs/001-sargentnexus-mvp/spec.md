@@ -1,5 +1,7 @@
 # Feature Specification: SargentNexus MVP
 
+> Archived umbrella reference. Active edits should be made in split features `002` through `007`.
+
 **Feature Branch**: `001-sargentnexus-mvp`
 
 ## Summary
@@ -30,6 +32,7 @@ Organizations need a structured way to capture process ideas, discuss them, move
 - Five failed login attempts within 15 minutes trigger a 15-minute lockout.
 - Inactive users cannot authenticate.
 - The seeded Site Admin is a global account created from an environment-provided initial credential and must change that credential on first login.
+- In Development only, startup seed also creates demo Org Admin, User, and Read Only accounts for each demo organization, all initialized with temporary password `abc123!` and forced password change on first successful login.
 - Admin-issued temporary password reset is a P1 capability.
 
 ### Organizations and Users
@@ -37,6 +40,7 @@ Organizations need a structured way to capture process ideas, discuss them, move
 - Site Admin and Org Admin can edit organization details in scope.
 - Organizations can be archived but not hard-deleted.
 - Each new organization is provisioned with default statuses and one default board.
+- In Development only, startup seed creates 3 demo organizations with realistic profile data.
 - Non-Site Admin users belong to exactly one organization and have exactly one role.
 - User email is globally unique across the system.
 - Org Admins cannot remove their own admin role or deactivate themselves if they are the last Org Admin in the organization.
@@ -49,13 +53,18 @@ Organizations need a structured way to capture process ideas, discuss them, move
 - Boards use swimlanes mapped to statuses.
 - A board must have at least two swimlanes.
 - Board swimlane order is saved immediately after drag-and-drop reorder.
+- In Development only, each seeded demo organization includes one example board populated with ideas across all default swimlanes.
 - Site Admin and Org Admin can manage boards and statuses.
 
 ### Ideas and Engagement
 - Ideas require a title and description.
 - Idea titles are limited to 150 characters.
 - Idea descriptions are limited to 4000 characters.
+- Ideas require a priority value: `Low`, `Medium`, `High`, or `Critical`.
+- Ideas may optionally include a due date.
 - An idea status is derived from the swimlane it belongs to and defaults to the left-most swimlane if omitted on create.
+- Board cards are compact and show only title, priority, assigned-to, and upvote state.
+- Clicking an idea title opens a detail overlay so editing remains in context without page navigation.
 - Completed ideas remain editable and collaborative.
 - Users who can edit ideas can create tags.
 - Tag autocomplete starts after two entered characters.
@@ -67,6 +76,7 @@ Organizations need a structured way to capture process ideas, discuss them, move
 - Upvoting is a toggle with one active upvote per user per idea.
 - Only the user who cast an upvote can remove it.
 - If board configuration allows it, Users can move any idea on that board.
+- Development seeded ideas include description-based sample spec content and example comments for collaboration walkthroughs.
 
 ### Notifications and Audit
 - Notification events are generated for idea mentions, comment mentions, comments on ideas, and idea status changes.

@@ -43,3 +43,11 @@ Validate the core user-facing and admin-facing flows described by the Spec Kit p
 2. Verify audit events are generated for the required actions.
 3. Verify notification events are generated for mentions, comments, and status changes.
 4. Verify outbound email is not required for MVP completion.
+
+### 8. Development demo seed
+1. Start the system in Development and verify exactly 3 demo organizations are seeded.
+2. Verify each seeded demo organization has one Org Admin, one User, and one Read Only account initialized to `abc123!`.
+3. Verify seeded demo users must change password on first successful login.
+4. Verify each seeded demo organization has one example board with at least one idea in every default swimlane.
+5. Verify seeded ideas include example comments and description-based sample spec content.
+6. Start outside Development and verify demo seed data is not created.

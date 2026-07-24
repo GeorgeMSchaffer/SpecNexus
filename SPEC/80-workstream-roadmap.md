@@ -33,6 +33,7 @@ Target outcome: users can authenticate safely and the seeded Site Admin path wor
 
 ### Infrastructure Workstream
 - implement password hashing, token issuance, and lockout persistence support
+- implement Development-only demo environment seed data with idempotent startup behavior
 
 ### Client Workstream
 - build login page and first-login password change flow
@@ -114,6 +115,7 @@ Target outcome: contracts, tests, and release boundaries are aligned.
 
 ### QA Workstream
 - run contract, integration, end-to-end, and regression coverage against acceptance criteria
+- validate Development-only demo seed composition and non-Development seed suppression
 
 ## Sequencing Guidance
 1. Milestones 1 and 2 are serial and should complete before broad parallel feature work.

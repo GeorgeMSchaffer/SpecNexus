@@ -65,3 +65,5 @@
 - [ ] T048 Implement integration tests for auth, organization scope, and collaboration flows.
 - [ ] T049 Implement contract tests for schema and problem-details error behavior.
 - [ ] T050 Verify seed behavior, organization bootstrap, audit generation, and deferred-scope boundaries end-to-end.
+- [ ] T051 Implement Development-only startup demo seed for organizations, role users, boards, ideas, and comments.
+- [ ] T052 Add automated verification for demo seed idempotency and environment gating behavior.

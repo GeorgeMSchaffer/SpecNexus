@@ -60,6 +60,7 @@ Tasks:
 - enforce inactive-account denial
 - implement 5-failures-in-15-minutes lockout for 15 minutes
 - seed the global Site Admin with an environment-provided initial credential
+- implement Development-only demo environment seed for 3 organizations with role-based users and forced first-login password change
 - force first-login password change for the seeded Site Admin
 - emit audit events for login outcomes and password actions
 
@@ -215,6 +216,7 @@ Tasks:
 - implement integration tests for auth, protected routes, organization scope, and collaboration flows
 - implement contract tests for schemas and problem-details error responses
 - verify seed behavior, default organization bootstrap, and audit generation end-to-end
+- verify Development-only demo seed graph, idempotent startup behavior, and non-Development seed suppression
 - confirm deferred work remains deferred
 
 Exit criteria:

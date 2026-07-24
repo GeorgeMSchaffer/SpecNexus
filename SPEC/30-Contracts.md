@@ -149,6 +149,7 @@ Success response `200` paged item shape:
 - `city`
 - `state`
 - `phone`
+- `logoThumbnailUrl` nullable string
 - `isArchived`
 
 Default list behavior:
@@ -184,6 +185,11 @@ Error responses:
 ### `GET /api/v1/organizations/{organizationId}`
 Purpose: Return organization detail.
 
+Response fields also include:
+- `logoUrl` nullable string
+- `logoThumbnailUrl` nullable string
+- `logoHeightPx` nullable integer, max rendered value `150`
+
 Error responses:
 - `401` caller is not authenticated
 - `403` caller is authenticated but not allowed to view this organization
@@ -200,6 +206,30 @@ Success response:
 
 Error responses:
 - `400` request body is malformed or violates field constraints
+- `401` caller is not authenticated
+- `403` caller is authenticated but not allowed to update this organization
+- `404` organization does not exist or is outside caller scope
+
+### `PUT /api/v1/organizations/{organizationId}/logo`
+Purpose: Upload or replace an organization logo.
+
+Request body:
+- `multipart/form-data`
+- field `logoFile` required
+
+Behavior rules:
+- exactly one active logo per organization
+- new upload replaces previous logo atomically
+- return thumbnail metadata for immediate preview
+- rendered usage in UI is constrained to max height `150px` while preserving aspect ratio
+
+Success response `200`:
+- `logoUrl`
+- `logoThumbnailUrl`
+- `logoHeightPx`
+
+Error responses:
+- `400` request body is malformed or violates file constraints
 - `401` caller is not authenticated
 - `403` caller is authenticated but not allowed to update this organization
 - `404` organization does not exist or is outside caller scope
@@ -387,13 +417,19 @@ Query parameters:
 - `search` optional
 - `statusId` optional
 - `tag` optional
-- `sortBy` optional `createdAt`, `updatedAt`, or `upvoteCount`
+- `priority` optional `Low`, `Medium`, `High`, or `Critical`
+- `dueBefore` optional date string (`YYYY-MM-DD`)
+- `sortBy` optional `createdAt`, `updatedAt`, `upvoteCount`, `priority`, or `dueDate`
 - `sortDirection` optional `asc` or `desc`
 
 Success response `200` paged item shape:
 - `ideaId`
 - `boardId`
 - `title`
+- `priority` string
+- `dueDate` date string (`YYYY-MM-DD`) or `null`
+- `assigneeUserId` GUID string or `null`
+- `assigneeDisplayName` string or `null`
 - `statusId`
 - `statusName`
 - `upvoteCount`
@@ -406,6 +442,9 @@ Purpose: Create a new idea on a board.
 Request body:
 - `title` required string, max 150 characters
 - `description` required string, max 4000 characters
+- `priority` required string: `Low`, `Medium`, `High`, or `Critical`
+- `dueDate` optional date string (`YYYY-MM-DD`)
+- `assigneeUserId` optional GUID string
 - `statusId` optional GUID string, defaults to the left-most swimlane when omitted
 - `tagNames` optional string array
 - `mentionEmails` optional string array
@@ -415,6 +454,8 @@ Success response `201`:
 - `boardId`
 - `statusId`
 - `title`
+- `priority`
+- `dueDate`
 
 ### `GET /api/v1/ideas/{ideaId}`
 Purpose: Return full idea detail.
@@ -424,6 +465,10 @@ Success response `200`:
 - `boardId`
 - `title`
 - `description`
+- `priority`
+- `dueDate`
+- `assigneeUserId`
+- `assigneeDisplayName`
 - `statusId`
 - `statusName`
 - `tagNames`
@@ -437,8 +482,16 @@ Purpose: Update idea content.
 Request body:
 - `title` required string, max 150 characters
 - `description` required string, max 4000 characters
+- `priority` required string: `Low`, `Medium`, `High`, or `Critical`
+- `dueDate` optional date string (`YYYY-MM-DD`)
+- `assigneeUserId` optional GUID string
 - `tagNames` optional string array
 - `mentionEmails` optional string array
+
+UI behavior contract:
+- board cards remain compact and show only `title`, `priority`, `assigneeDisplayName`, and upvote state.
+- selecting the card title opens a detail overlay for full idea editing in context.
+- full idea editing in the overlay supports all editable idea fields and collaboration fields.
 
 ### `POST /api/v1/ideas/{ideaId}/status`
 Purpose: Move an idea to another board status.

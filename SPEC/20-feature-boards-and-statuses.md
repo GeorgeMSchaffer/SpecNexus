@@ -26,6 +26,7 @@ Organizations can manage idea boards using configurable workflow swimlanes.
    - reorder swimlanes by drag-and-drop
 6. Swimlane order changes are saved immediately when the drag-and-drop action completes.
 7. Board views must provide guided empty states with a primary action and short explanatory text when no ideas exist.
+8. In Development, each seeded demo organization includes one example board with at least one idea in each default swimlane.
 
 ## Acceptance Criteria
 - [ ] Organization-scoped statuses can be created and maintained
@@ -37,3 +38,5 @@ Organizations can manage idea boards using configurable workflow swimlanes.
 - [ ] Boards can select a subset of org statuses
 - [ ] Swimlane order can be changed and is saved immediately
 - [ ] Board screens provide guided empty states with a primary action and short explanatory text when no ideas exist
+- [ ] Development startup seed includes one example board per demo organization
+- [ ] Each seeded example board includes ideas across every default swimlane

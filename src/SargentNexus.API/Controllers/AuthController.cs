@@ -4,7 +4,6 @@ using SargentNexus.Application.Auth;
 
 namespace SargentNexus.API.Controllers;
 
-[AllowAnonymous]
 public sealed class AuthController : ApiControllerBase
 {
     private readonly ILoginService _loginService;
@@ -16,6 +15,7 @@ public sealed class AuthController : ApiControllerBase
         _authAccountService = authAccountService;
     }
 
+    [AllowAnonymous]
     [HttpPost("/api/v1/auth/login")]
     [ProducesResponseType(typeof(LoginResponseModel), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]

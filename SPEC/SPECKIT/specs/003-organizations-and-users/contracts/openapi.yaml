@@ -79,6 +79,37 @@ paths:
           description: Authenticated caller is not allowed to archive this organization
         '404':
           description: Organization not found
+  /api/v1/organizations/{organizationId}/logo:
+    put:
+      summary: Upload or replace organization logo
+      parameters:
+        - $ref: '#/components/parameters/OrganizationId'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [logoFile]
+              properties:
+                logoFile:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Organization logo uploaded or replaced
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrganizationLogoResponse'
+        '400':
+          description: Malformed request body or invalid logo constraints
+        '401':
+          description: Missing, expired, or invalid authentication
+        '403':
+          description: Authenticated caller is not allowed to update this organization
+        '404':
+          description: Organization not found
   /api/v1/organizations/{organizationId}/users:
     get:
       summary: List users in an organization
@@ -241,3 +272,16 @@ components:
       properties:
         temporaryPassword: { type: string }
         mustChangePassword: { type: boolean }
+    OrganizationLogoResponse:
+      type: object
+      required: [logoUrl, logoThumbnailUrl, logoHeightPx]
+      properties:
+        logoUrl:
+          type: string
+          format: uri
+        logoThumbnailUrl:
+          type: string
+          format: uri
+        logoHeightPx:
+          type: integer
+          maximum: 150

@@ -8,13 +8,24 @@ Users can create, discuss, organize, and support ideas within their organization
 2. Each idea must include:
    - Title (required, max 150 characters)
    - Description (required, max 4000 characters)
+   - Priority (required): `Low`, `Medium`, `High`, or `Critical`
+   - Due Date (optional)
    - Status (required) this is set by which Swim Lane the idea is in.  The default is the left most lane.
+   - Assigned To (optional)
    - Tags
    - Mentions
    - Comments
    - Number of Upvotes
-3. Ideas in the `Complete` status remain editable and continue to allow comments, mentions, and upvotes.
-4. Idea creation, edits, status changes, comments, and upvote toggles must generate audit events.
+3. Board cards must remain compact and display only:
+   - Title
+   - Priority
+   - Assigned To
+   - Upvote icon and count
+4. Clicking the idea title from a board card opens a detail overlay for full idea review and editing without leaving the board page.
+5. The detail overlay must support all editable idea fields and collaboration fields, including tags, mentions, due date, assignment, comments, and upvote state.
+6. Ideas in the `Complete` status remain editable and continue to allow comments, mentions, and upvotes.
+7. Idea creation, edits, status changes, comments, and upvote toggles must generate audit events.
+8. In Development, seeded demo boards include example ideas whose description fields contain sample spec-style detail text.
 
 ## Permissions
 - Site Admin, Org Admin, and User can create and edit ideas.
@@ -44,6 +55,7 @@ Users can create, discuss, organize, and support ideas within their organization
 5. Comments support the same email-based mention behavior as ideas.
 6. Comment bodies are plain text, may include line breaks, and are limited to 2000 characters.
 7. Comment entry shows a live character counter and inline validation when the maximum length is exceeded.
+8. Development startup seed includes example comments on seeded ideas for collaboration walkthroughs.
 
 ## Upvotes
 1. All authenticated users, including Read Only, can upvote ideas.
@@ -56,6 +68,8 @@ Users can create, discuss, organize, and support ideas within their organization
 - [ ] Required idea fields are enforced
 - [ ] Idea title is limited to 150 characters
 - [ ] Idea description is limited to 4000 characters
+- [ ] Idea priority is required and limited to `Low`, `Medium`, `High`, or `Critical`
+- [ ] Idea due date is optional
 - [ ] Tag autocomplete begins after 2 characters
 - [ ] Tag values are limited to 100 characters
 - [ ] New tags can be created on save
@@ -66,6 +80,9 @@ Users can create, discuss, organize, and support ideas within their organization
 - [ ] Mentions in comments resolve users by email within the same organization
 - [ ] Unresolved mentions show inline validation and block save until corrected or removed
 - [ ] Ideas in `Complete` status remain editable and collaborative
+- [ ] Board cards only show title, priority, assigned-to, and upvote icon/count
+- [ ] Clicking an idea title from a board card opens a detail overlay instead of navigating away
+- [ ] The detail overlay supports all idea edit fields including tags, mentions, assignment, and optional due date
 - [ ] Mentions are restricted to users in the same organization
 - [ ] Comment authors can edit and delete their own comments
 - [ ] Site Admin and Org Admin can delete comments in their authorized scope
@@ -76,3 +93,5 @@ Users can create, discuss, organize, and support ideas within their organization
 - [ ] Upvoting toggles on second click
 - [ ] Only the user who cast an upvote can remove it
 - [ ] Idea lifecycle actions generate audit events
+- [ ] Development startup seed provides example ideas with description-based spec content
+- [ ] Development startup seed provides example comments on seeded ideas

@@ -10,6 +10,14 @@ Administrators can manage organizations and users with clear role boundaries wit
 4. Organizations can be archived but cannot be hard-deleted.
 5. A newly created organization starts with the default statuses and one default board.
 6. Organization administration screens must provide guided empty states with a primary action and short explanatory text when no relevant records exist.
+7. Organization edit screens include logo upload with in-form preview for board branding.
+8. Each organization can have only one active logo at a time.
+9. Uploading a new logo replaces the previous logo.
+10. The rendered organization logo height is capped at `150px` while preserving aspect ratio.
+11. Authenticated admin surfaces use a primary-blue header with a `150px` left brand zone and logo in the top-left.
+12. The header exposes a logout icon, and admin-authorized users also see a gear icon that navigates to the Admin homepage.
+13. Breadcrumb navigation is shown directly below the header.
+14. In Development, startup seed creates 3 demo organizations with realistic profile data for walkthrough and validation.
 
 ## Organization Fields
 - Company Name (max 200 characters)
@@ -20,6 +28,9 @@ Administrators can manage organizations and users with clear role boundaries wit
 - Phone (max 25 characters)
 - Primary Contact First Name (max 100 characters)
 - Primary Contact Last Name (max 100 characters)
+- Logo URL (system-managed)
+- Logo Thumbnail URL (system-managed)
+- Logo Height Px (system-managed, max rendered value `150`)
 
 All organization text fields are trimmed before validation and persistence.
 
@@ -35,6 +46,7 @@ All organization text fields are trimmed before validation and persistence.
 9. Administrators handle password reset by issuing temporary passwords in P1.
 10. User accounts support `Active` and `Inactive` states only in MVP.
 11. Organization changes, user changes, role changes, and account status changes must be audited.
+12. Development startup seed creates one Org Admin, one User, and one Read Only user in each seeded demo organization.
 
 ## User Fields
 - First Name (max 100 characters)
@@ -63,8 +75,13 @@ User profile text fields are trimmed before validation and persistence.
 - [ ] Archived organizations are hidden from admin lists by default unless explicitly filtered for archived items
 - [ ] New organizations are provisioned with default statuses and one default board
 - [ ] Admin screens provide guided empty states with a primary action and short explanatory text
+- [ ] Organization edit form supports logo upload and displays a thumbnail preview after upload
+- [ ] Uploading a new organization logo replaces any previously stored organization logo
+- [ ] Board header displays the current organization logo with rendered height no greater than `150px`
 - [ ] Site Admin can manage users across organizations
 - [ ] Org Admin can manage users only in their organization
+- [ ] Development startup seed creates 3 demo organizations
+- [ ] Each demo organization includes exactly one seeded Org Admin, one seeded User, and one seeded Read Only user
 - [ ] Site Admin is not required to belong to an organization
 - [ ] User email is available for collaboration features that resolve mentions
 - [ ] User email is globally unique across the system

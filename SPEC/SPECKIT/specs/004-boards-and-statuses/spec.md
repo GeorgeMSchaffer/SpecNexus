@@ -9,4 +9,5 @@ Implement organization-scoped statuses and boards with swimlane ordering, defaul
 - Boards require at least two swimlanes.
 - Boards use subsets of organization statuses.
 - Swimlane reorder persists immediately.
+- In Development only, seeded demo organizations include one example board populated with ideas across each default swimlane.
 - Board views use guided empty states with a primary action and short explanatory text when no ideas are present.

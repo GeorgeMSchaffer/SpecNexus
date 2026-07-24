@@ -15,4 +15,5 @@ Implement ideas, tags, mentions, comments, and upvotes within organization-scope
 - Comment entry uses a live character counter and inline overflow validation for the 2000-character plain-text rule.
 - Upvotes are toggled and owned by the user who cast them.
 - Completed ideas remain collaborative.
+- In Development only, seeded demo ideas include description-based sample spec content and example comments.
 - Idea lifecycle actions are audited.

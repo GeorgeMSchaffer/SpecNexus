@@ -46,6 +46,11 @@ await using (var scope = app.Services.CreateAsyncScope())
 {
 	var authSeeder = scope.ServiceProvider.GetRequiredService<IAuthSeeder>();
 	await authSeeder.SeedSiteAdminAsync(CancellationToken.None);
+
+	if (app.Environment.IsDevelopment())
+	{
+		await authSeeder.SeedDevelopmentDemoEnvironmentAsync(CancellationToken.None);
+	}
 }
 
 if (app.Environment.IsDevelopment())

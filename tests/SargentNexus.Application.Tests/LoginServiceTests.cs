@@ -6,6 +6,62 @@ namespace SargentNexus.Application.Tests;
 public sealed class LoginServiceTests
 {
     [Fact]
+    public async Task GivenMultipleOrganizationsWithoutSelection_WhenLogin_ThenOrganizationSelectionResponseReturned()
+    {
+        var userA = TestUsers.CreateDefault();
+        userA.OrganizationId = Guid.NewGuid();
+        var userB = TestUsers.CreateDefault();
+        userB.Id = Guid.NewGuid();
+        userB.OrganizationId = Guid.NewGuid();
+
+        var lookup = new FakeAuthUserLookup(new[]
+        {
+            TestUsers.Record(userA, "Bravo Org"),
+            TestUsers.Record(userB, "Alpha Org")
+        });
+
+        var service = CreateService(lookup, new FakeAuthAuditWriter());
+
+        var result = await service.LoginAsync(new LoginRequestModel
+        {
+            Email = userA.Email,
+            Password = "Password1!"
+        }, CancellationToken.None);
+
+        Assert.True(result.Succeeded);
+        Assert.NotNull(result.Response);
+        Assert.True(result.Response!.RequiresOrganizationSelection);
+        Assert.Null(result.Response.AccessToken);
+        Assert.NotNull(result.Response.Organizations);
+        Assert.Equal(2, result.Response.Organizations!.Count);
+        Assert.Equal("Alpha Org", result.Response.Organizations[0].OrganizationName);
+        Assert.Equal("Bravo Org", result.Response.Organizations[1].OrganizationName);
+    }
+
+    [Fact]
+    public async Task GivenInvalidOrganizationSelection_WhenLogin_ThenInvalidCredentialsAndAuditFailure()
+    {
+        var user = TestUsers.CreateDefault();
+        user.OrganizationId = Guid.NewGuid();
+
+        var lookup = new FakeAuthUserLookup(new[] { TestUsers.Record(user) });
+        var audit = new FakeAuthAuditWriter();
+        var service = CreateService(lookup, audit);
+
+        var result = await service.LoginAsync(new LoginRequestModel
+        {
+            Email = user.Email,
+            Password = "Password1!",
+            OrganizationId = Guid.NewGuid()
+        }, CancellationToken.None);
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(LoginFailureReason.InvalidCredentials, result.FailureReason);
+        Assert.Single(audit.LoginFailures);
+        Assert.Equal("InvalidCredentials", audit.LoginFailures[0].Reason);
+    }
+
+    [Fact]
     public async Task GivenUnknownEmail_WhenLogin_ThenInvalidCredentialsReturnedAndFailureAudited()
     {
         var lookup = new FakeAuthUserLookup();
@@ -32,7 +88,7 @@ public sealed class LoginServiceTests
         var user = TestUsers.CreateDefault();
         user.LockoutEndUtc = nowUtc.AddMinutes(5);
 
-        var lookup = new FakeAuthUserLookup(TestUsers.Record(user));
+        var lookup = new FakeAuthUserLookup(new[] { TestUsers.Record(user) });
         var audit = new FakeAuthAuditWriter();
         var issuer = new FakeAccessTokenIssuer();
         var service = CreateService(lookup, audit, issuer, nowUtc);
@@ -51,6 +107,53 @@ public sealed class LoginServiceTests
     }
 
     [Fact]
+    public async Task GivenLockoutEndsNow_WhenLoginWithValidPassword_ThenLoginSucceeds()
+    {
+        var nowUtc = new DateTime(2026, 7, 24, 12, 0, 0, DateTimeKind.Utc);
+        var user = TestUsers.CreateDefault();
+        user.LockoutEndUtc = nowUtc;
+
+        var lookup = new FakeAuthUserLookup(new[] { TestUsers.Record(user) });
+        var audit = new FakeAuthAuditWriter();
+        var issuer = new FakeAccessTokenIssuer();
+        var service = CreateService(lookup, audit, issuer, nowUtc);
+
+        var result = await service.LoginAsync(new LoginRequestModel
+        {
+            Email = user.Email,
+            Password = "Password1!"
+        }, CancellationToken.None);
+
+        Assert.True(result.Succeeded);
+        Assert.Equal(1, issuer.IssueCount);
+        Assert.Single(audit.LoginSuccesses);
+    }
+
+    [Fact]
+    public async Task GivenInactiveUser_WhenLogin_ThenInactiveUserReturnedAndFailureAudited()
+    {
+        var user = TestUsers.CreateDefault();
+        user.Status = UserLifecycleStatus.Inactive;
+
+        var lookup = new FakeAuthUserLookup(new[] { TestUsers.Record(user) });
+        var audit = new FakeAuthAuditWriter();
+        var issuer = new FakeAccessTokenIssuer();
+        var service = CreateService(lookup, audit, issuer);
+
+        var result = await service.LoginAsync(new LoginRequestModel
+        {
+            Email = user.Email,
+            Password = "Password1!"
+        }, CancellationToken.None);
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(LoginFailureReason.InactiveUser, result.FailureReason);
+        Assert.Equal(0, issuer.IssueCount);
+        Assert.Single(audit.LoginFailures);
+        Assert.Equal("InactiveUser", audit.LoginFailures[0].Reason);
+    }
+
+    [Fact]
     public async Task GivenValidCredentials_WhenLogin_ThenAccessTokenIssuedAndFailedAttemptsReset()
     {
         var user = TestUsers.CreateDefault();
@@ -59,7 +162,7 @@ public sealed class LoginServiceTests
         user.LastFailedLoginAttemptUtc = new DateTime(2026, 7, 24, 11, 55, 0, DateTimeKind.Utc);
         user.LockoutEndUtc = new DateTime(2026, 7, 24, 11, 59, 0, DateTimeKind.Utc);
 
-        var lookup = new FakeAuthUserLookup(TestUsers.Record(user));
+        var lookup = new FakeAuthUserLookup(new[] { TestUsers.Record(user) });
         var audit = new FakeAuthAuditWriter();
         var issuer = new FakeAccessTokenIssuer();
         var service = CreateService(lookup, audit, issuer);
@@ -90,7 +193,7 @@ public sealed class LoginServiceTests
         user.FailedLoginAttemptCount = 4;
         user.LastFailedLoginAttemptUtc = nowUtc.AddMinutes(-1);
 
-        var lookup = new FakeAuthUserLookup(TestUsers.Record(user));
+        var lookup = new FakeAuthUserLookup(new[] { TestUsers.Record(user) });
         var audit = new FakeAuthAuditWriter();
         var service = CreateService(lookup, audit, nowUtc: nowUtc);
 
@@ -110,6 +213,33 @@ public sealed class LoginServiceTests
     }
 
     [Fact]
+    public async Task GivenFailedAttemptsOutsideWindow_WhenLoginWithWrongPassword_ThenFailedAttemptCountResetsToOne()
+    {
+        var nowUtc = new DateTime(2026, 7, 24, 12, 0, 0, DateTimeKind.Utc);
+        var user = TestUsers.CreateDefault();
+        user.FailedLoginAttemptCount = 4;
+        user.LastFailedLoginAttemptUtc = nowUtc.AddMinutes(-16);
+
+        var lookup = new FakeAuthUserLookup(new[] { TestUsers.Record(user) });
+        var audit = new FakeAuthAuditWriter();
+        var service = CreateService(lookup, audit, nowUtc: nowUtc);
+
+        var result = await service.LoginAsync(new LoginRequestModel
+        {
+            Email = user.Email,
+            Password = "WrongPassword9!"
+        }, CancellationToken.None);
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(LoginFailureReason.InvalidCredentials, result.FailureReason);
+        Assert.Equal(1, user.FailedLoginAttemptCount);
+        Assert.Equal(nowUtc, user.LastFailedLoginAttemptUtc);
+        Assert.Null(user.LockoutEndUtc);
+        Assert.Single(audit.LoginFailures);
+        Assert.Equal("InvalidCredentials", audit.LoginFailures[0].Reason);
+    }
+
+    [Fact]
     public async Task GivenValidTemporaryPassword_WhenLogin_ThenTemporaryPasswordIsConsumedAndPasswordChangeRequired()
     {
         var nowUtc = new DateTime(2026, 7, 24, 12, 0, 0, DateTimeKind.Utc);
@@ -118,7 +248,7 @@ public sealed class LoginServiceTests
         user.TemporaryPasswordHash = "hash:TempPassword1!";
         user.TemporaryPasswordExpiresAtUtc = nowUtc.AddHours(2);
 
-        var lookup = new FakeAuthUserLookup(TestUsers.Record(user));
+        var lookup = new FakeAuthUserLookup(new[] { TestUsers.Record(user) });
         var audit = new FakeAuthAuditWriter();
         var issuer = new FakeAccessTokenIssuer();
         var service = CreateService(lookup, audit, issuer, nowUtc);

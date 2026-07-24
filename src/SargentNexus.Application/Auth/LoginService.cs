@@ -51,6 +51,8 @@ public interface IAuthAccountService
 public interface IAuthSeeder
 {
     Task SeedSiteAdminAsync(CancellationToken cancellationToken);
+
+    Task SeedDevelopmentDemoEnvironmentAsync(CancellationToken cancellationToken);
 }
 
 public interface IAuthAuditWriter
