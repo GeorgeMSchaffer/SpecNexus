@@ -7,10 +7,6 @@ LoginRequest:
       format: email
     password:
       type: string
-    organizationId:
-      type: string
-      format: uuid
-      nullable: true
 LoginSuccessResponse:
   type: object
   required: [accessToken, expiresInSeconds, requiresPasswordChange, user]
@@ -23,25 +19,6 @@ LoginSuccessResponse:
       type: boolean
     user:
       $ref: ./common.yaml#/UserSummary
-OrganizationSelectionResponse:
-  type: object
-  required: [requiresOrganizationSelection, organizations]
-  properties:
-    requiresOrganizationSelection:
-      type: boolean
-    organizations:
-      type: array
-      items:
-        $ref: '#/LoginOrganizationOption'
-LoginOrganizationOption:
-  type: object
-  required: [organizationId, organizationName]
-  properties:
-    organizationId:
-      type: string
-      format: uuid
-    organizationName:
-      type: string
 ChangePasswordRequest:
   type: object
   required: [currentPassword, newPassword]

@@ -12,11 +12,9 @@
 Request:
 - `email` required string
 - `password` required string
-- `organizationId` optional GUID
 
 Responses:
 - `200` authenticated response with `accessToken`, `expiresInSeconds`, `requiresPasswordChange`, and `user`
-- `200` organization selection response with `requiresOrganizationSelection` and `organizations`
 - `401` invalid credentials
 - `403` inactive account
 - `429` lockout state

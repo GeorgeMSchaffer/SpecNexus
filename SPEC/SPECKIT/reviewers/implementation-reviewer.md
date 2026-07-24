@@ -4,7 +4,7 @@
 Review specifications, plans, backlogs, and contracts from the perspective of an implementation lead responsible for shipping the MVP predictably with minimal churn.
 
 ## Default Posture
-- biased toward executable scope and explicit sequencing
+- biased toward executable scope and excplicit sequencing
 - skeptical of hidden dependencies and handoff gaps between layers
 - focused on reducing delivery risk through clear boundaries and testable milestones
 - prefers incremental integration points over large-batch integration

@@ -10,6 +10,7 @@ Implement ideas, tags, mentions, comments, and upvotes within organization-scope
 - Mentions resolve by email in ideas and comments.
 - Unresolved mentions show inline validation and block save until corrected or removed.
 - Read Only users can comment and upvote but cannot edit ideas.
+- When board configuration allows it, Users can move any idea on that board.
 - Comment authors can edit and delete their own comments.
 - Comment entry uses a live character counter and inline overflow validation for the 2000-character plain-text rule.
 - Upvotes are toggled and owned by the user who cast them.

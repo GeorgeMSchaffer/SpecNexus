@@ -38,7 +38,7 @@ Produce an implementation plan that is detailed enough to drive engineering exec
 #### Application
 - Orchestrate feature workflows and authorization checks.
 - Resolve organization scope from caller identity and resource context.
-- Coordinate login disambiguation, organization bootstrap, tag normalization, mention resolution, comment permissions, upvote toggling, audit emission, and notification event creation.
+- Coordinate login, organization bootstrap, tag normalization, mention resolution, comment permissions, upvote toggling, audit emission, and notification event creation.
 - Define ports for persistence, password hashing, token generation, environment configuration, and event persistence.
 
 #### Infrastructure
@@ -55,7 +55,7 @@ Produce an implementation plan that is detailed enough to drive engineering exec
 
 #### Client
 - Present role-aware workflows using Fluent UI-based pages and components.
-- Handle login, organization disambiguation, admin workflows, board collaboration flows, and detail editing.
+- Handle login, admin workflows, board collaboration flows, and detail editing.
 - Surface validation clearly without duplicating server-only business rules.
 
 ### Core Technical Decisions
@@ -130,7 +130,7 @@ Validation gate:
 3. Automatically provision default statuses and one default board when a new organization is created.
 4. Implement user CRUD with exactly one organization and one role for each non-Site Admin user.
 5. Support `Active` and `Inactive` user states only.
-6. Enforce organization-scoped email uniqueness.
+6. Enforce globally unique email addresses.
 7. Trim organization and user text fields before validation and persistence.
 8. Enforce organization and user field maximum lengths from the contracts document.
 9. Prevent the last Org Admin from removing their own admin access or deactivating themselves.
@@ -194,7 +194,7 @@ Validation gate:
 - event persistence works without an outbound notification subsystem
 
 ### Phase 7: Client Experience
-1. Build the login flow with organization selection when an email belongs to multiple organizations.
+1. Build the login flow for globally unique email credentials.
 2. Build first-login password change and inactive-account handling states.
 3. Build organization and user administration screens within a dedicated Admin section.
 4. Build board and status administration screens, including immediate swimlane reorder persistence.
@@ -479,7 +479,6 @@ Validation gate:
 ## Client Composition Plan
 ### Primary Pages
 - login page
-- organization selection step or dialog
 - first-login password change page
 - admin organizations page
 - admin users page

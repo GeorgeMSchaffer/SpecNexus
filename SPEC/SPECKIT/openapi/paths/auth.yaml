@@ -1,7 +1,7 @@
 paths:
   /api/v1/auth/login:
     post:
-      summary: Authenticate a user with organization-scoped credentials
+      summary: Authenticate a user with globally unique email credentials
       requestBody:
         required: true
         content:
@@ -10,13 +10,11 @@ paths:
               $ref: ../components/schemas/auth.yaml#/LoginRequest
       responses:
         '200':
-          description: Authenticated response or organization selection response
+          description: Authenticated response
           content:
             application/json:
               schema:
-                oneOf:
-                  - $ref: ../components/schemas/auth.yaml#/LoginSuccessResponse
-                  - $ref: ../components/schemas/auth.yaml#/OrganizationSelectionResponse
+                $ref: ../components/schemas/auth.yaml#/LoginSuccessResponse
         '400':
           description: Malformed request body or invalid request shape
           content:

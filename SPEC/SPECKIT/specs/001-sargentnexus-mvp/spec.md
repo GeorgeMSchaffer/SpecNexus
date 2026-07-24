@@ -3,7 +3,7 @@
 **Feature Branch**: `001-sargentnexus-mvp`
 
 ## Summary
-SargentNexus is a collaboration and project management product for submitting, tracking, and improving process ideas inside organizations. The MVP supports organization-scoped authentication, administrative setup, configurable workflow boards, idea collaboration, and audit-ready event generation.
+SargentNexus is a collaboration and project management product for submitting, tracking, and improving process ideas inside organizations. The MVP supports authentication with globally unique email credentials, administrative setup, configurable workflow boards, idea collaboration, and audit-ready event generation.
 
 ## Problem
 Organizations need a structured way to capture process ideas, discuss them, move them through a lightweight workflow, and preserve role boundaries without requiring a full enterprise project-management platform.
@@ -25,8 +25,7 @@ Organizations need a structured way to capture process ideas, discuss them, move
 
 ### Authentication and Access
 - Users authenticate with email and password.
-- User accounts are organization-scoped, and the same email may exist in multiple organizations.
-- If an email exists in multiple organizations, the login flow requires organization selection before final authentication.
+- User accounts are organization-scoped, and email is globally unique across the system.
 - Passwords follow the configured complexity policy.
 - Five failed login attempts within 15 minutes trigger a 15-minute lockout.
 - Inactive users cannot authenticate.
@@ -39,7 +38,7 @@ Organizations need a structured way to capture process ideas, discuss them, move
 - Organizations can be archived but not hard-deleted.
 - Each new organization is provisioned with default statuses and one default board.
 - Non-Site Admin users belong to exactly one organization and have exactly one role.
-- User email is unique within an organization.
+- User email is globally unique across the system.
 - Org Admins cannot remove their own admin role or deactivate themselves if they are the last Org Admin in the organization.
 - User lifecycle states are limited to `Active` and `Inactive` in MVP.
 

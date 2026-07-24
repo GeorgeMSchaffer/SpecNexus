@@ -9,5 +9,15 @@
     * Avoid using SELECT *; specify the columns you need.
     * Use meaningful aliases for tables and columns when necessary.
 
+# Testing Standards
+- Test behavior only, not private/internal implementation.
+- Use Arrange/Act/Assert with clear naming: Method_Scenario_ExpectedResult.
+- Include happy path, boundary values, null input, and invalid state.
+- Mock external dependencies with Moq (strict mocks).
+- No network, file system, DateTime.Now, or randomness; inject fakes if needed.
+- Create separate Smoke tests for integration
+- Avoid duplicate setup; use builder/factory helpers.
+- Return only compile-ready test code.
+
 ## Dotnet Development Standards:
     * Use the DotNet Coding Style from https://github.com/dotnet/runtime/blob/main/docs/coding-guidelines/coding-style.md

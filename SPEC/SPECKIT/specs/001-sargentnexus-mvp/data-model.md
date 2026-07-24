@@ -32,7 +32,7 @@ Rules:
 
 Rules:
 - non-Site Admin users belong to exactly one organization
-- email unique within an organization
+- email is globally unique across the system
 - status limited to `Active` and `Inactive`
 
 ### Status

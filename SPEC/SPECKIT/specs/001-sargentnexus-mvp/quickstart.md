@@ -17,14 +17,13 @@ Validate the core user-facing and admin-facing flows described by the Spec Kit p
 
 ### 3. User administration
 1. As Org Admin, create users in the organization.
-2. Verify duplicate email is rejected within the same organization.
-3. Verify a duplicate email can exist in a different organization.
+2. Verify duplicate email is rejected globally.
 4. Verify the last Org Admin cannot remove their own admin access.
 
-### 4. Login organization selection
-1. Create the same email in two organizations.
-2. Attempt login with that email.
-3. Verify the flow requires organization selection before final authentication.
+### 4. Login validation
+1. Attempt login with a valid globally unique email and password.
+2. Verify invalid credentials are rejected.
+3. Verify inactive accounts cannot authenticate.
 
 ### 5. Board and status administration
 1. Create a board with fewer than two swimlanes and verify rejection.

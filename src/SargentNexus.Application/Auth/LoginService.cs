@@ -283,19 +283,22 @@ public sealed class AuthAccountService : IAuthAccountService
     private readonly IPasswordPolicyValidator _passwordPolicyValidator;
     private readonly IAuthAuditWriter _authAuditWriter;
     private readonly ITemporaryPasswordGenerator _temporaryPasswordGenerator;
+    private readonly TimeProvider _timeProvider;
 
     public AuthAccountService(
         IAuthUserLookup authUserLookup,
         IPasswordHasher passwordHasher,
         IPasswordPolicyValidator passwordPolicyValidator,
         IAuthAuditWriter authAuditWriter,
-        ITemporaryPasswordGenerator temporaryPasswordGenerator)
+        ITemporaryPasswordGenerator temporaryPasswordGenerator,
+        TimeProvider timeProvider)
     {
         _authUserLookup = authUserLookup;
         _passwordHasher = passwordHasher;
         _passwordPolicyValidator = passwordPolicyValidator;
         _authAuditWriter = authAuditWriter;
         _temporaryPasswordGenerator = temporaryPasswordGenerator;
+        _timeProvider = timeProvider;
     }
 
     public async Task<AuthenticatedUserModel?> GetCurrentUserAsync(Guid userId, CancellationToken cancellationToken)
@@ -377,7 +380,7 @@ public sealed class AuthAccountService : IAuthAccountService
 
         var temporaryPassword = _temporaryPasswordGenerator.Generate();
         targetUser.TemporaryPasswordHash = _passwordHasher.Hash(temporaryPassword);
-        targetUser.TemporaryPasswordExpiresAtUtc = DateTime.UtcNow.AddHours(24);
+        targetUser.TemporaryPasswordExpiresAtUtc = _timeProvider.GetUtcNow().UtcDateTime.AddHours(24);
         targetUser.MustChangePassword = true;
         await _authUserLookup.SaveChangesAsync(cancellationToken);
         await _authAuditWriter.WriteTemporaryPasswordIssuedAsync(actor.Id, targetUser, cancellationToken);

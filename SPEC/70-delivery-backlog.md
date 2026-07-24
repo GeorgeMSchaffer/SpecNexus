@@ -48,9 +48,9 @@ Outcome: users can authenticate safely and the global Site Admin bootstrap path 
 
 Suggested sequencing by team:
 - Infrastructure: password hashing, token generation, seed credential loading, lockout persistence
-- Application: login, organization resolution, lockout rules, current-user service, password-change workflow
+- Application: login, lockout rules, current-user service, password-change workflow
 - API: auth endpoints and authorization integration
-- Client: login, organization picker, first-login password change screen
+- Client: login and first-login password change screen
 - QA: auth matrix and lockout verification
 
 Tasks:
@@ -88,7 +88,7 @@ Tasks:
 - auto-provision default statuses and one default board for each new organization
 - implement user create, edit, detail, and list flows within organization scope
 - enforce one organization and one role per non-Site Admin user
-- enforce email uniqueness within an organization
+- enforce globally unique email addresses
 - support `Active` and `Inactive` user states
 - prevent the last Org Admin from removing their own admin access or deactivating themselves
 - emit audit events for organization and user administration actions
@@ -187,7 +187,7 @@ Suggested sequencing by team:
 - QA: navigation, validation, and role-affordance checks
 
 Tasks:
-- build the login flow including organization selection when required
+- build the login flow for globally unique email credentials
 - build first-login password change and inactive-account states
 - build the Admin section for organizations and users
 - build board and status administration flows

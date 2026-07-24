@@ -8,7 +8,7 @@
 
 ## Important Product Decisions
 - Site Admin is global and does not belong to a tenant.
-- Duplicate emails across organizations are allowed, so login may require organization selection.
+- Duplicate emails across organizations are not allowed; login uses globally unique email credentials.
 - Password reset is admin-issued temporary password only in P1.
 - Notifications are modeled as events now, not guaranteed outbound delivery in MVP.
 - Update operations use last-write-wins semantics in MVP.

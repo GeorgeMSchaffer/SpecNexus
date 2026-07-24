@@ -47,7 +47,7 @@ Target outcome: organizations and users can be administered within the documente
 - implement organization bootstrap, archive behavior, user CRUD, role protections, and lifecycle logic
 
 ### Infrastructure Workstream
-- implement organization and user persistence, normalized email uniqueness, and audit persistence hooks
+- implement organization and user persistence, global email uniqueness, and audit persistence hooks
 
 ### Client Workstream
 - build Admin section pages for organizations and users

@@ -3,7 +3,7 @@
 ## Key Decisions
 - organizations are archived, not hard-deleted
 - new organizations receive default statuses and one default board
-- user emails are unique within an organization only
+- user emails are globally unique across the system
 - user lifecycle states are `Active` and `Inactive`
 
 ## Risk Areas

@@ -34,7 +34,7 @@ Track implementation work that Copilot-driven implementation agents should compl
 - T003 completed: removed the default weather sample, added a shared `api/v1` controller base, added `GET /api/v1/health`, and wired ASP.NET Core problem-details services into the API host.
 - Local fix applied during T002: repaired a malformed `appsettings.Development.json` file that blocked EF tooling from loading host configuration.
 - T004 completed: added explicit 400/401/403/404 contract coverage across written contracts and OpenAPI specs, configured API validation problem-details responses, enabled Swagger generation in development, and refactored domain and infrastructure placeholders into named files and folders.
-- T005 completed: added the application login flow, persistence lookup, login endpoint, and contract alignment for optional organization selection when duplicate emails exist across organizations.
+- T005 completed: added the application login flow, persistence lookup, login endpoint, and contract alignment for globally unique email credentials.
 - T006 completed: replaced placeholder password comparison with a PBKDF2 password hasher that can hash and verify stored passwords.
 - T007 completed: added failed-attempt tracking, 15-minute rolling lockout behavior after 5 failures, `429` lockout responses, and the corresponding EF migration for user lockout fields.
 - T008 completed: added startup seeding for the global Site Admin using `Seed:SiteAdminPassword` from configuration and automatic database migration during startup initialization.
@@ -67,7 +67,7 @@ Track implementation work that Copilot-driven implementation agents should compl
 - T013 Provision default statuses and one default board during organization creation.
 - T014 Implement organization-scoped user create, detail, list, and edit flows.
 - T015 Enforce one organization and one role for each non-Site Admin user.
-- T016 Enforce email uniqueness within an organization.
+- T016 Enforce globally unique email addresses.
 - T017 Support `Active` and `Inactive` user states.
 - T018 Prevent the last Org Admin from removing their own admin access or deactivating themselves.
 - T019 Emit audit events for organization and user administration actions.
@@ -99,7 +99,7 @@ Track implementation work that Copilot-driven implementation agents should compl
 - T039 Keep outbound email delivery explicitly deferred outside MVP.
 
 ### Client Agent
-- T040 Build the login flow including organization selection when required.
+- T040 Build the login flow for globally unique email credentials.
 - T041 Build first-login password change and inactive-account UI states.
 - T042 Build the Admin section for organizations and users.
 - T043 Build board and status administration workflows.

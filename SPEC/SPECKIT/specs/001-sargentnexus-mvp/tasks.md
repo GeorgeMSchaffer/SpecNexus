@@ -20,7 +20,7 @@
 - [ ] T013 Automatically provision default statuses and one default board during organization creation.
 - [ ] T014 Implement organization-scoped user create, detail, list, and edit flows.
 - [ ] T015 Enforce one organization and one role for each non-Site Admin user.
-- [ ] T016 Enforce email uniqueness within an organization.
+- [ ] T016 Enforce globally unique email addresses.
 - [ ] T017 Support `Active` and `Inactive` user states.
 - [ ] T018 Prevent the last Org Admin from removing their own admin access or deactivating themselves.
 - [ ] T019 Emit audit events for organization and user administration actions.
@@ -52,7 +52,7 @@
 - [ ] T039 Keep outbound email delivery explicitly deferred outside MVP.
 
 ## Phase 7: Client Experience
-- [ ] T040 Build the login flow including organization selection when required.
+- [ ] T040 Build the login flow for globally unique email credentials.
 - [ ] T041 Build first-login password change and inactive-account UI states.
 - [ ] T042 Build the Admin section for organizations and users.
 - [ ] T043 Build board and status administration workflows.

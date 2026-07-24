@@ -18,9 +18,7 @@ paths:
           content:
             application/json:
               schema:
-                oneOf:
-                  - $ref: '#/components/schemas/LoginSuccessResponse'
-                  - $ref: '#/components/schemas/OrganizationSelectionResponse'
+                $ref: '#/components/schemas/LoginSuccessResponse'
         '400':
           description: Malformed request body or invalid request shape
           content:
@@ -169,10 +167,6 @@ components:
           format: email
         password:
           type: string
-        organizationId:
-          type: string
-          format: uuid
-          nullable: true
     LoginSuccessResponse:
       type: object
       required: [accessToken, expiresInSeconds, requiresPasswordChange, user]
@@ -185,25 +179,6 @@ components:
           type: boolean
         user:
           $ref: '#/components/schemas/UserSummary'
-    OrganizationSelectionResponse:
-      type: object
-      required: [requiresOrganizationSelection, organizations]
-      properties:
-        requiresOrganizationSelection:
-          type: boolean
-        organizations:
-          type: array
-          items:
-            $ref: '#/components/schemas/LoginOrganizationOption'
-    LoginOrganizationOption:
-      type: object
-      required: [organizationId, organizationName]
-      properties:
-        organizationId:
-          type: string
-          format: uuid
-        organizationName:
-          type: string
     ChangePasswordRequest:
       type: object
       required: [currentPassword, newPassword]

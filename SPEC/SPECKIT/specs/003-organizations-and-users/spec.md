@@ -9,7 +9,7 @@ Implement organization lifecycle, tenant bootstrap, user administration, role bo
 - New organizations receive default statuses and one default board.
 - Admin views use guided empty states with primary actions and short explanatory text.
 - Non-Site Admin users belong to exactly one organization and one role.
-- Email is unique within an organization.
+- Email is globally unique across the system.
 - User lifecycle states are `Active` and `Inactive` only.
 - The last Org Admin cannot remove their own admin access or deactivate themselves.
 - Organization and user administration actions are audited.
