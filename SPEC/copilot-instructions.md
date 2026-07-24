@@ -14,6 +14,7 @@
 - Use Arrange/Act/Assert with clear naming: Method_Scenario_ExpectedResult.
 - Include happy path, boundary values, null input, and invalid state.
 - Mock external dependencies with Moq (strict mocks).
+- Use an InMemory database using the DBContext for EF Core tests; avoid real database connections.
 - No network, file system, DateTime.Now, or randomness; inject fakes if needed.
 - Create separate Smoke tests for integration
 - Avoid duplicate setup; use builder/factory helpers.
