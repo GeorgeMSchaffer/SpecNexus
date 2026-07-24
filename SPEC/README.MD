@@ -23,3 +23,4 @@ This directory contains the canonical product and delivery specifications for ac
 
 - Start implementation work by reading `Specs Overview.md` first.
 - For endpoint and payload details, cross-check `30-Contracts.md` and `SPECKIT/openapi/openapi.yaml`.
+- For new client layout/interaction specs, start from `ui-ux-spec-template.md`.

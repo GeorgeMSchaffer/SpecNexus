@@ -203,6 +203,24 @@ If behavior is ambiguous or conflicting, ask for clarification before implementa
 ### Change Control Rule
 Update canonical `SPEC/*.md` first, then sync this file and derived SPECKIT artifacts.
 
+## Traceability Matrix
+| Behavior Rule | Canonical Source(s) | Verification Target(s) |
+|---|---|---|
+| Global email uniqueness for login and users | `SPEC/10-requirements.md`, `SPEC/20-feature-auth.md`, `SPEC/20-feature-organizations-and-users.md`, `SPEC/30-Contracts.md` | Unit: auth and user uniqueness rules. Integration: login and user CRUD scope checks. |
+| Lockout after 5 failed attempts in 15 minutes with 15-minute lockout | `SPEC/20-feature-auth.md`, `SPEC/20-feature-user-login.md`, `SPEC/30-Contracts.md` | Unit: lockout threshold/expiry. Integration: `/api/v1/auth/login` lockout branch. |
+| Seeded Site Admin must change password on first login | `SPEC/20-feature-auth.md`, `SPEC/20-feature-user-login.md` | Unit: first-login flag behavior. Integration: first-login password-change gating. |
+| Development-only demo seed and non-Development suppression | `SPEC/10-requirements.md`, `SPEC/20-feature-auth.md`, `SPEC/20-feature-organizations-and-users.md`, `SPEC/40-test-strategy.md` | Unit: idempotent seed graph creation. Integration/Startup Safety: Development-only seeding and suppression outside Development. |
+| Organization archive behavior and default hidden archived records | `SPEC/20-feature-organizations-and-users.md`, `SPEC/30-Contracts.md` | Integration: organization list/archive behavior and role boundaries. |
+| New organization bootstrap provisions default statuses and one default board | `SPEC/20-feature-organizations-and-users.md`, `SPEC/20-feature-boards-and-statuses.md`, `SPEC/30-Contracts.md` | Integration: organization create bootstrap assertions. |
+| Status soft-delete with historical name visibility | `SPEC/20-feature-boards-and-statuses.md`, `SPEC/30-Contracts.md` | Unit: status lifecycle logic. Integration: status delete/history behavior. |
+| Board must have at least two swimlanes and reorder persists immediately | `SPEC/20-feature-boards-and-statuses.md`, `SPEC/30-Contracts.md` | Unit: board validation. Integration: create reject path and reorder persistence. |
+| Idea and collaboration field constraints (title/description/comment/tag) | `SPEC/20-feature-ideas-and-engagement.md`, `SPEC/30-Contracts.md` | Unit: validation rules and normalization behavior. Contract: schema alignment checks. |
+| Mention resolution is same-organization only and unresolved mentions block save | `SPEC/20-feature-ideas-and-engagement.md`, `SPEC/60-spec-q-and-a-backlog.md` | Unit: mention resolution/validation logic. Integration: idea/comment save behavior with mentions. |
+| Upvote toggle, one active upvote per user per idea, owner-only removal | `SPEC/20-feature-ideas-and-engagement.md`, `SPEC/30-Contracts.md` | Unit: upvote ownership/toggle behavior. Integration: upvote endpoint role behavior. |
+| Problem-details envelope on all non-2xx responses | `SPEC/30-Contracts.md`, `SPEC/40-test-strategy.md` | Contract: error-envelope assertions. Integration: protected and validation failure response checks. |
+| Notification events persisted in MVP while outbound email remains deferred | `SPEC/20-feature-notifications.md`, `SPEC/30-Contracts.md`, `SPEC/50-technical-implementation-plan.md` | Unit/Integration: event emission and persistence checks. Release hardening: deferred outbound delivery remains out of scope. |
+| Audit events required for auth, admin, and idea lifecycle actions | `SPEC/20-feature-auth.md`, `SPEC/20-feature-organizations-and-users.md`, `SPEC/20-feature-ideas-and-engagement.md`, `SPEC/50-technical-implementation-plan.md` | Unit/Integration: audit generation for required workflows. |
+
 ## Source Index
 - `SPEC/00-project-brief.md`
 - `SPEC/10-requirements.md`

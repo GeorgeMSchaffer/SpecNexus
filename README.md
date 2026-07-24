@@ -61,6 +61,32 @@ Build the full solution:
 dotnet build SargentNexus.sln
 ```
 
+## API Playground
+
+Developers can interact with the API using Swagger UI at:
+
+- http://localhost:5027/playground
+
+The playground is enabled by Development settings in [src/SargentNexus.API/appsettings.Development.json](src/SargentNexus.API/appsettings.Development.json).
+
+### Using Authenticated Endpoints
+
+1. Authenticate through the API (for example via the login endpoint) and copy the access token.
+2. Open the playground URL.
+3. Select Authorize and enter: `Bearer YOUR_ACCESS_TOKEN`
+4. Use Try it out to execute secured requests.
+
+### Port Already In Use
+
+If startup fails with address already in use:
+
+- Stop any existing `dotnet watch` or `dotnet run` process using port 5027.
+- Or run on a different port:
+
+```powershell
+$env:ASPNETCORE_URLS='http://localhost:5030'; dotnet run --project .\src\SargentNexus.API\SargentNexus.API.csproj
+```
+
 ## Test Projects
 
 - tests/SargentNexus.API.Tests
