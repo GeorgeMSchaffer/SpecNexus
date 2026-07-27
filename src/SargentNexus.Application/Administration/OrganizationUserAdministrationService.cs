@@ -483,6 +483,16 @@ public sealed class OrganizationUserAdministrationService : IOrganizationUserAdm
             return AdministrationResult<UserDetailModel>.Fail(AdministrationFailureReason.Forbidden);
         }
 
+        if (user.OrganizationId.HasValue)
+        {
+            var organization = await _store.FindOrganizationByIdAsync(user.OrganizationId.Value, cancellationToken);
+
+            if (organization is null || organization.IsArchived)
+            {
+                return AdministrationResult<UserDetailModel>.Fail(AdministrationFailureReason.NotFound);
+            }
+        }
+
         if (user.Role != UserRole.SiteAdmin && !CanAccessOrganization(actor, user.OrganizationId))
         {
             return AdministrationResult<UserDetailModel>.Fail(AdministrationFailureReason.Forbidden);
@@ -514,6 +524,16 @@ public sealed class OrganizationUserAdministrationService : IOrganizationUserAdm
         if (user.Role == UserRole.SiteAdmin && actor.Role != UserRole.SiteAdmin)
         {
             return AdministrationResult<UserDetailModel>.Fail(AdministrationFailureReason.Forbidden);
+        }
+
+        if (user.OrganizationId.HasValue)
+        {
+            var organization = await _store.FindOrganizationByIdAsync(user.OrganizationId.Value, cancellationToken);
+
+            if (organization is null || organization.IsArchived)
+            {
+                return AdministrationResult<UserDetailModel>.Fail(AdministrationFailureReason.NotFound);
+            }
         }
 
         if (user.Role != UserRole.SiteAdmin && !CanAccessOrganization(actor, user.OrganizationId))

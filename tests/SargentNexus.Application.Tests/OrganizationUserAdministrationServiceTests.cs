@@ -169,6 +169,69 @@ public sealed class OrganizationUserAdministrationServiceTests
     }
 
     [Fact]
+    public async Task GivenArchivedOrganization_WhenGetUser_ThenNotFound()
+    {
+        var organizationId = Guid.NewGuid();
+        var actor = TestUsers.CreateDefault();
+        actor.Role = UserRole.SiteAdmin;
+        actor.OrganizationId = null;
+
+        var target = TestUsers.CreateDefault();
+        target.Id = Guid.NewGuid();
+        target.OrganizationId = organizationId;
+
+        var archivedOrganization = CreateOrganization(organizationId);
+        archivedOrganization.IsArchived = true;
+
+        var store = new FakeOrganizationUserAdministrationStore(
+            users: new[] { actor, target },
+            organizations: new[] { archivedOrganization });
+
+        var service = CreateService(store, new FakeOrganizationUserAuditWriter());
+
+        var result = await service.GetUserAsync(actor.Id, target.Id, CancellationToken.None);
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(AdministrationFailureReason.NotFound, result.FailureReason);
+    }
+
+    [Fact]
+    public async Task GivenArchivedOrganization_WhenUpdateUser_ThenNotFound()
+    {
+        var organizationId = Guid.NewGuid();
+        var actor = TestUsers.CreateDefault();
+        actor.Role = UserRole.SiteAdmin;
+        actor.OrganizationId = null;
+
+        var target = TestUsers.CreateDefault();
+        target.Id = Guid.NewGuid();
+        target.OrganizationId = organizationId;
+
+        var archivedOrganization = CreateOrganization(organizationId);
+        archivedOrganization.IsArchived = true;
+
+        var store = new FakeOrganizationUserAdministrationStore(
+            users: new[] { actor, target },
+            organizations: new[] { archivedOrganization });
+
+        var service = CreateService(store, new FakeOrganizationUserAuditWriter());
+
+        var request = new UserUpdateRequestModel
+        {
+            FirstName = target.FirstName,
+            LastName = target.LastName,
+            Email = target.Email,
+            Role = target.Role.ToString(),
+            Status = target.Status.ToString()
+        };
+
+        var result = await service.UpdateUserAsync(actor.Id, target.Id, request, CancellationToken.None);
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(AdministrationFailureReason.NotFound, result.FailureReason);
+    }
+
+    [Fact]
     public async Task GivenOrgAdmin_WhenGetUserTargetsSiteAdmin_ThenForbidden()
     {
         var orgAdmin = TestUsers.CreateDefault();
