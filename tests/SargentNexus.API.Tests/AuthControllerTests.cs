@@ -9,6 +9,14 @@ namespace SargentNexus.API.Tests;
 public sealed class AuthControllerTests
 {
     [Fact]
+    public void LoginContracts_DoNotExposeLegacyOrganizationSelectionFields()
+    {
+        Assert.Null(typeof(LoginRequestModel).GetProperty("OrganizationId"));
+        Assert.Null(typeof(LoginResponseModel).GetProperty("RequiresOrganizationSelection"));
+        Assert.Null(typeof(LoginResponseModel).GetProperty("Organizations"));
+    }
+
+    [Fact]
     public async Task Login_WhenServiceSucceeds_ReturnsOkWithResponse()
     {
         var response = new LoginResponseModel
