@@ -50,6 +50,7 @@ public sealed class OrganizationsControllerTests
 
         var created = Assert.IsType<CreatedResult>(result);
         Assert.Equal(StatusCodes.Status201Created, created.StatusCode);
+        Assert.Equal($"/api/v1/organizations/{response.OrganizationId}", created.Location);
         Assert.Same(response, created.Value);
     }
 

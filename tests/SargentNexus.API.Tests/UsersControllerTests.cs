@@ -9,6 +9,46 @@ namespace SargentNexus.API.Tests;
 public sealed class UsersControllerTests
 {
     [Fact]
+    public async Task CreateUser_WhenServiceSucceeds_ReturnsCreatedWithLocation()
+    {
+        var actorUserId = Guid.NewGuid();
+        var response = new UserCreateResponseModel
+        {
+            UserId = Guid.NewGuid(),
+            OrganizationId = Guid.NewGuid(),
+            Email = "user@sargentnexus.test",
+            Role = "User",
+            Status = "Active"
+        };
+
+        var service = new StubService
+        {
+            CreateUserAsyncHandler = (_, _, _, _) =>
+                Task.FromResult(AdministrationResult<UserCreateResponseModel>.Success(response))
+        };
+
+        var controller = CreateController(service, actorUserId);
+
+        var result = await controller.CreateUser(
+            response.OrganizationId,
+            new UserCreateRequestModel
+            {
+                FirstName = "First",
+                LastName = "Last",
+                Email = response.Email,
+                Role = response.Role,
+                InitialPassword = "Password1!",
+                Status = response.Status
+            },
+            CancellationToken.None);
+
+        var created = Assert.IsType<CreatedResult>(result);
+        Assert.Equal(StatusCodes.Status201Created, created.StatusCode);
+        Assert.Equal($"/api/v1/users/{response.UserId}", created.Location);
+        Assert.Same(response, created.Value);
+    }
+
+    [Fact]
     public async Task GetUser_WhenServiceReturnsForbidden_ReturnsForbiddenProblem()
     {
         var service = new StubService
