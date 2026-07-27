@@ -50,11 +50,16 @@ internal sealed class FakeAuthUserLookup : IAuthUserLookup
 {
     private readonly List<AuthUserRecord> _emailRecords;
     private readonly Dictionary<Guid, User> _usersById;
+    private readonly Dictionary<Guid, Organization> _organizationsById;
 
-    public FakeAuthUserLookup(IEnumerable<AuthUserRecord>? emailRecords = null, IEnumerable<User>? usersById = null)
+    public FakeAuthUserLookup(
+        IEnumerable<AuthUserRecord>? emailRecords = null,
+        IEnumerable<User>? usersById = null,
+        IEnumerable<Organization>? organizationsById = null)
     {
         _emailRecords = emailRecords?.ToList() ?? new List<AuthUserRecord>();
         _usersById = usersById?.ToDictionary(item => item.Id) ?? new Dictionary<Guid, User>();
+        _organizationsById = organizationsById?.ToDictionary(item => item.Id) ?? new Dictionary<Guid, Organization>();
 
         foreach (var record in _emailRecords)
         {
@@ -77,6 +82,12 @@ internal sealed class FakeAuthUserLookup : IAuthUserLookup
     {
         _usersById.TryGetValue(userId, out var user);
         return Task.FromResult(user);
+    }
+
+    public Task<Organization?> FindOrganizationByIdAsync(Guid organizationId, CancellationToken cancellationToken)
+    {
+        _organizationsById.TryGetValue(organizationId, out var organization);
+        return Task.FromResult(organization);
     }
 
     public Task SaveChangesAsync(CancellationToken cancellationToken)

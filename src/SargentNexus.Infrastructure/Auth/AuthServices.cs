@@ -39,6 +39,11 @@ internal sealed class AuthUserLookup : IAuthUserLookup
     {
         return _dbContext.Users.SingleOrDefaultAsync(item => item.Id == userId, cancellationToken);
     }
+
+    public Task<Organization?> FindOrganizationByIdAsync(Guid organizationId, CancellationToken cancellationToken)
+    {
+        return _dbContext.Organizations.SingleOrDefaultAsync(item => item.Id == organizationId, cancellationToken);
+    }
 }
 
 internal sealed class Pbkdf2PasswordHasher : IPasswordHasher

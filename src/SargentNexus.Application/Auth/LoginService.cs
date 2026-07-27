@@ -14,6 +14,8 @@ public interface IAuthUserLookup
 
     Task<User?> FindByIdAsync(Guid userId, CancellationToken cancellationToken);
 
+    Task<Organization?> FindOrganizationByIdAsync(Guid organizationId, CancellationToken cancellationToken);
+
     Task SaveChangesAsync(CancellationToken cancellationToken);
 }
 
@@ -360,6 +362,16 @@ public sealed class AuthAccountService : IAuthAccountService
         if (actor.Role == UserRole.OrgAdmin && actor.OrganizationId != targetUser.OrganizationId)
         {
             return TemporaryPasswordResult.Failure(TemporaryPasswordFailureReason.Forbidden);
+        }
+
+        if (actor.Role == UserRole.OrgAdmin && targetUser.OrganizationId.HasValue)
+        {
+            var targetOrganization = await _authUserLookup.FindOrganizationByIdAsync(targetUser.OrganizationId.Value, cancellationToken);
+
+            if (targetOrganization?.IsArchived == true)
+            {
+                return TemporaryPasswordResult.Failure(TemporaryPasswordFailureReason.Forbidden);
+            }
         }
 
         var temporaryPassword = _temporaryPasswordGenerator.Generate();

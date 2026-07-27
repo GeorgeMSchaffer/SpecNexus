@@ -156,6 +156,47 @@ public sealed class AuthAccountServiceTests
     }
 
     [Fact]
+    public async Task GivenOrgAdminAndArchivedTargetOrganization_WhenIssueTemporaryPassword_ThenForbidden()
+    {
+        var orgId = Guid.NewGuid();
+
+        var actor = TestUsers.CreateDefault();
+        actor.Role = UserRole.OrgAdmin;
+        actor.OrganizationId = orgId;
+
+        var target = TestUsers.CreateDefault();
+        target.Id = Guid.NewGuid();
+        target.OrganizationId = orgId;
+
+        var organization = new Organization
+        {
+            Id = orgId,
+            CompanyName = "Archived Org",
+            Address = "Addr",
+            City = "City",
+            State = "ST",
+            Zip = "00000",
+            Phone = "555-555-0100",
+            PrimaryContactFirstName = "First",
+            PrimaryContactLastName = "Last",
+            IsArchived = true
+        };
+
+        var lookup = new FakeAuthUserLookup(usersById: new[] { actor, target }, organizationsById: new[] { organization });
+        var audit = new FakeAuthAuditWriter();
+        var service = CreateService(lookup, audit);
+
+        var result = await service.IssueTemporaryPasswordAsync(actor.Id, target.Id, CancellationToken.None);
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(TemporaryPasswordFailureReason.Forbidden, result.FailureReason);
+        Assert.Null(target.TemporaryPasswordHash);
+        Assert.Null(target.TemporaryPasswordExpiresAtUtc);
+        Assert.Equal(0, lookup.SaveChangesCallCount);
+        Assert.Empty(audit.TemporaryPasswordIssuedEvents);
+    }
+
+    [Fact]
     public async Task GivenOrgAdminInSameOrganization_WhenIssueTemporaryPassword_ThenTemporaryPasswordIsIssued()
     {
         var orgId = Guid.NewGuid();
