@@ -69,6 +69,21 @@ public sealed class OrganizationsControllerTests
         AssertProblem(result, StatusCodes.Status404NotFound, "Not found.");
     }
 
+    [Fact]
+    public async Task ArchiveOrganization_WhenServiceReturnsForbidden_ReturnsForbiddenProblem()
+    {
+        var service = new StubService
+        {
+            ArchiveOrganizationAsyncHandler = (_, _, _) => Task.FromResult(AdministrationResult.Fail(AdministrationFailureReason.Forbidden))
+        };
+
+        var controller = CreateController(service, Guid.NewGuid());
+
+        var result = await controller.ArchiveOrganization(Guid.NewGuid(), CancellationToken.None);
+
+        AssertProblem(result, StatusCodes.Status403Forbidden, "Forbidden.");
+    }
+
     private static OrganizationsController CreateController(IOrganizationUserAdministrationService service, Guid? actorUserId = null)
     {
         var controller = new OrganizationsController(service)

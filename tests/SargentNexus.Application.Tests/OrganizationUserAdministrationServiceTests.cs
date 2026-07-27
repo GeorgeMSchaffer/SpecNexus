@@ -232,6 +232,74 @@ public sealed class OrganizationUserAdministrationServiceTests
     }
 
     [Fact]
+    public async Task GivenOrgAdmin_WhenArchiveOrganization_ThenForbidden()
+    {
+        var orgId = Guid.NewGuid();
+        var actor = TestUsers.CreateDefault();
+        actor.Role = UserRole.OrgAdmin;
+        actor.OrganizationId = orgId;
+
+        var organization = CreateOrganization(orgId);
+        var store = new FakeOrganizationUserAdministrationStore(
+            users: new[] { actor },
+            organizations: new[] { organization });
+        var audit = new FakeOrganizationUserAuditWriter();
+        var service = CreateService(store, audit);
+
+        var result = await service.ArchiveOrganizationAsync(actor.Id, orgId, CancellationToken.None);
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(AdministrationFailureReason.Forbidden, result.FailureReason);
+        Assert.False(organization.IsArchived);
+        Assert.Empty(audit.OrganizationArchivedEvents);
+    }
+
+    [Fact]
+    public async Task GivenSiteAdmin_WhenArchiveOrganization_ThenArchivedAndAudited()
+    {
+        var orgId = Guid.NewGuid();
+        var actor = TestUsers.CreateDefault();
+        actor.Role = UserRole.SiteAdmin;
+        actor.OrganizationId = null;
+
+        var organization = CreateOrganization(orgId);
+        var store = new FakeOrganizationUserAdministrationStore(
+            users: new[] { actor },
+            organizations: new[] { organization });
+        var audit = new FakeOrganizationUserAuditWriter();
+        var service = CreateService(store, audit);
+
+        var result = await service.ArchiveOrganizationAsync(actor.Id, orgId, CancellationToken.None);
+
+        Assert.True(result.Succeeded);
+        Assert.True(organization.IsArchived);
+        Assert.Single(audit.OrganizationArchivedEvents);
+    }
+
+    [Fact]
+    public async Task GivenSiteAdminAndAlreadyArchivedOrganization_WhenArchiveOrganization_ThenSuccessWithoutAdditionalAudit()
+    {
+        var orgId = Guid.NewGuid();
+        var actor = TestUsers.CreateDefault();
+        actor.Role = UserRole.SiteAdmin;
+        actor.OrganizationId = null;
+
+        var organization = CreateOrganization(orgId);
+        organization.IsArchived = true;
+        var store = new FakeOrganizationUserAdministrationStore(
+            users: new[] { actor },
+            organizations: new[] { organization });
+        var audit = new FakeOrganizationUserAuditWriter();
+        var service = CreateService(store, audit);
+
+        var result = await service.ArchiveOrganizationAsync(actor.Id, orgId, CancellationToken.None);
+
+        Assert.True(result.Succeeded);
+        Assert.True(organization.IsArchived);
+        Assert.Empty(audit.OrganizationArchivedEvents);
+    }
+
+    [Fact]
     public async Task GivenOrgAdmin_WhenGetUserTargetsSiteAdmin_ThenForbidden()
     {
         var orgAdmin = TestUsers.CreateDefault();
