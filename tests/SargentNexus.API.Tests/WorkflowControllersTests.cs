@@ -10,6 +10,32 @@ namespace SargentNexus.API.Tests;
 public sealed class WorkflowControllersTests
 {
     [Fact]
+    public async Task StatusesCreate_WhenSucceeded_ReturnsCreated()
+    {
+        var model = new StatusSummaryModel
+        {
+            StatusId = Guid.NewGuid(),
+            OrganizationId = Guid.NewGuid(),
+            Name = "In Review",
+            IsDeleted = false
+        };
+
+        var service = new StubWorkflowManagementService
+        {
+            CreateStatusAsyncHandler = (_, _, _, _) => Task.FromResult(WorkflowResult<StatusSummaryModel>.Success(model))
+        };
+
+        var controller = CreateStatusesController(service, Guid.NewGuid(), UserRole.OrgAdmin.ToString(), Guid.NewGuid());
+
+        var result = await controller.Create(Guid.NewGuid(), new CreateStatusRequestModel { Name = model.Name }, CancellationToken.None);
+
+        var created = Assert.IsType<CreatedResult>(result);
+        Assert.Equal(StatusCodes.Status201Created, created.StatusCode);
+        Assert.Equal($"/api/v1/statuses/{model.StatusId}", created.Location);
+        Assert.Same(model, created.Value);
+    }
+
+    [Fact]
     public async Task StatusesCreate_WhenUnauthorized_ReturnsUnauthorizedProblem()
     {
         var service = new StubWorkflowManagementService
@@ -53,6 +79,55 @@ public sealed class WorkflowControllersTests
         var validation = Assert.IsType<ValidationProblemDetails>(badRequest.Value);
         Assert.True(validation.Errors.TryGetValue("workflow", out var errors));
         Assert.Contains("A board must have at least two swimlanes.", errors);
+    }
+
+    [Fact]
+    public async Task BoardsCreate_WhenSucceeded_ReturnsCreated()
+    {
+        var model = new BoardDetailModel
+        {
+            BoardId = Guid.NewGuid(),
+            OrganizationId = Guid.NewGuid(),
+            Name = "Delivery",
+            Swimlanes = new[]
+            {
+                new SwimlaneModel
+                {
+                    StatusId = Guid.NewGuid(),
+                    StatusName = "New / Pending",
+                    IsDeletedStatus = false,
+                    Order = 0
+                },
+                new SwimlaneModel
+                {
+                    StatusId = Guid.NewGuid(),
+                    StatusName = "In Progress",
+                    IsDeletedStatus = false,
+                    Order = 1
+                }
+            }
+        };
+
+        var service = new StubWorkflowManagementService
+        {
+            CreateBoardAsyncHandler = (_, _, _, _) => Task.FromResult(WorkflowResult<BoardDetailModel>.Success(model))
+        };
+
+        var controller = CreateBoardsController(service, Guid.NewGuid(), UserRole.OrgAdmin.ToString(), Guid.NewGuid());
+
+        var result = await controller.Create(
+            Guid.NewGuid(),
+            new CreateBoardRequestModel
+            {
+                Name = model.Name,
+                StatusIds = model.Swimlanes.Select(item => item.StatusId).ToArray()
+            },
+            CancellationToken.None);
+
+        var created = Assert.IsType<CreatedResult>(result);
+        Assert.Equal(StatusCodes.Status201Created, created.StatusCode);
+        Assert.Equal($"/api/v1/boards/{model.BoardId}", created.Location);
+        Assert.Same(model, created.Value);
     }
 
     [Fact]

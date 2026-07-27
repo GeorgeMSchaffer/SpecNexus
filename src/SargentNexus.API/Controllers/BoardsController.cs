@@ -47,7 +47,7 @@ public sealed class BoardsController : ApiControllerBase
     }
 
     [HttpPost("/api/v1/organizations/{organizationId:guid}/boards")]
-    [ProducesResponseType(typeof(BoardDetailModel), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(BoardDetailModel), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
@@ -61,7 +61,7 @@ public sealed class BoardsController : ApiControllerBase
 
         if (result.Succeeded)
         {
-            return Ok(result.Response);
+            return Created($"/api/v1/boards/{result.Response!.BoardId}", result.Response);
         }
 
         return ToProblem(result.FailureReason!.Value, result.Errors);

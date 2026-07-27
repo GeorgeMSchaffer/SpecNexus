@@ -30,7 +30,7 @@ public sealed class StatusesController : ApiControllerBase
     }
 
     [HttpPost("/api/v1/organizations/{organizationId:guid}/statuses")]
-    [ProducesResponseType(typeof(StatusSummaryModel), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(StatusSummaryModel), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
@@ -44,7 +44,7 @@ public sealed class StatusesController : ApiControllerBase
 
         if (result.Succeeded)
         {
-            return Ok(result.Response);
+            return Created($"/api/v1/statuses/{result.Response!.StatusId}", result.Response);
         }
 
         return ToProblem(result.FailureReason!.Value, result.Errors);
