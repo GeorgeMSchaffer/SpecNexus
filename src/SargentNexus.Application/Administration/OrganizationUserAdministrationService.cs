@@ -295,6 +295,11 @@ public sealed class OrganizationUserAdministrationService : IOrganizationUserAdm
             return AdministrationResult<PagedResultModel<UserSummaryModel>>.Fail(AdministrationFailureReason.NotFound);
         }
 
+        if (organization.IsArchived)
+        {
+            return AdministrationResult<PagedResultModel<UserSummaryModel>>.Fail(AdministrationFailureReason.NotFound);
+        }
+
         if (!CanAccessOrganization(actor, organizationId))
         {
             return AdministrationResult<PagedResultModel<UserSummaryModel>>.Fail(AdministrationFailureReason.Forbidden);
@@ -361,6 +366,11 @@ public sealed class OrganizationUserAdministrationService : IOrganizationUserAdm
         var organization = await _store.FindOrganizationByIdAsync(organizationId, cancellationToken);
 
         if (organization is null)
+        {
+            return AdministrationResult<UserCreateResponseModel>.Fail(AdministrationFailureReason.NotFound);
+        }
+
+        if (organization.IsArchived)
         {
             return AdministrationResult<UserCreateResponseModel>.Fail(AdministrationFailureReason.NotFound);
         }
