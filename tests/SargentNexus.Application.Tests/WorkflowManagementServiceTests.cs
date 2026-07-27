@@ -94,6 +94,43 @@ public sealed class WorkflowManagementServiceTests
     }
 
     [Fact]
+    public async Task GetBoardDetail_WhenBoardReferencesSoftDeletedStatus_ShowsDeletedLabel()
+    {
+        var fixture = new WorkflowFixture();
+        var board = fixture.CreateBoardWithTwoSwimlanes();
+        fixture.StatusOne.IsDeleted = true;
+
+        var result = await fixture.Service.GetBoardDetailAsync(
+            fixture.OrgAdminActor,
+            board.Id,
+            CancellationToken.None);
+
+        Assert.True(result.Succeeded);
+        var deletedSwimlane = Assert.Single(result.Response!.Swimlanes.Where(item => item.StatusId == fixture.StatusOne.Id));
+        Assert.True(deletedSwimlane.IsDeletedStatus);
+        Assert.Equal("New / Pending (Deleted)", deletedSwimlane.StatusName);
+    }
+
+    [Fact]
+    public async Task ListBoards_WhenBoardReferencesSoftDeletedStatus_ShowsDeletedLabel()
+    {
+        var fixture = new WorkflowFixture();
+        fixture.CreateBoardWithTwoSwimlanes();
+        fixture.StatusOne.IsDeleted = true;
+
+        var result = await fixture.Service.ListBoardsAsync(
+            fixture.OrgAdminActor,
+            fixture.Organization.Id,
+            CancellationToken.None);
+
+        Assert.True(result.Succeeded);
+        var board = Assert.Single(result.Response!);
+        var deletedSwimlane = Assert.Single(board.Swimlanes.Where(item => item.StatusId == fixture.StatusOne.Id));
+        Assert.True(deletedSwimlane.IsDeletedStatus);
+        Assert.Equal("New / Pending (Deleted)", deletedSwimlane.StatusName);
+    }
+
+    [Fact]
     public async Task UpdateStatus_WhenRoleCannotManage_ReturnsForbidden()
     {
         var fixture = new WorkflowFixture();

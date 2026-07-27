@@ -542,7 +542,9 @@ public sealed class WorkflowManagementService : IWorkflowManagementService
         return new SwimlaneModel
         {
             StatusId = swimlane.StatusId,
-            StatusName = swimlane.Status.Name,
+            StatusName = swimlane.Status.IsDeleted
+                ? $"{swimlane.Status.Name} (Deleted)"
+                : swimlane.Status.Name,
             IsDeletedStatus = swimlane.Status.IsDeleted,
             Order = swimlane.Order
         };
