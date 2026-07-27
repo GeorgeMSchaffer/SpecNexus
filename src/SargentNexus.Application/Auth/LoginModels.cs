@@ -10,8 +10,6 @@ public sealed class LoginRequestModel
 
     [Required]
     public string Password { get; set; } = string.Empty;
-
-    public Guid? OrganizationId { get; set; }
 }
 
 public sealed class LoginUserModel
@@ -31,13 +29,6 @@ public sealed class LoginUserModel
     public string Status { get; init; } = string.Empty;
 }
 
-public sealed class LoginOrganizationOptionModel
-{
-    public Guid OrganizationId { get; init; }
-
-    public string OrganizationName { get; init; } = string.Empty;
-}
-
 public sealed class LoginResponseModel
 {
     public string? AccessToken { get; init; }
@@ -47,10 +38,6 @@ public sealed class LoginResponseModel
     public bool? RequiresPasswordChange { get; init; }
 
     public LoginUserModel? User { get; init; }
-
-    public bool? RequiresOrganizationSelection { get; init; }
-
-    public IReadOnlyList<LoginOrganizationOptionModel>? Organizations { get; init; }
 }
 
 public sealed class ChangePasswordRequestModel

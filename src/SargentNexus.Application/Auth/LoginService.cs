@@ -133,32 +133,14 @@ public sealed class LoginService : ILoginService
             return LoginResult.Failure(LoginFailureReason.InvalidCredentials);
         }
 
-        if (matches.Count > 1 && request.OrganizationId is null)
+        if (matches.Count > 1)
         {
-            return LoginResult.Success(new LoginResponseModel
-            {
-                RequiresOrganizationSelection = true,
-                Organizations = matches
-                    .Where(item => item.User.OrganizationId.HasValue)
-                    .Select(item => new LoginOrganizationOptionModel
-                    {
-                        OrganizationId = item.User.OrganizationId!.Value,
-                        OrganizationName = item.OrganizationName ?? string.Empty
-                    })
-                    .OrderBy(item => item.OrganizationName)
-                    .ToArray()
-            });
-        }
-
-        var selectedUser = request.OrganizationId is null
-            ? matches.Single()
-            : matches.SingleOrDefault(item => item.User.OrganizationId == request.OrganizationId);
-
-        if (selectedUser is null)
-        {
-            await _authAuditWriter.WriteLoginFailedAsync(normalizedEmail, null, request.OrganizationId, "InvalidCredentials", cancellationToken);
+            // Global email uniqueness is required for MVP auth behavior.
+            await _authAuditWriter.WriteLoginFailedAsync(normalizedEmail, null, null, "InvalidCredentials", cancellationToken);
             return LoginResult.Failure(LoginFailureReason.InvalidCredentials);
         }
+
+        var selectedUser = matches.Single();
 
         var nowUtc = _timeProvider.GetUtcNow().UtcDateTime;
 

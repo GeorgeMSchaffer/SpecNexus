@@ -6,7 +6,7 @@ namespace SargentNexus.Application.Tests;
 public sealed class LoginServiceTests
 {
     [Fact]
-    public async Task GivenMultipleOrganizationsWithoutSelection_WhenLogin_ThenOrganizationSelectionResponseReturned()
+    public async Task GivenMultipleUsersWithSameEmail_WhenLogin_ThenInvalidCredentialsReturnedAndFailureAudited()
     {
         var userA = TestUsers.CreateDefault();
         userA.OrganizationId = Guid.NewGuid();
@@ -20,7 +20,8 @@ public sealed class LoginServiceTests
             TestUsers.Record(userB, "Alpha Org")
         });
 
-        var service = CreateService(lookup, new FakeAuthAuditWriter());
+        var audit = new FakeAuthAuditWriter();
+        var service = CreateService(lookup, audit);
 
         var result = await service.LoginAsync(new LoginRequestModel
         {
@@ -28,18 +29,14 @@ public sealed class LoginServiceTests
             Password = "Password1!"
         }, CancellationToken.None);
 
-        Assert.True(result.Succeeded);
-        Assert.NotNull(result.Response);
-        Assert.True(result.Response!.RequiresOrganizationSelection);
-        Assert.Null(result.Response.AccessToken);
-        Assert.NotNull(result.Response.Organizations);
-        Assert.Equal(2, result.Response.Organizations!.Count);
-        Assert.Equal("Alpha Org", result.Response.Organizations[0].OrganizationName);
-        Assert.Equal("Bravo Org", result.Response.Organizations[1].OrganizationName);
+        Assert.False(result.Succeeded);
+        Assert.Equal(LoginFailureReason.InvalidCredentials, result.FailureReason);
+        Assert.Single(audit.LoginFailures);
+        Assert.Equal("InvalidCredentials", audit.LoginFailures[0].Reason);
     }
 
     [Fact]
-    public async Task GivenInvalidOrganizationSelection_WhenLogin_ThenInvalidCredentialsAndAuditFailure()
+    public async Task GivenSingleEmailMatch_WhenLogin_ThenLoginSucceeds()
     {
         var user = TestUsers.CreateDefault();
         user.OrganizationId = Guid.NewGuid();
@@ -51,14 +48,14 @@ public sealed class LoginServiceTests
         var result = await service.LoginAsync(new LoginRequestModel
         {
             Email = user.Email,
-            Password = "Password1!",
-            OrganizationId = Guid.NewGuid()
+            Password = "Password1!"
         }, CancellationToken.None);
 
-        Assert.False(result.Succeeded);
-        Assert.Equal(LoginFailureReason.InvalidCredentials, result.FailureReason);
-        Assert.Single(audit.LoginFailures);
-        Assert.Equal("InvalidCredentials", audit.LoginFailures[0].Reason);
+        Assert.True(result.Succeeded);
+        Assert.NotNull(result.Response);
+        Assert.Equal(user.Id, result.Response!.User!.UserId);
+        Assert.Single(audit.LoginSuccesses);
+        Assert.Empty(audit.LoginFailures);
     }
 
     [Fact]

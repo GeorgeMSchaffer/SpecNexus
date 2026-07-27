@@ -63,14 +63,6 @@
         {
             var response = await AuthSessionService.LoginAsync(_model.Email.Trim(), _model.Password);
 
-            if (response.RequiresOrganizationSelection == true)
-            {
-                _errorTitle = "Organization selection is required.";
-                _errorDetail = "This client currently supports globally unique email login only.";
-                await AuthSessionService.LogoutAsync();
-                return;
-            }
-
             if (response.RequiresPasswordChange == true)
             {
                 NavigationManager.NavigateTo("/change-password", forceLoad: false);

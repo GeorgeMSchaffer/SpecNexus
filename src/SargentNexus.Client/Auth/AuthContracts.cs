@@ -33,8 +33,6 @@ public sealed class LoginResponseDto
     public bool? RequiresPasswordChange { get; set; }
 
     public LoginUserDto? User { get; set; }
-
-    public bool? RequiresOrganizationSelection { get; set; }
 }
 
 public sealed class ChangePasswordRequestDto
