@@ -364,7 +364,7 @@ public sealed class AuthAccountService : IAuthAccountService
             return TemporaryPasswordResult.Failure(TemporaryPasswordFailureReason.Forbidden);
         }
 
-        if (actor.Role == UserRole.OrgAdmin && targetUser.OrganizationId.HasValue)
+        if (targetUser.OrganizationId.HasValue)
         {
             var targetOrganization = await _authUserLookup.FindOrganizationByIdAsync(targetUser.OrganizationId.Value, cancellationToken);
 
