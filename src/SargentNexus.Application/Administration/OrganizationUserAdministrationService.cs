@@ -478,6 +478,11 @@ public sealed class OrganizationUserAdministrationService : IOrganizationUserAdm
             return AdministrationResult<UserDetailModel>.Fail(AdministrationFailureReason.NotFound);
         }
 
+        if (user.Role == UserRole.SiteAdmin && actor.Role != UserRole.SiteAdmin)
+        {
+            return AdministrationResult<UserDetailModel>.Fail(AdministrationFailureReason.Forbidden);
+        }
+
         if (user.Role != UserRole.SiteAdmin && !CanAccessOrganization(actor, user.OrganizationId))
         {
             return AdministrationResult<UserDetailModel>.Fail(AdministrationFailureReason.Forbidden);
@@ -504,6 +509,11 @@ public sealed class OrganizationUserAdministrationService : IOrganizationUserAdm
         if (user is null)
         {
             return AdministrationResult<UserDetailModel>.Fail(AdministrationFailureReason.NotFound);
+        }
+
+        if (user.Role == UserRole.SiteAdmin && actor.Role != UserRole.SiteAdmin)
+        {
+            return AdministrationResult<UserDetailModel>.Fail(AdministrationFailureReason.Forbidden);
         }
 
         if (user.Role != UserRole.SiteAdmin && !CanAccessOrganization(actor, user.OrganizationId))

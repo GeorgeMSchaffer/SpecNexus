@@ -169,6 +169,57 @@ public sealed class OrganizationUserAdministrationServiceTests
     }
 
     [Fact]
+    public async Task GivenOrgAdmin_WhenGetUserTargetsSiteAdmin_ThenForbidden()
+    {
+        var orgAdmin = TestUsers.CreateDefault();
+        orgAdmin.Role = UserRole.OrgAdmin;
+        orgAdmin.OrganizationId = Guid.NewGuid();
+
+        var siteAdmin = TestUsers.CreateDefault();
+        siteAdmin.Id = Guid.NewGuid();
+        siteAdmin.Role = UserRole.SiteAdmin;
+        siteAdmin.OrganizationId = null;
+
+        var store = new FakeOrganizationUserAdministrationStore(users: new[] { orgAdmin, siteAdmin });
+        var service = CreateService(store, new FakeOrganizationUserAuditWriter());
+
+        var result = await service.GetUserAsync(orgAdmin.Id, siteAdmin.Id, CancellationToken.None);
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(AdministrationFailureReason.Forbidden, result.FailureReason);
+    }
+
+    [Fact]
+    public async Task GivenOrgAdmin_WhenUpdateUserTargetsSiteAdmin_ThenForbidden()
+    {
+        var orgAdmin = TestUsers.CreateDefault();
+        orgAdmin.Role = UserRole.OrgAdmin;
+        orgAdmin.OrganizationId = Guid.NewGuid();
+
+        var siteAdmin = TestUsers.CreateDefault();
+        siteAdmin.Id = Guid.NewGuid();
+        siteAdmin.Role = UserRole.SiteAdmin;
+        siteAdmin.OrganizationId = null;
+
+        var store = new FakeOrganizationUserAdministrationStore(users: new[] { orgAdmin, siteAdmin });
+        var service = CreateService(store, new FakeOrganizationUserAuditWriter());
+
+        var request = new UserUpdateRequestModel
+        {
+            FirstName = siteAdmin.FirstName,
+            LastName = siteAdmin.LastName,
+            Email = siteAdmin.Email,
+            Role = "OrgAdmin",
+            Status = "Active"
+        };
+
+        var result = await service.UpdateUserAsync(orgAdmin.Id, siteAdmin.Id, request, CancellationToken.None);
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(AdministrationFailureReason.Forbidden, result.FailureReason);
+    }
+
+    [Fact]
     public async Task GivenLastOrgAdminUpdatingSelfToInactive_WhenUpdateUser_ThenValidationError()
     {
         var orgId = Guid.NewGuid();

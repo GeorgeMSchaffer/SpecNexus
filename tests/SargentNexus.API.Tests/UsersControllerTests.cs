@@ -9,6 +9,27 @@ namespace SargentNexus.API.Tests;
 public sealed class UsersControllerTests
 {
     [Fact]
+    public async Task GetUser_WhenServiceReturnsForbidden_ReturnsForbiddenProblem()
+    {
+        var service = new StubService
+        {
+            GetUserAsyncHandler = (_, _, _) =>
+                Task.FromResult(AdministrationResult<UserDetailModel>.Fail(AdministrationFailureReason.Forbidden))
+        };
+
+        var controller = CreateController(service, Guid.NewGuid());
+
+        var result = await controller.GetUser(Guid.NewGuid(), CancellationToken.None);
+
+        var objectResult = Assert.IsType<ObjectResult>(result);
+        Assert.Equal(StatusCodes.Status403Forbidden, objectResult.StatusCode);
+
+        var problem = Assert.IsType<ProblemDetails>(objectResult.Value);
+        Assert.Equal(StatusCodes.Status403Forbidden, problem.Status);
+        Assert.Equal("Forbidden.", problem.Title);
+    }
+
+    [Fact]
     public async Task CreateUser_WhenServiceReturnsNotFound_ReturnsNotFoundProblem()
     {
         var service = new StubService
