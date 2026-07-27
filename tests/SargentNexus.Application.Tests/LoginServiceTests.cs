@@ -266,6 +266,59 @@ public sealed class LoginServiceTests
         Assert.Single(audit.LoginSuccesses);
     }
 
+    [Fact]
+    public async Task GivenExpiredTemporaryPassword_WhenLogin_ThenInvalidCredentialsAndTemporaryPasswordIsNotConsumed()
+    {
+        var nowUtc = new DateTime(2026, 7, 24, 12, 0, 0, DateTimeKind.Utc);
+        var user = TestUsers.CreateDefault();
+        user.PasswordHash = "hash:PrimaryPassword1!";
+        user.TemporaryPasswordHash = "hash:TempPassword1!";
+        user.TemporaryPasswordExpiresAtUtc = nowUtc.AddMinutes(-1);
+
+        var lookup = new FakeAuthUserLookup(new[] { TestUsers.Record(user) });
+        var audit = new FakeAuthAuditWriter();
+        var service = CreateService(lookup, audit, nowUtc: nowUtc);
+
+        var result = await service.LoginAsync(new LoginRequestModel
+        {
+            Email = user.Email,
+            Password = "TempPassword1!"
+        }, CancellationToken.None);
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(LoginFailureReason.InvalidCredentials, result.FailureReason);
+        Assert.Equal("hash:PrimaryPassword1!", user.PasswordHash);
+        Assert.Equal("hash:TempPassword1!", user.TemporaryPasswordHash);
+        Assert.Equal(nowUtc.AddMinutes(-1), user.TemporaryPasswordExpiresAtUtc);
+        Assert.Single(audit.LoginFailures);
+        Assert.Equal("InvalidCredentials", audit.LoginFailures[0].Reason);
+    }
+
+    [Fact]
+    public async Task GivenTemporaryPasswordExpiryAtCurrentTime_WhenLogin_ThenInvalidCredentials()
+    {
+        var nowUtc = new DateTime(2026, 7, 24, 12, 0, 0, DateTimeKind.Utc);
+        var user = TestUsers.CreateDefault();
+        user.PasswordHash = "hash:PrimaryPassword1!";
+        user.TemporaryPasswordHash = "hash:TempPassword1!";
+        user.TemporaryPasswordExpiresAtUtc = nowUtc;
+
+        var lookup = new FakeAuthUserLookup(new[] { TestUsers.Record(user) });
+        var audit = new FakeAuthAuditWriter();
+        var service = CreateService(lookup, audit, nowUtc: nowUtc);
+
+        var result = await service.LoginAsync(new LoginRequestModel
+        {
+            Email = user.Email,
+            Password = "TempPassword1!"
+        }, CancellationToken.None);
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(LoginFailureReason.InvalidCredentials, result.FailureReason);
+        Assert.Single(audit.LoginFailures);
+        Assert.Equal("InvalidCredentials", audit.LoginFailures[0].Reason);
+    }
+
     private static LoginService CreateService(
         FakeAuthUserLookup lookup,
         FakeAuthAuditWriter audit,
