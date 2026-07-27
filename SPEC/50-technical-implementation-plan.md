@@ -6,7 +6,9 @@ Deliver the SargentNexus MVP as a layered ASP.NET Core application with a Blazor
 ## Scope Alignment
 - MVP in scope: authentication, organization and user management, boards, statuses, ideas, tags, comments, upvotes, mentions, audit events, and notification event definitions.
 - Later phase: queued email notification delivery.
-- Out of scope: OAuth/SSO, reporting, MFA, social login, and remember-this-device.
+- Post-MVP Phase 2: OAuth/OIDC implementation (Microsoft Entra ID first).
+- Post-MVP later phase: SAML implementation.
+- Out of scope for MVP: reporting, MFA, social login, and remember-this-device.
 - P1 follow-up: admin-issued temporary password reset.
 
 ## Delivery Objective
@@ -217,6 +219,74 @@ Validation gate:
 2. Cover acceptance criteria with targeted unit, integration, contract, and end-to-end tests from `SPEC/40-test-strategy.md`.
 3. Verify seed data, role boundaries, organization scoping, audit generation, notification event generation, and default organization bootstrap end-to-end.
 4. Confirm deferred items stay deferred: OAuth, reporting, guaranteed email delivery, remember-this-device, and event query endpoints.
+
+### Post-MVP Phase 2: OAuth (Microsoft Entra ID)
+1. Add organization-scoped OAuth configuration and administration surfaces.
+2. Implement challenge/callback flow and provider validation.
+3. Implement external identity linking, email fallback matching, and auto-provisioning with default role `User`.
+4. Preserve local login coexistence and break-glass Site Admin access.
+5. Add audit and test coverage for OAuth success/failure and provisioning outcomes.
+
+Execution-ready task slices:
+- Infrastructure
+	- add `ExternalIdentity` persistence model and migration for provider subject mapping
+	- add organization-scoped OAuth provider configuration persistence and encryption-at-rest handling
+	- implement provider client configuration binding and secure options validation
+- Application
+	- add `StartOAuthSignIn` use case for org-scoped challenge composition
+	- add `CompleteOAuthSignIn` use case for callback completion, identity linking, and email fallback matching
+	- add auto-provision workflow for unmatched users with default role `User` and inactive-user guardrail
+	- add audit event orchestration for success, denied, and failure outcomes
+- API
+	- add `GET /api/v1/auth/oauth/{organizationSlug}/start` challenge endpoint
+	- add `GET /api/v1/auth/oauth/callback` callback endpoint with contract-aligned problem-details failures
+	- add org-admin OAuth configuration endpoints with validation and authorization enforcement
+- Client
+	- add organization login entry-point with "Sign in with Microsoft" action
+	- add callback completion screen and fallback error state handling
+	- add org-admin OAuth configuration UX with safe save/test flow
+- QA
+	- add unit tests for linking precedence (external identity first, email fallback second)
+	- add integration tests for callback success, inactive-user denial, and auto-provision behavior
+	- add regression tests proving local login and break-glass Site Admin behavior remain intact
+
+Validation gate:
+- OAuth flow is functional for configured organizations
+- local login remains fully functional
+- linking and provisioning rules match feature specifications
+
+### Post-MVP Phase 3: SAML
+1. Add organization-scoped SAML configuration and metadata validation.
+2. Implement SP-initiated assertion handling.
+3. Reuse external identity linking and provisioning flow established in OAuth phase.
+4. Add protocol-specific validation, audit coverage, and regression tests.
+
+Execution-ready task slices:
+- Infrastructure
+	- add SAML configuration metadata and certificate-reference persistence
+	- add safe metadata refresh and certificate rotation support for configured organizations
+- Application
+	- add `StartSamlSignIn` orchestration for org-scoped SP initiation
+	- add `CompleteSamlSignIn` orchestration that maps assertions into the shared external identity model
+	- reuse OAuth identity linking and auto-provision rules without forking policy logic
+	- add audit event orchestration for SAML success, denied, and failure outcomes
+- API
+	- add `GET /api/v1/auth/saml/{organizationSlug}/start` initiation endpoint
+	- add `POST /api/v1/auth/saml/acs` assertion-consumer endpoint
+	- add org-admin SAML configuration endpoints with metadata validation responses
+- Client
+	- add organization login entry-point with "Sign in with SSO" action for SAML-enabled orgs
+	- add admin UX for SAML metadata and certificate configuration with validation guidance
+	- preserve coexistence affordances for local and OAuth login options
+- QA
+	- add protocol validation tests for malformed, expired, or mismatched assertions
+	- add integration tests for assertion mapping, linking, and provisioning outcomes
+	- add full regression matrix for local + OAuth + SAML coexistence
+
+Validation gate:
+- SAML flow is functional for configured organizations
+- SAML and OAuth coexist without regressing local login
+- protocol validation and audit coverage meet feature acceptance criteria
 
 Validation gate:
 - contracts and OpenAPI remain synchronized
@@ -519,5 +589,5 @@ Validation gate:
 - Apply organization filtering centrally so the client cannot bypass it.
 - Model notifications as events early, even if delivery is introduced in a later phase.
 - Use admin-issued temporary password reset instead of self-service email reset in the current scope.
-- Defer OAuth, reporting, guaranteed email delivery, event query endpoints, and remember-this-device until their specs are defined.
+- Defer OAuth and SAML implementation until their post-MVP phases begin; defer reporting, guaranteed email delivery, event query endpoints, and remember-this-device outside MVP.
 - Treat the original `SPEC` documents as the authoritative source and the Spec Kit port as an execution aid when there is any mismatch.

@@ -34,6 +34,8 @@ Organizations need a structured way to capture process ideas, discuss them, move
 - The seeded Site Admin is a global account created from an environment-provided initial credential and must change that credential on first login.
 - In Development only, startup seed also creates demo Org Admin, User, and Read Only accounts for each demo organization, all initialized with temporary password `abc123!` and forced password change on first successful login.
 - Admin-issued temporary password reset is a P1 capability.
+- OAuth/OIDC implementation is deferred to post-MVP Phase 2 (Microsoft Entra ID first).
+- SAML implementation is deferred to a post-OAuth phase.
 
 ### Organizations and Users
 - Only Site Admin can create organizations.
@@ -94,3 +96,4 @@ Organizations need a structured way to capture process ideas, discuss them, move
 - New organizations are immediately usable through seeded statuses and a default board.
 - Collaboration workflows support ideas, tags, comments, mentions, and upvotes as specified.
 - Deferred capabilities such as OAuth, reporting, and guaranteed email delivery remain out of MVP.
+- OAuth and SAML are tracked as planned post-MVP capabilities and are not MVP release blockers.

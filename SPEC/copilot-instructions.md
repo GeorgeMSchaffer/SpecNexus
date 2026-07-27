@@ -6,6 +6,8 @@
     * When specs are unclear, ask for clarification before proceeding with implementation.
     * If specs change as result of decisions made during implementation, update the spec to reflect the new understanding.
 
+# GIT
+    * Create commits with clear and descriptive messages after a feature has been implemented and tested.
 
 # SQL Development Standards:
     * Use uppercase for SQL keywords (e.g., SELECT, FROM, WHERE).

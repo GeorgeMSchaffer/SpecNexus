@@ -38,8 +38,8 @@ Question: What reports, metrics, and export formats will reporting need when it 
 Why it matters: some data retention and audit decisions are easier to make now than retrofit later.
 
 ### 3. OAuth and SSO direction
-Question: Which identity providers and account-linking rules should future OAuth support follow?
-Why it matters: choosing stable user identifiers now will reduce migration risk later.
+Resolved: OAuth implementation is scheduled for post-MVP Phase 2 with Microsoft Entra ID first, and SAML is scheduled after OAuth stabilization.
+Open follow-up: finalize Phase 2 account-link conflict handling and claim-mapping edge-case rules before implementation kickoff.
 
 ### 4. Attachments and rich content
 Question: Are attachments, rich text, or embedded links expected in future idea or comment workflows?
@@ -48,4 +48,4 @@ Why it matters: content storage and sanitization approaches differ if richer con
 ## Recommended Resolution Order
 1. Finish the remaining field-level validation rules needed for complete OpenAPI and UI contracts.
 2. Resolve reporting expectations before designing export-friendly data views.
-3. Resolve future OAuth and rich-content direction before expanding identity or content models.
+3. Resolve future rich-content direction before expanding content models.

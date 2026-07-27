@@ -14,3 +14,4 @@ Implement authentication with globally unique email credentials, seeded global S
 - Development seeded demo users must change password on first successful login.
 - Admin-issued temporary password reset is a later P1 capability and uses one-time display temporary passwords that expire after 24 hours and force password change on first use.
 - Authentication outcomes and password actions are audited.
+- OAuth/OIDC and SAML implementation are out of MVP scope and scheduled for post-MVP phases.

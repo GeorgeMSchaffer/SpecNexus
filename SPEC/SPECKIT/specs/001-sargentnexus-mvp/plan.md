@@ -68,6 +68,29 @@
 - complete unit, integration, contract, and end-to-end test coverage
 - verify deferred scope remains deferred
 
+### Post-MVP Phase 2: OAuth/OIDC
+- implement Microsoft Entra ID OAuth/OIDC flows with organization-scoped initiation
+- implement external identity linking and email fallback matching
+- preserve coexistence with local login and break-glass Site Admin access
+
+Execution-ready slices (summary):
+- Infrastructure: external identity schema + org-scoped provider configuration
+- Application: start/callback orchestration, linking precedence, auto-provision, audit outcomes
+- API: OAuth start/callback endpoints + org-admin provider configuration endpoints
+- Client: org-scoped Microsoft sign-in UX + callback completion/error handling
+- QA: linking/provisioning tests + local-login coexistence regression coverage
+
+### Post-MVP Phase 3: SAML
+- implement organization-scoped SAML configuration and SP-initiated flow
+- reuse identity-linking and provisioning model established in OAuth phase
+
+Execution-ready slices (summary):
+- Infrastructure: SAML metadata and certificate persistence + rotation support
+- Application: SP-initiation and assertion mapping into shared identity model
+- API: SAML start and ACS endpoints + org-admin SAML configuration endpoints
+- Client: org-scoped SAML sign-in and admin metadata configuration UX
+- QA: protocol validation + local/OAuth/SAML coexistence regression coverage
+
 ## Deliverables
 - complete feature implementation across API, Application, Domain, Infrastructure, and Client
 - aligned contracts and OpenAPI

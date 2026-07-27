@@ -18,6 +18,8 @@ Break the technical implementation plan into execution-ready epics and task slic
 - Epic 6 depends on Epic 5 because notification and audit surfaces attach to collaboration workflows.
 - Epic 7 can begin after Epics 2 through 5 expose stable API contracts for each feature area.
 - Epic 8 depends on executable slices from all previous epics.
+- Epic 9 (OAuth, post-MVP Phase 2) depends on MVP release completion and stable auth contracts.
+- Epic 10 (SAML, post-OAuth) depends on Epic 9 completion.
 
 ## Epic 1: Foundation and Contract Baseline
 Outcome: the solution boots, persists data, and exposes a consistent API shell.
@@ -219,6 +221,10 @@ Tasks:
 - verify Development-only demo seed graph, idempotent startup behavior, and non-Development seed suppression
 - confirm deferred work remains deferred
 
+Deferred for MVP release:
+- OAuth implementation (scheduled for post-MVP Phase 2)
+- SAML implementation (scheduled after OAuth)
+
 Exit criteria:
 - the test strategy is covered by executable tests
 - OpenAPI and written specs do not drift
@@ -226,6 +232,103 @@ Exit criteria:
 
 Dependencies:
 - Epics 1 through 7
+
+## Epic 9: OAuth/OIDC (Post-MVP Phase 2)
+Outcome: organizations can authenticate through Microsoft Entra ID while preserving local login.
+
+Suggested sequencing by team:
+- Infrastructure: external identity persistence, provider configuration storage, and migration updates
+- Application: external identity completion flow, linking/provisioning rules, and audit orchestration
+- API: challenge/callback endpoints and OAuth configuration endpoints
+- Client: organization-scoped OAuth entry-point UX and session completion handling
+- QA: provider flow, coexistence, and provisioning matrix verification
+
+Tasks:
+- implement organization-scoped OAuth configuration management
+- implement Microsoft Entra ID challenge and callback flow
+- implement external identity linking and email fallback matching
+- implement auto-provisioning for missing users with default role `User`
+- preserve local login coexistence and break-glass Site Admin path
+- emit audit events for OAuth outcomes and provisioning
+
+Execution-ready lane slices:
+- Infrastructure
+	- O2-INF-01: add `ExternalIdentity` entity, mapping, and migration
+	- O2-INF-02: add org-scoped OAuth provider configuration persistence
+	- O2-INF-03: add secure provider option binding and validation plumbing
+- Application
+	- O2-APP-01: implement org-scoped OAuth start flow
+	- O2-APP-02: implement OAuth callback completion and token-to-identity mapping
+	- O2-APP-03: implement linking precedence and fallback matching
+	- O2-APP-04: implement auto-provision with default role `User` and inactive-user denial
+	- O2-APP-05: emit audit events for success/failure/provisioning outcomes
+- API
+	- O2-API-01: add OAuth start endpoint contract and routing
+	- O2-API-02: add OAuth callback endpoint contract and routing
+	- O2-API-03: add org-admin OAuth configuration CRUD endpoints
+- Client
+	- O2-CLI-01: add org-scoped OAuth sign-in action in login UX
+	- O2-CLI-02: add callback completion and user-facing error states
+	- O2-CLI-03: add org-admin OAuth configuration UX
+- QA
+	- O2-QA-01: add unit tests for linking precedence and provisioning decisions
+	- O2-QA-02: add integration tests for callback success, inactive-user denial, and provisioning
+	- O2-QA-03: add regression tests for local login coexistence and break-glass access
+
+Exit criteria:
+- Microsoft Entra ID sign-in works for configured organizations
+- local login remains functional and unchanged for non-SSO flows
+- linking and provisioning behavior matches feature contracts
+
+Dependencies:
+- MVP release complete
+- Epic 2 authentication contracts stable
+
+## Epic 10: SAML (Post-OAuth Phase)
+Outcome: organizations can authenticate with SAML 2.0 using the same identity-linking model.
+
+Suggested sequencing by team:
+- Infrastructure: SAML provider configuration storage and certificate/metadata handling
+- Application: assertion-to-identity mapping and provisioning flow reuse
+- API: SAML initiation/callback surfaces and configuration endpoints
+- Client: SAML entry-point UX and coexistence behavior
+- QA: protocol validation, assertion behavior, and regression verification
+
+Tasks:
+- implement organization-scoped SAML configuration
+- implement SP-initiated SAML flow
+- reuse OAuth-established identity linking and auto-provisioning model
+- implement protocol validation and audit coverage
+
+Execution-ready lane slices:
+- Infrastructure
+	- S3-INF-01: add SAML metadata and certificate-reference persistence
+	- S3-INF-02: add metadata refresh and certificate rotation support
+- Application
+	- S3-APP-01: implement org-scoped SAML initiation orchestration
+	- S3-APP-02: implement assertion-consumer mapping into shared external identity model
+	- S3-APP-03: reuse OAuth linking and provisioning policy logic
+	- S3-APP-04: emit audit events for SAML success/failure/provisioning outcomes
+- API
+	- S3-API-01: add SAML start endpoint contract and routing
+	- S3-API-02: add SAML assertion-consumer endpoint contract and routing
+	- S3-API-03: add org-admin SAML configuration endpoints and metadata validation responses
+- Client
+	- S3-CLI-01: add SAML sign-in action in organization login UX
+	- S3-CLI-02: add admin SAML configuration UX and validation messaging
+	- S3-CLI-03: preserve local + OAuth coexistence affordances during SAML rollout
+- QA
+	- S3-QA-01: add protocol validation tests for malformed/expired/mismatched assertions
+	- S3-QA-02: add integration tests for mapping, linking, and provisioning outcomes
+	- S3-QA-03: add coexistence regression matrix for local, OAuth, and SAML paths
+
+Exit criteria:
+- SAML sign-in works for configured organizations
+- local and OAuth login paths continue to function
+- SAML behavior matches acceptance criteria
+
+Dependencies:
+- Epic 9
 
 ## Recommended Execution Order
 1. Complete Epic 1 fully before parallelizing downstream work.
@@ -235,3 +338,5 @@ Dependencies:
 5. Add Epic 6 once core collaboration events exist so event shapes settle late but before hardening.
 6. Run Epic 7 continuously after API slices stabilize, but reserve final UI completion until Epics 2 through 5 are functionally complete.
 7. Close with Epic 8 as the release gate.
+8. Start Epic 9 only after MVP release criteria are met.
+9. Execute Epic 10 after Epic 9 stabilizes.

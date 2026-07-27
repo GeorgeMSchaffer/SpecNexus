@@ -185,7 +185,7 @@ Route and payload authority: `SPEC/30-Contracts.md` and `SPEC/SPECKIT/openapi/op
 ## Open Questions
 - Validation message wording conventions across API and UI.
 - Future reporting requirements and export formats.
-- Future OAuth provider and account-linking direction.
+- OAuth sequencing is resolved as post-MVP Phase 2 (Entra first); detailed account-link edge-case rules remain a pre-Phase-2 refinement item.
 - Future rich-content or attachment requirements for idea/comment workflows.
 
 ## AI Agent Usage Notes
@@ -225,6 +225,8 @@ Update canonical `SPEC/*.md` first, then sync this file and derived SPECKIT arti
 - `SPEC/00-project-brief.md`
 - `SPEC/10-requirements.md`
 - `SPEC/20-feature-auth.md`
+- `SPEC/20-feature-oauth.md`
+- `SPEC/20-feature-saml.md`
 - `SPEC/20-feature-user-login.md`
 - `SPEC/20-feature-organizations-and-users.md`
 - `SPEC/20-feature-boards-and-statuses.md`

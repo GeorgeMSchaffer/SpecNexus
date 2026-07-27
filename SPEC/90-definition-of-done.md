@@ -20,3 +20,4 @@
 ## Delivery
 - Each PR links the feature spec it implements.
 - Out-of-scope behavior is not added without approval.
+- MVP release sign-off does not require OAuth or SAML endpoint delivery.

@@ -5,7 +5,8 @@ Users can securely access the application using organization-scoped accounts.
 
 ## Scope
 - In: login, seeded Site Admin account, admin-issued password reset
-- Out: SSO, MFA, social login
+- Out (MVP): OAuth, SAML, MFA, social login
+- Post-MVP: OAuth is Phase 2 and SAML is a later follow-on phase
 
 ## Requirements
 1. Users must authenticate with email and password.

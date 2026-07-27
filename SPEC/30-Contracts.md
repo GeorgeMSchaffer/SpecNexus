@@ -8,6 +8,12 @@ Defines the system contracts that implementations must follow.
 - Resource routes use plural nouns.
 - Nested routes are allowed when needed to express parent-child ownership clearly.
 
+## MVP Boundary For External Auth
+- MVP contract conformance does not require OAuth or SAML endpoints.
+- OAuth/OIDC endpoints are planned for post-MVP Phase 2.
+- SAML endpoints are planned for a post-OAuth phase.
+- Until those phases begin, `/api/v1/auth/*` contracts are limited to local credential and password-management flows defined in this document.
+
 ## Error Envelope
 - All non-2xx responses use a problem-details-style payload.
 - Standard fields are `type`, `title`, `status`, `detail`, and `instance`.

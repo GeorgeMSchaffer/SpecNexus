@@ -19,6 +19,7 @@ SargentNexus is a collaboration and project management tool for submitting, trac
 - Ideas require a priority (`Low`, `Medium`, `High`, `Critical`) and may optionally include a due date.
 - Board cards are compact and display title, priority, assigned-to, and upvote state.
 - Clicking an idea title opens an in-context detail overlay for editing rather than a full-page navigation.
+- OAuth implementation is scheduled for post-MVP Phase 2, with SAML scheduled in a subsequent post-OAuth phase.
 
 ## UI Shell Rules
 - Every screen includes a persistent header with primary blue background, logo at top-left, and global actions.
@@ -51,4 +52,6 @@ SargentNexus is a collaboration and project management tool for submitting, trac
 ## Priorities
 - **P0**: Authentication, organization management, user/role management, boards, statuses, idea CRUD, comments, upvote
 - **P1**: Password reset, email notifications
-- **P2**: Remember this device
+- **P2**: OAuth/OIDC (Microsoft Entra ID first)
+- **P3**: SAML
+- **P4**: Remember this device

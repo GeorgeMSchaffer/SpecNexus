@@ -117,9 +117,49 @@ Target outcome: contracts, tests, and release boundaries are aligned.
 - run contract, integration, end-to-end, and regression coverage against acceptance criteria
 - validate Development-only demo seed composition and non-Development seed suppression
 
+## Milestone 8: OAuth (Post-MVP Phase 2)
+Target outcome: organizations can use Microsoft Entra ID sign-in with coexistence to local login.
+
+### API Workstream
+- implement organization-scoped OAuth initiation and callback endpoints
+- implement OAuth configuration endpoints and validation responses
+
+### Application Workstream
+- implement external identity completion, linking, email fallback, and auto-provision logic
+- enforce inactive-user and organization-scope guardrails in OAuth flows
+
+### Infrastructure Workstream
+- implement external identity persistence and organization provider configuration
+- support secure provider credential configuration and audit persistence
+
+### Client Workstream
+- add organization-scoped OAuth sign-in entry points
+- preserve local login path and support OAuth session completion UX
+
+## Milestone 9: SAML (Post-OAuth Phase)
+Target outcome: organizations can use SAML 2.0 sign-in using the same identity model.
+
+### API Workstream
+- implement SAML initiation and assertion-consumption endpoints
+- expose SAML organization-configuration endpoints
+
+### Application Workstream
+- map SAML assertions to the shared external identity model
+- reuse linking and provisioning behaviors from OAuth phase
+
+### Infrastructure Workstream
+- persist SAML configuration metadata and certificate references
+- support metadata validation and audit persistence
+
+### Client Workstream
+- add SAML sign-in initiation in org-scoped login UX
+- preserve coexistence with local and OAuth login paths
+
 ## Sequencing Guidance
 1. Milestones 1 and 2 are serial and should complete before broad parallel feature work.
 2. Milestones 3 and 4 can overlap partially once the auth layer is stable.
 3. Milestone 5 should start only after board and status contracts are stable.
 4. Milestone 6 depends on working collaboration workflows from Milestone 5.
 5. Milestone 7 is the release gate and closes all workstreams.
+6. Milestone 8 starts only after Milestone 7 MVP release completion.
+7. Milestone 9 starts after Milestone 8 stabilizes.

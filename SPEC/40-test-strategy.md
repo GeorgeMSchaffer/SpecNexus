@@ -32,3 +32,8 @@
 ## Startup Safety
 - Demo environment seed runs only in Development
 - Non-Development startup does not apply demo data seed
+
+## MVP Scope Gate
+- MVP release verification does not require OAuth or SAML endpoint implementation.
+- OAuth validation is executed in post-MVP Phase 2 test cycles.
+- SAML validation is executed in a post-OAuth phase test cycle.

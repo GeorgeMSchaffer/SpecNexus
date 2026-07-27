@@ -5,6 +5,7 @@
 - Follow the established .NET layered architecture.
 - Use SQL Server 2022, EF Core, ASP.NET Core Web API, Blazor, and Fluent UI.
 - Keep OAuth, MFA, reporting, and guaranteed email delivery out of MVP.
+- OAuth is planned for post-MVP Phase 2 (Microsoft Entra ID first), with SAML in a later post-OAuth phase.
 
 ## Important Product Decisions
 - Site Admin is global and does not belong to a tenant.
