@@ -1,0 +1,136 @@
+@page "/register"
+@inject AuthApiClient AuthApiClient
+@inject IClientErrorMessageService ErrorMessageService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Create Account</PageTitle>
+
+<h1>Create account</h1>
+<p class="text-muted">Enter your invite code and details to register.</p>
+
+@if (_registered)
+{
+    <div class="alert alert-success" role="alert">
+        <strong>Account created.</strong> You can now <a href="/login">sign in</a>.
+    </div>
+}
+else
+{
+    <EditForm Model="_model" OnValidSubmit="HandleSubmitAsync">
+        <DataAnnotationsValidator />
+
+        @if (!string.IsNullOrWhiteSpace(_errorTitle))
+        {
+            <div class="alert alert-danger" role="alert">
+                <strong>@_errorTitle</strong>
+                @if (!string.IsNullOrWhiteSpace(_errorDetail))
+                {
+                    <div>@_errorDetail</div>
+                }
+            </div>
+        }
+
+        <div class="mb-3">
+            <label class="form-label" for="inviteCode">Invite code</label>
+            <InputText id="inviteCode" class="form-control" @bind-Value="_model.InviteCode" placeholder="XXXXXXXX" />
+            <ValidationMessage For="() => _model.InviteCode" />
+        </div>
+
+        <div class="row g-3 mb-3">
+            <div class="col-md-6">
+                <label class="form-label" for="firstName">First name</label>
+                <InputText id="firstName" class="form-control" @bind-Value="_model.FirstName" />
+                <ValidationMessage For="() => _model.FirstName" />
+            </div>
+            <div class="col-md-6">
+                <label class="form-label" for="lastName">Last name</label>
+                <InputText id="lastName" class="form-control" @bind-Value="_model.LastName" />
+                <ValidationMessage For="() => _model.LastName" />
+            </div>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label" for="email">Email</label>
+            <InputText id="email" class="form-control" @bind-Value="_model.Email" />
+            <ValidationMessage For="() => _model.Email" />
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label" for="password">Password</label>
+            <InputText id="password" type="password" class="form-control" @bind-Value="_model.Password" />
+            <ValidationMessage For="() => _model.Password" />
+        </div>
+
+        <div class="d-flex gap-3 align-items-center">
+            <button class="btn btn-primary" type="submit" disabled="@_isSubmitting">
+                @(_isSubmitting ? "Creating account..." : "Create account")
+            </button>
+            <a href="/login">Back to sign in</a>
+        </div>
+    </EditForm>
+}
+
+@code {
+    private readonly RegisterFormModel _model = new();
+    private bool _isSubmitting;
+    private bool _registered;
+    private string? _errorTitle;
+    private string? _errorDetail;
+
+    private async Task HandleSubmitAsync()
+    {
+        _isSubmitting = true;
+        _errorTitle = null;
+        _errorDetail = null;
+
+        try
+        {
+            await AuthApiClient.RegisterAsync(new SelfRegistrationRequestDto
+            {
+                InviteCode = _model.InviteCode.Trim().ToUpperInvariant(),
+                FirstName = _model.FirstName.Trim(),
+                LastName = _model.LastName.Trim(),
+                Email = _model.Email.Trim(),
+                Password = _model.Password
+            }, CancellationToken.None);
+
+            _registered = true;
+        }
+        catch (AuthValidationException ex)
+        {
+            _errorTitle = ex.Title;
+            _errorDetail = string.Join(" ", ex.Errors.Values.SelectMany(v => v));
+        }
+        catch (AuthApiException ex)
+        {
+            _errorTitle = ex.Title;
+            _errorDetail = ErrorMessageService.GetDisplayMessage(ex.Title, ex.Detail, ex);
+        }
+        finally
+        {
+            _isSubmitting = false;
+        }
+    }
+
+    private sealed class RegisterFormModel
+    {
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.MaxLength(16)]
+        public string InviteCode { get; set; } = string.Empty;
+
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.MaxLength(100)]
+        public string FirstName { get; set; } = string.Empty;
+
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.MaxLength(100)]
+        public string LastName { get; set; } = string.Empty;
+
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.EmailAddress]
+        public string Email { get; set; } = string.Empty;
+
+        [System.ComponentModel.DataAnnotations.Required]
+        public string Password { get; set; } = string.Empty;
+    }
+}

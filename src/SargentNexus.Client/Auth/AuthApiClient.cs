@@ -65,6 +65,18 @@ public sealed class AuthApiClient
         throw await CreateExceptionAsync(response, cancellationToken);
     }
 
+    public async Task RegisterAsync(SelfRegistrationRequestDto request, CancellationToken cancellationToken)
+    {
+        using var response = await _httpClient.PostAsJsonAsync("api/v1/auth/register", request, cancellationToken);
+
+        if (response.StatusCode == HttpStatusCode.Created)
+        {
+            return;
+        }
+
+        throw await CreateExceptionAsync(response, cancellationToken);
+    }
+
     private static async Task<AuthApiException> CreateExceptionAsync(HttpResponseMessage response, CancellationToken cancellationToken)
     {
         var problem = await response.Content.ReadFromJsonAsync<ProblemDetailsDto>(cancellationToken: cancellationToken);

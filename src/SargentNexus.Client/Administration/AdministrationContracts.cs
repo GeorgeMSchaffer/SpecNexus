@@ -29,6 +29,8 @@ public sealed class OrganizationListItemDto
 
     public string? LogoThumbnailUrl { get; set; }
 
+    public string? InviteCode { get; set; }
+
     public bool IsArchived { get; set; }
 }
 
@@ -87,4 +89,11 @@ public sealed class OrganizationDetailDto
     public int? LogoHeightPx { get; set; }
 
     public bool IsArchived { get; set; }
+
+    public string? InviteCode { get; set; }
+}
+
+public sealed class InviteCodeResponseDto
+{
+    public string InviteCode { get; set; } = string.Empty;
 }

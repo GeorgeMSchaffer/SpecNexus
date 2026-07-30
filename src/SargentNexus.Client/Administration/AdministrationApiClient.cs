@@ -141,6 +141,22 @@ public sealed class AdministrationApiClient
         throw await CreateExceptionAsync(response, cancellationToken);
     }
 
+    public async Task<InviteCodeResponseDto> RegenerateInviteCodeAsync(string accessToken, Guid organizationId, CancellationToken cancellationToken)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, $"api/v1/organizations/{organizationId}/invite-code/regenerate");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+
+        using var response = await _httpClient.SendAsync(request, cancellationToken);
+
+        if (response.IsSuccessStatusCode)
+        {
+            return await response.Content.ReadFromJsonAsync<InviteCodeResponseDto>(cancellationToken: cancellationToken)
+                ?? throw new InvalidOperationException("The API did not return an invite code payload.");
+        }
+
+        throw await CreateExceptionAsync(response, cancellationToken);
+    }
+
     private static async Task<AuthApiException> CreateExceptionAsync(HttpResponseMessage response, CancellationToken cancellationToken)
     {
         var problem = await response.Content.ReadFromJsonAsync<ProblemDetailsDto>(cancellationToken: cancellationToken);
