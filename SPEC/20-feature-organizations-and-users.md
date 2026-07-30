@@ -14,12 +14,19 @@ Administrators can manage organizations and users with clear role boundaries wit
 8. Each organization can have only one active logo at a time.
 9. Uploading a new logo replaces the previous logo.
 10. The rendered organization logo height is capped at `150px` while preserving aspect ratio.
-11. Authenticated admin surfaces use a primary-blue header with a `150px` left brand zone and logo in the top-left.
-12. The header exposes a logout icon, and admin-authorized users also see a gear icon that navigates to the Admin homepage.
-13. Breadcrumb navigation is shown directly below the header.
-14. In Development, startup seed creates 3 demo organizations with realistic profile data for walkthrough and validation.
+11. An invite code is auto-generated when an organization is created. The invite code is displayed in both the organization list view and organization detail page.
+12. Admins can regenerate an organization's invite code. Invite codes for archived organizations are invalid for self-registration.
+13. Users can self-register for an account if they have a valid invite code. The invite code entered at registration determines which organization the user is associated with.
+14. Authenticated admin surfaces use a header with a brand zone and logo in the top-left.
+15. The header exposes a sign-out icon left of the username display, and a gear icon that navigates to the Settings area. The Settings area was previously called "Admin".
+16. The primary navigation is a horizontal menu under the header: Home, Workflow, Ideas. Settings is reached via the gear icon only.
+17. Breadcrumb navigation is shown directly below the header.
+18. In Development, startup seed creates 3 demo organizations with realistic profile data for walkthrough and validation.
 
 ## Organization Fields
+- Title (max 200 characters, required)
+- Description (max 500 characters, optional)
+- Invite Code (system-managed, auto-generated on creation, regenerable by admin)
 - Company Name (max 200 characters)
 - Address (max 200 characters)
 - City (max 100 characters)
@@ -69,6 +76,11 @@ User profile text fields are trimmed before validation and persistence.
 - **Read Only**: limited participant
 
 ## Acceptance Criteria
+- [ ] A new organization auto-generates an invite code on creation
+- [ ] Invite code is displayed in the organization list and detail views
+- [ ] Admins can regenerate an organization's invite code
+- [ ] Invite codes for archived organizations cannot be used for self-registration
+- [ ] Users can self-register using a valid invite code which sets their organization
 - [ ] Site Admin can create organizations
 - [ ] Org Admin cannot create organizations
 - [ ] Organizations can be archived without being hard-deleted

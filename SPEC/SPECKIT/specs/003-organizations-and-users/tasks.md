@@ -14,3 +14,6 @@
 - [ ] O004 Enforce org-scoped email uniqueness and active or inactive status.
 - [ ] O005 Prevent the last Org Admin from removing their own access.
 - [ ] O006 Emit audit events for organization and user changes.
+- [ ] O007 Auto-generate invite code on organization creation; display in list and detail views.
+- [ ] O008 Implement invite code regeneration for admins; invalidate codes for archived orgs.
+- [ ] O009 Implement user self-registration flow using a valid invite code.
