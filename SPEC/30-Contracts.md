@@ -168,7 +168,9 @@ Query parameters:
 
 Success response `200` paged item shape:
 - `organizationId`
-- `companyName`
+- `title`
+- `description`
+- `inviteCode`
 - `city`
 - `state`
 - `phone`
@@ -183,20 +185,25 @@ Error responses:
 - `403` caller is authenticated but not allowed to list organizations
 
 ### `POST /api/v1/organizations`
-Purpose: Create an organization and provision default statuses plus one default board.
+Purpose: Create an organization, generate its invite code, and provision default statuses plus one default board.
 
 Request body:
-- `companyName` required string
-- `address` required string
-- `city` required string
-- `state` required string
-- `zip` required string
-- `phone` required string
-- `primaryContactFirstName` required string
-- `primaryContactLastName` required string
+- `title` required string
+- `description` required string
+- `logoUrl` optional string
+
+Optional profile fields:
+- `address` optional string
+- `city` optional string
+- `state` optional string
+- `zip` optional string
+- `phone` optional string
+- `primaryContactFirstName` optional string
+- `primaryContactLastName` optional string
 
 Success response `201`:
 - `organizationId`
+- `inviteCode`
 - `defaultBoardId`
 - `defaultStatusCount`
 
@@ -209,6 +216,7 @@ Error responses:
 Purpose: Return organization detail.
 
 Response fields also include:
+- `inviteCode`
 - `logoUrl` nullable string
 - `logoThumbnailUrl` nullable string
 - `logoHeightPx` nullable integer, max rendered value `150`
@@ -257,6 +265,17 @@ Error responses:
 - `403` caller is authenticated but not allowed to update this organization
 - `404` organization does not exist or is outside caller scope
 
+### `POST /api/v1/organizations/{organizationId}/invite-code/regenerate`
+Purpose: Regenerate the organization invite code, invalidating the previous code.
+
+Success response `200`:
+- `inviteCode`
+
+Error responses:
+- `401` caller is not authenticated
+- `403` caller is authenticated but not allowed to administer this organization
+- `404` organization does not exist or is outside caller scope
+
 ### `POST /api/v1/organizations/{organizationId}/archive`
 Purpose: Archive an organization without hard deletion.
 
@@ -269,6 +288,33 @@ Error responses:
 - `404` organization does not exist or is outside caller scope
 
 ## User Contracts
+
+### `POST /api/v1/auth/register`
+Purpose: Self-register a new user account using an organization invite code. Anonymous endpoint.
+
+Request body:
+- `inviteCode` required string
+- `firstName` required string
+- `lastName` required string
+- `email` required string
+- `password` required string, must satisfy the authentication complexity policy
+
+Behavior rules:
+- the invite code determines the organization the user is associated with
+- the created user receives role `User` and status `Active`
+- registration against an archived organization is rejected as an invalid invite code
+
+Success response `201`:
+- `userId`
+- `organizationId`
+- `email`
+- `role`
+- `status`
+
+Error responses:
+- `400` request body is malformed or violates field constraints
+- `400` invite code is missing or invalid; response prompts the user to provide a correct invite code
+- `409` email is already in use
 
 ### `GET /api/v1/organizations/{organizationId}/users`
 Purpose: List users within an organization with pagination.
@@ -316,6 +362,35 @@ Success response `201`:
 
 Error responses:
 - `400` request body is malformed or violates field constraints
+- `401` caller is not authenticated
+- `403` caller is authenticated but not allowed to create users in this organization
+- `404` organization does not exist or is outside caller scope
+
+### `POST /api/v1/organizations/{organizationId}/users/import`
+Purpose: Bulk-create users in an organization from an uploaded CSV file. Site Admin may import into any organization; Org Admin only into their own.
+
+Request body:
+- `multipart/form-data`
+- field `csvFile` required
+
+CSV columns:
+- `firstName` required
+- `lastName` required
+- `email` required
+- `role` optional, defaults to `User`
+- no invite code column; every created user is associated with the organization in the route
+
+Behavior rules:
+- each created user receives a system-generated temporary password and must change it on first login
+- rows with invalid data or duplicate emails are rejected individually without failing the whole import
+
+Success response `200`:
+- `createdCount`
+- `rejectedCount`
+- `rows` per-row outcome list with `rowNumber`, `email`, `outcome`, `error` nullable, and `temporaryPassword` for created rows
+
+Error responses:
+- `400` file is missing, malformed, or not a valid CSV
 - `401` caller is not authenticated
 - `403` caller is authenticated but not allowed to create users in this organization
 - `404` organization does not exist or is outside caller scope

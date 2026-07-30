@@ -7,6 +7,10 @@ SargentNexus is a collaboration and project management tool for submitting, trac
 - All data is scoped to an organization.
 - The Site Admin account is a global platform account and is not owned by any organization.
 - Only Site Admin can create organizations.
+- Organization creation requires only a title and description; a logo address is optional.
+- Each organization has a system-generated invite code, shown in the organization list and detail views; admins can regenerate it.
+- Users can self-register with a valid organization invite code; the code determines their organization, and missing or invalid codes are rejected with a prompt to provide a correct one.
+- Site Admin can add users to any organization; Org Admin can add users to their own organization, including via CSV import (no invite code needed — imported users join the target organization).
 - Org Admin can edit only their own organization.
 - All product screens use a unified application shell with a persistent top header, organization identity, role-aware navigation, and breadcrumb navigation.
 - Organizations may be archived but are not hard-deleted.
