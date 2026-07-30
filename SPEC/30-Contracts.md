@@ -34,6 +34,8 @@ Defines the system contracts that implementations must follow.
 - Organization, user, idea, and comment list endpoints support pagination in MVP.
 - Smaller configuration collections such as statuses, boards, and tags may return full result sets unless a feature-specific contract says otherwise.
 - Paginated collections support basic filtering plus one explicit sort field and sort direction.
+- `pageSize` defaults to 25; supported values are 25, 50, 100, and 250.
+- `search` filters across the fields displayed as list columns for that entity in the client UI (organizations: title, description, invite code, status).
 - Archived organizations are hidden from list results by default unless explicitly filtered with `isArchived=true` or an equivalent include-archived flag.
 
 ## Update Conventions
