@@ -85,6 +85,21 @@
                                 <button class="btn btn-outline-secondary" type="button" @onclick="CancelForm">Cancel</button>
                             </div>
                         </EditForm>
+
+                        @if (_editingOrganizationId.HasValue && (IsSiteAdmin || IsOrgAdmin))
+                        {
+                            <div class="mt-3 border-top pt-3">
+                                <div class="d-flex align-items-center gap-3">
+                                    <div>
+                                        <label class="form-label mb-0">Invite Code</label>
+                                        <div><code class="fs-5">@_currentInviteCode</code></div>
+                                    </div>
+                                    <button class="btn btn-sm btn-outline-warning" type="button" @onclick="RegenerateInviteCodeAsync" disabled="@_isRegenerating">
+                                        @(_isRegenerating ? "Regenerating..." : "Regenerate")
+                                    </button>
+                                </div>
+                            </div>
+                        }
                     </div>
                 </div>
             }
@@ -131,6 +146,7 @@
                                 <th>City</th>
                                 <th>State</th>
                                 <th>Phone</th>
+                                <th>Invite Code</th>
                                 <th>Status</th>
                                 <th></th>
                             </tr>
@@ -143,6 +159,7 @@
                                     <td>@item.City</td>
                                     <td>@item.State</td>
                                     <td>@item.Phone</td>
+                                    <td><code>@item.InviteCode</code></td>
                                     <td>
                                         @if (item.IsArchived)
                                         {
@@ -174,10 +191,12 @@
     private readonly List<OrganizationListItemDto> _organizations = new();
     private OrganizationFormModel _form = new();
     private Guid? _editingOrganizationId;
+    private string? _currentInviteCode;
     private string _search = string.Empty;
     private bool _includeArchived;
     private bool _isLoading;
     private bool _isSubmitting;
+    private bool _isRegenerating;
     private bool _showForm;
     private string? _errorMessage;
 
@@ -263,6 +282,7 @@
         {
             var detail = await AdministrationApiClient.GetOrganizationAsync(AuthSessionService.AccessToken!, organizationId, CancellationToken.None);
             _editingOrganizationId = organizationId;
+            _currentInviteCode = detail.InviteCode;
             _form = new OrganizationFormModel
             {
                 CompanyName = detail.CompanyName,
@@ -376,6 +396,7 @@
     {
         _showForm = false;
         _editingOrganizationId = null;
+        _currentInviteCode = null;
     }
 
     private async Task ClearFilters()
@@ -383,6 +404,45 @@
         _search = string.Empty;
         _includeArchived = false;
         await LoadOrganizationsAsync();
+    }
+
+    private async Task RegenerateInviteCodeAsync()
+    {
+        if (!_editingOrganizationId.HasValue || string.IsNullOrWhiteSpace(AuthSessionService.AccessToken))
+        {
+            return;
+        }
+
+        _isRegenerating = true;
+        _errorMessage = null;
+
+        try
+        {
+            var result = await AdministrationApiClient.RegenerateInviteCodeAsync(
+                AuthSessionService.AccessToken!,
+                _editingOrganizationId.Value,
+                CancellationToken.None);
+
+            _currentInviteCode = result.InviteCode;
+
+            var orgInList = _organizations.Find(o => o.OrganizationId == _editingOrganizationId.Value);
+            if (orgInList is not null)
+            {
+                orgInList.InviteCode = result.InviteCode;
+            }
+        }
+        catch (AuthApiException ex)
+        {
+            _errorMessage = ErrorMessageService.GetDisplayMessage(ex.Title, ex.Detail, ex);
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = ErrorMessageService.GetDisplayMessage(null, null, ex);
+        }
+        finally
+        {
+            _isRegenerating = false;
+        }
     }
 
     private static OrganizationListItemDto ToListItem(OrganizationDetailDto detail)
@@ -395,6 +455,7 @@
             State = detail.State,
             Phone = detail.Phone,
             LogoThumbnailUrl = detail.LogoThumbnailUrl,
+            InviteCode = detail.InviteCode,
             IsArchived = detail.IsArchived
         };
     }
