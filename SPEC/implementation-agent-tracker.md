@@ -4,10 +4,10 @@
 Track implementation work that Copilot-driven implementation agents should complete, what is currently active, and what has already been finished.
 
 ## Current Status
-- Current implementation slice: T049 contract tests for schema and problem-details behavior.
-- Current owner: hardening implementation agent
+- Current implementation slice: Epic A (Invite Codes + Self-Registration) — backend complete; client pending.
+- Current owner: main session
 - Current state: In Progress
-- Last updated: 2026-07-30
+- Last updated: 2026-07-31
 
 ## Completed
 - T001 Create the solution structure and project references.
@@ -27,12 +27,18 @@ Track implementation work that Copilot-driven implementation agents should compl
 - T034 Allow board-configured Users to move any idea on an eligible board.
 - T036 Emit audit events for idea creation, edits, status changes, comments, and upvotes.
 - T048 Implement integration tests for auth, organization scope, and collaboration flows.
+- O007 Add `InviteCode` and `InviteCodeGeneratedAtUtc` to `Organization` entity + EF migration.
+- O008 Add `RegenerateInviteCodeAsync` endpoint (`POST /api/v1/organizations/{id}/invite-code/regenerate`).
+- O009 Add self-registration endpoint (`POST /api/v1/auth/register`), `SelfRegistrationService`, and invite code generation on org create.
 
 ## In Progress
-- T049 Implement contract tests for schema and problem-details error behavior.
+- Epic A client: invite code column + Regenerate button in `AdminOrganizations.razor`; new `/register` page; self-registration link on login.
 
 ## Ready Next
+- T049 Implement contract tests for schema and problem-details error behavior.
 - T050 Verify seed behavior, organization bootstrap, audit generation, and deferred-scope boundaries end-to-end.
+- Epic B: Notification events (T037–T039).
+- Epic C: Client UI revisions (C1–C7 per `SPEC/20-feature-client-ui-revisions.md`).
 
 ## Progress Notes
 - T001 completed: created `SargentNexus.sln`, `global.json`, and the five core projects under `src/`.

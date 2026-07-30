@@ -320,7 +320,9 @@ internal sealed class AuthSeeder : IAuthSeeder
                 Phone = "206-555-0100",
                 PrimaryContactFirstName = "Demo",
                 PrimaryContactLastName = "Admin",
-                IsArchived = false
+                IsArchived = false,
+                InviteCode = GenerateSeedInviteCode(),
+                InviteCodeGeneratedAtUtc = DateTime.UtcNow
             };
 
             _dbContext.Organizations.Add(organization);
@@ -446,7 +448,9 @@ internal sealed class AuthSeeder : IAuthSeeder
             Phone = seed.Phone,
             PrimaryContactFirstName = seed.PrimaryContactFirstName,
             PrimaryContactLastName = seed.PrimaryContactLastName,
-            IsArchived = false
+            IsArchived = false,
+            InviteCode = GenerateSeedInviteCode(),
+            InviteCodeGeneratedAtUtc = DateTime.UtcNow
         };
 
         _dbContext.Organizations.Add(organization);
@@ -729,6 +733,12 @@ internal sealed class AuthSeeder : IAuthSeeder
         string LastName,
         string Email,
         UserRole Role);
+
+    private static string GenerateSeedInviteCode()
+    {
+        const string chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+        return new string(Enumerable.Range(0, 8).Select(_ => chars[Random.Shared.Next(chars.Length)]).ToArray());
+    }
 }
 
 internal sealed class AuthAuditWriter : IAuthAuditWriter
