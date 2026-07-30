@@ -6,4 +6,8 @@
     /admin/organization/{orgId}/users: Create and Manage Users for an org
     /admin/organization/{orgId}/statuses:  Create and manage statuses for the org
 
-- /boards/{orgId}/board/{boardId}/ :  
+- /boards/{orgId}/board/{boardId}/ :
+
+## VISUAL DESIGN DIRECTION
+
+Comp A "Command Center" (`SPEC/mockups/comp-a-command-center.html`) is the selected layout direction for all pages, using the typography (`"Segoe UI", Arial, sans-serif`) and color palette from the SVG mockup set. See `SPEC/20-feature-client-ui.md` (Visual Design Direction) for the full layout, typography, and palette specification.  
