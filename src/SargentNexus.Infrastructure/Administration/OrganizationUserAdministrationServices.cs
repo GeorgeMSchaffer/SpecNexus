@@ -28,6 +28,11 @@ internal sealed class OrganizationUserAdministrationStore : IOrganizationUserAdm
         return _dbContext.Organizations.SingleOrDefaultAsync(item => item.Id == organizationId, cancellationToken);
     }
 
+    public Task<Organization?> FindOrganizationByInviteCodeAsync(string normalizedCode, CancellationToken cancellationToken)
+    {
+        return _dbContext.Organizations.SingleOrDefaultAsync(item => item.InviteCode == normalizedCode, cancellationToken);
+    }
+
     public async Task<PagedResultModel<OrganizationListItemModel>> GetOrganizationsAsync(
         string? search,
         bool includeArchived,
@@ -50,7 +55,8 @@ internal sealed class OrganizationUserAdministrationStore : IOrganizationUserAdm
             query = query.Where(item =>
                 item.CompanyName.Contains(trimmedSearch) ||
                 item.City.Contains(trimmedSearch) ||
-                item.State.Contains(trimmedSearch));
+                item.State.Contains(trimmedSearch) ||
+                item.InviteCode.Contains(trimmedSearch));
         }
 
         query = ApplyOrganizationSort(query, sortBy, sortDirection);
@@ -66,6 +72,7 @@ internal sealed class OrganizationUserAdministrationStore : IOrganizationUserAdm
                 City = item.City,
                 State = item.State,
                 Phone = item.Phone,
+                InviteCode = item.InviteCode,
                 IsArchived = item.IsArchived,
                 LogoThumbnailUrl = null
             })
@@ -260,8 +267,7 @@ internal sealed class OrganizationUserAdministrationStore : IOrganizationUserAdm
     }
 }
 
-internal sealed class OrganizationUserAuditWriter : IOrganizationUserAuditWriter
-{
+internal sealed class OrganizationUserAuditWriter : IOrganizationUserAuditWriter{
     private readonly SargentNexusDbContext _dbContext;
     private readonly TimeProvider _timeProvider;
 
@@ -390,5 +396,36 @@ internal sealed class OrganizationUserAuditWriter : IOrganizationUserAuditWriter
         });
 
         await _dbContext.SaveChangesAsync(cancellationToken);
+    }
+}
+
+internal sealed class SelfRegistrationStore : Application.Administration.ISelfRegistrationStore
+{
+    private readonly SargentNexusDbContext _dbContext;
+
+    public SelfRegistrationStore(SargentNexusDbContext dbContext)
+    {
+        _dbContext = dbContext;
+    }
+
+    public Task<Organization?> FindOrganizationByInviteCodeAsync(string normalizedCode, CancellationToken cancellationToken)
+    {
+        return _dbContext.Organizations.SingleOrDefaultAsync(item => item.InviteCode == normalizedCode, cancellationToken);
+    }
+
+    public Task<User?> FindUserByEmailAsync(string normalizedEmail, CancellationToken cancellationToken)
+    {
+        return _dbContext.Users.SingleOrDefaultAsync(item => item.Email == normalizedEmail, cancellationToken);
+    }
+
+    public Task AddUserAsync(User user, CancellationToken cancellationToken)
+    {
+        _dbContext.Users.Add(user);
+        return Task.CompletedTask;
+    }
+
+    public Task SaveChangesAsync(CancellationToken cancellationToken)
+    {
+        return _dbContext.SaveChangesAsync(cancellationToken);
     }
 }

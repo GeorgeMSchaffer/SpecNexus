@@ -50,6 +50,8 @@ public sealed class SargentNexusDbContext : DbContext
             entity.Property(item => item.Phone).HasMaxLength(25).IsRequired();
             entity.Property(item => item.PrimaryContactFirstName).HasMaxLength(100).IsRequired();
             entity.Property(item => item.PrimaryContactLastName).HasMaxLength(100).IsRequired();
+            entity.Property(item => item.InviteCode).HasMaxLength(16).IsRequired();
+            entity.HasIndex(item => item.InviteCode).IsUnique();
         });
 
         modelBuilder.Entity<User>(entity =>

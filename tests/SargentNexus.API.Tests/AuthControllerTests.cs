@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using SargentNexus.API.Controllers;
+using SargentNexus.Application.Administration;
 using SargentNexus.Application.Auth;
 
 namespace SargentNexus.API.Tests;
@@ -325,7 +326,8 @@ public sealed class AuthControllerTests
         IAuthAccountService authAccountService,
         Guid? authenticatedUserId = null)
     {
-        var controller = new AuthController(loginService, authAccountService)
+        var selfRegService = new StubSelfRegistrationService();
+        var controller = new AuthController(loginService, authAccountService, selfRegService)
         {
             ControllerContext = new ControllerContext
             {
@@ -427,5 +429,11 @@ public sealed class AuthControllerTests
                 ? Task.FromResult(TemporaryPasswordResult.Failure(TemporaryPasswordFailureReason.Forbidden))
                 : IssueTemporaryPasswordAsyncHandler(actorUserId, targetUserId, cancellationToken);
         }
+    }
+
+    private sealed class StubSelfRegistrationService : ISelfRegistrationService
+    {
+        public Task<SelfRegistrationResult> RegisterAsync(SelfRegistrationRequestModel request, CancellationToken cancellationToken)
+            => Task.FromResult(SelfRegistrationResult.Fail(SelfRegistrationFailureReason.InvalidInviteCode));
     }
 }

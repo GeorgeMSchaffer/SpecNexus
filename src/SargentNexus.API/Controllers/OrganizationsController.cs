@@ -3,6 +3,12 @@ using SargentNexus.Application.Administration;
 
 namespace SargentNexus.API.Controllers;
 
+public sealed record InviteCodeResponseModel(string InviteCode)
+{
+    public InviteCodeResponseModel() : this(string.Empty) { }
+    public string InviteCode { get; init; } = InviteCode;
+}
+
 public sealed class OrganizationsController : ApiControllerBase
 {
     private readonly IOrganizationUserAdministrationService _service;
@@ -106,8 +112,29 @@ public sealed class OrganizationsController : ApiControllerBase
         return ToActionResult(result, onSuccess: model => Ok(model));
     }
 
-    [HttpPost("/api/v1/organizations/{organizationId:guid}/archive")]
-    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [HttpPost("/api/v1/organizations/{organizationId:guid}/invite-code/regenerate")]
+    [ProducesResponseType(typeof(InviteCodeResponseModel), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> RegenerateInviteCode(Guid organizationId, CancellationToken cancellationToken)
+    {
+        var actorUserId = GetCurrentUserId();
+
+        if (!actorUserId.HasValue)
+        {
+            return Problem(
+                statusCode: StatusCodes.Status401Unauthorized,
+                title: "Authentication required.",
+                detail: "A valid bearer token is required.");
+        }
+
+        var result = await _service.RegenerateInviteCodeAsync(actorUserId.Value, organizationId, cancellationToken);
+
+        return ToActionResult(result, onSuccess: code => Ok(new InviteCodeResponseModel { InviteCode = code }));
+    }
+
+    [HttpPost("/api/v1/organizations/{organizationId:guid}/archive")]    [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]

@@ -18,6 +18,10 @@ public sealed class Organization : EntityBase
 
     public string PrimaryContactLastName { get; set; } = string.Empty;
 
+    public string InviteCode { get; set; } = string.Empty;
+
+    public DateTime InviteCodeGeneratedAtUtc { get; set; }
+
     public bool IsArchived { get; set; }
 
     public ICollection<User> Users { get; set; } = new List<User>();

@@ -8,6 +8,8 @@ public interface IOrganizationUserAdministrationStore
 {
     Task<Organization?> FindOrganizationByIdAsync(Guid organizationId, CancellationToken cancellationToken);
 
+    Task<Organization?> FindOrganizationByInviteCodeAsync(string normalizedCode, CancellationToken cancellationToken);
+
     Task<PagedResultModel<OrganizationListItemModel>> GetOrganizationsAsync(
         string? search,
         bool includeArchived,
@@ -58,6 +60,8 @@ public interface IOrganizationUserAdministrationService
     Task<AdministrationResult<OrganizationDetailModel>> UpdateOrganizationAsync(Guid actorUserId, Guid organizationId, OrganizationUpsertRequestModel request, CancellationToken cancellationToken);
 
     Task<AdministrationResult> ArchiveOrganizationAsync(Guid actorUserId, Guid organizationId, CancellationToken cancellationToken);
+
+    Task<AdministrationResult<string>> RegenerateInviteCodeAsync(Guid actorUserId, Guid organizationId, CancellationToken cancellationToken);
 
     Task<AdministrationResult<PagedResultModel<UserSummaryModel>>> ListUsersAsync(Guid actorUserId, Guid organizationId, OrganizationUsersListQueryModel request, CancellationToken cancellationToken);
 
@@ -161,6 +165,8 @@ public sealed class OrganizationUserAdministrationService : IOrganizationUserAdm
             Phone = request.Phone.Trim(),
             PrimaryContactFirstName = request.PrimaryContactFirstName.Trim(),
             PrimaryContactLastName = request.PrimaryContactLastName.Trim(),
+            InviteCode = GenerateInviteCode(),
+            InviteCodeGeneratedAtUtc = DateTime.UtcNow,
             IsArchived = false
         };
 
@@ -171,7 +177,8 @@ public sealed class OrganizationUserAdministrationService : IOrganizationUserAdm
         {
             OrganizationId = organization.Id,
             DefaultBoardId = defaultBoardId,
-            DefaultStatusCount = statusCount
+            DefaultStatusCount = statusCount,
+            InviteCode = organization.InviteCode
         });
     }
 
@@ -273,6 +280,38 @@ public sealed class OrganizationUserAdministrationService : IOrganizationUserAdm
         }
 
         return AdministrationResult.Success();
+    }
+
+    public async Task<AdministrationResult<string>> RegenerateInviteCodeAsync(
+        Guid actorUserId,
+        Guid organizationId,
+        CancellationToken cancellationToken)
+    {
+        var actor = await _store.FindUserByIdAsync(actorUserId, cancellationToken);
+
+        if (actor is null)
+        {
+            return AdministrationResult<string>.Fail(AdministrationFailureReason.Forbidden);
+        }
+
+        var organization = await _store.FindOrganizationByIdAsync(organizationId, cancellationToken);
+
+        if (organization is null)
+        {
+            return AdministrationResult<string>.Fail(AdministrationFailureReason.NotFound);
+        }
+
+        if (!CanAccessOrganization(actor, organization.Id))
+        {
+            return AdministrationResult<string>.Fail(AdministrationFailureReason.Forbidden);
+        }
+
+        organization.InviteCode = GenerateInviteCode();
+        organization.InviteCodeGeneratedAtUtc = DateTime.UtcNow;
+
+        await _store.SaveChangesAsync(cancellationToken);
+
+        return AdministrationResult<string>.Success(organization.InviteCode);
     }
 
     public async Task<AdministrationResult<PagedResultModel<UserSummaryModel>>> ListUsersAsync(
@@ -760,8 +799,15 @@ public sealed class OrganizationUserAdministrationService : IOrganizationUserAdm
             Phone = organization.Phone,
             PrimaryContactFirstName = organization.PrimaryContactFirstName,
             PrimaryContactLastName = organization.PrimaryContactLastName,
+            InviteCode = organization.InviteCode,
             IsArchived = organization.IsArchived
         };
+    }
+
+    private static string GenerateInviteCode()
+    {
+        const string chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+        return new string(Enumerable.Range(0, 8).Select(_ => chars[Random.Shared.Next(chars.Length)]).ToArray());
     }
 
     private static UserDetailModel ToUserDetail(User user)
