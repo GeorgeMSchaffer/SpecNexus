@@ -1,6 +1,6 @@
 IdeaWriteRequest:
   type: object
-  required: [title, description]
+  required: [title, description, priority]
   properties:
     title:
       type: string
@@ -8,6 +8,17 @@ IdeaWriteRequest:
     description:
       type: string
       maxLength: 4000
+    priority:
+      type: string
+      enum: [Low, Medium, High, Critical]
+    dueDate:
+      type: string
+      format: date
+      nullable: true
+    assigneeUserId:
+      type: string
+      format: uuid
+      nullable: true
     statusId:
       type: string
       format: uuid

@@ -5,6 +5,10 @@ paths:
       responses:
         '200':
           description: Paginated organizations
+          content:
+            application/json:
+              schema:
+                type: object
         '401':
           description: Missing, expired, or invalid authentication
           content:
@@ -28,6 +32,10 @@ paths:
       responses:
         '201':
           description: Organization created
+          content:
+            application/json:
+              schema:
+                type: object
         '400':
           description: Malformed request body or invalid field constraints
           content:
@@ -54,6 +62,10 @@ paths:
       responses:
         '200':
           description: Organization detail
+          content:
+            application/json:
+              schema:
+                type: object
         '401':
           description: Missing, expired, or invalid authentication
           content:
@@ -85,8 +97,59 @@ paths:
       responses:
         '200':
           description: Organization updated
+          content:
+            application/json:
+              schema:
+                type: object
         '400':
           description: Malformed request body or invalid field constraints
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ValidationProblemDetails
+        '401':
+          description: Missing, expired, or invalid authentication
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '403':
+          description: Authenticated caller is not allowed to update this organization
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '404':
+          description: Organization not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+  /api/v1/organizations/{organizationId}/logo:
+    put:
+      summary: Upload or replace organization logo
+      parameters:
+        - $ref: ../components/parameters.yaml#/OrganizationId
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [logoFile]
+              properties:
+                logoFile:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Organization logo uploaded or replaced
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/organizations-users.yaml#/OrganizationLogoResponse
+        '400':
+          description: Malformed request body or invalid logo constraints
           content:
             application/problem+json:
               schema:
@@ -143,6 +206,10 @@ paths:
       responses:
         '200':
           description: Paginated users
+          content:
+            application/json:
+              schema:
+                type: object
         '401':
           description: Missing, expired, or invalid authentication
           content:
@@ -174,6 +241,10 @@ paths:
       responses:
         '201':
           description: User created
+          content:
+            application/json:
+              schema:
+                type: object
         '400':
           description: Malformed request body or invalid field constraints
           content:
@@ -206,6 +277,10 @@ paths:
       responses:
         '200':
           description: User detail
+          content:
+            application/json:
+              schema:
+                type: object
         '401':
           description: Missing, expired, or invalid authentication
           content:
@@ -214,6 +289,47 @@ paths:
                 $ref: ../components/schemas/common.yaml#/ProblemDetails
         '403':
           description: Authenticated caller is not allowed to view this user
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '404':
+          description: User not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+    put:
+      summary: Update user detail
+      parameters:
+        - $ref: ../components/parameters.yaml#/UserId
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/organizations-users.yaml#/UserUpdateRequest
+      responses:
+        '200':
+          description: User updated
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          description: Malformed request body or invalid field constraints
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ValidationProblemDetails
+        '401':
+          description: Missing, expired, or invalid authentication
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '403':
+          description: Authenticated caller is not allowed to update this user
           content:
             application/problem+json:
               schema:
@@ -250,43 +366,6 @@ paths:
                 $ref: ../components/schemas/common.yaml#/ProblemDetails
         '403':
           description: Authenticated caller is not allowed to issue a temporary password for this user
-          content:
-            application/problem+json:
-              schema:
-                $ref: ../components/schemas/common.yaml#/ProblemDetails
-        '404':
-          description: User not found
-          content:
-            application/problem+json:
-              schema:
-                $ref: ../components/schemas/common.yaml#/ProblemDetails
-    put:
-      summary: Update user detail
-      parameters:
-        - $ref: ../components/parameters.yaml#/UserId
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: ../components/schemas/organizations-users.yaml#/UserUpdateRequest
-      responses:
-        '200':
-          description: User updated
-        '400':
-          description: Malformed request body or invalid field constraints
-          content:
-            application/problem+json:
-              schema:
-                $ref: ../components/schemas/common.yaml#/ValidationProblemDetails
-        '401':
-          description: Missing, expired, or invalid authentication
-          content:
-            application/problem+json:
-              schema:
-                $ref: ../components/schemas/common.yaml#/ProblemDetails
-        '403':
-          description: Authenticated caller is not allowed to update this user
           content:
             application/problem+json:
               schema:

@@ -375,6 +375,7 @@ Success response `200` item shape:
 - `boardId`
 - `organizationId`
 - `name`
+- `allowUserStatusUpdate` boolean
 - `swimlaneCount`
 
 ### `POST /api/v1/organizations/{organizationId}/boards`
@@ -382,6 +383,7 @@ Purpose: Create a board with at least two swimlanes.
 
 Request body:
 - `name` required string
+- `allowUserStatusUpdate` required boolean
 - `swimlanes` required array of
 	- `statusId` GUID string
 	- `order` integer
@@ -399,6 +401,7 @@ Purpose: Update board name or selected statuses.
 
 Request body:
 - `name` required string
+- `allowUserStatusUpdate` required boolean
 - `swimlanes` required array of `statusId` and `order`
 
 ### `POST /api/v1/boards/{boardId}/swimlanes/reorder`
@@ -507,6 +510,22 @@ Request body:
 
 Success response:
 - `204 No Content`
+
+## Tag Contracts
+
+### `GET /api/v1/organizations/{organizationId}/tags`
+Purpose: Return tag autocomplete suggestions within an organization.
+
+Query parameters:
+- `search` required string, minimum 2 characters
+- `limit` optional integer, defaults to `10`, maximum `50`
+
+Success response `200`:
+- string array of matching tag names
+
+Rules:
+- matching is case-insensitive by normalized tag prefix
+- suggestions are organization-scoped
 
 ## Comment Contracts
 

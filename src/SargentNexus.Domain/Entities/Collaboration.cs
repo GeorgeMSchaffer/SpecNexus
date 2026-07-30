@@ -18,9 +18,27 @@ public sealed class Idea : AuditableEntityBase
 
     public string Description { get; set; } = string.Empty;
 
+    public IdeaPriority Priority { get; set; }
+
+    public DateOnly? DueDate { get; set; }
+
+    public Guid? AssigneeUserId { get; set; }
+
+    public User? AssigneeUser { get; set; }
+
     public Guid StatusId { get; set; }
 
     public Status Status { get; set; } = null!;
+
+    public IdeaApprovalState ApprovalState { get; set; }
+
+    public Guid? PendingApprovalTargetStatusId { get; set; }
+
+    public Guid? PendingApprovalPreviousStatusId { get; set; }
+
+    public DateTime? PendingApprovalRequestedAtUtc { get; set; }
+
+    public DateTime? PendingApprovalExpiresAtUtc { get; set; }
 
     public ICollection<IdeaTag> IdeaTags { get; set; } = new List<IdeaTag>();
 

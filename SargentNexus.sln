@@ -23,6 +23,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SargentNexus.Application.Te
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SargentNexus.Infrastructure.Tests", "tests\SargentNexus.Infrastructure.Tests\SargentNexus.Infrastructure.Tests.csproj", "{18F05861-9277-4BC3-B032-E865F44344D4}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SargentNexus.BrowserTests", "tests\SargentNexus.BrowserTests\SargentNexus.BrowserTests.csproj", "{5DE7384A-9BA2-43ED-B936-EBE963CE506A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = ".tmp-playwright-inspect", ".tmp-playwright-inspect\.tmp-playwright-inspect.csproj", "{E82F1D2B-4725-427B-AACA-ECC2E3FFCF0E}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -64,6 +68,14 @@ Global
 		{18F05861-9277-4BC3-B032-E865F44344D4}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{18F05861-9277-4BC3-B032-E865F44344D4}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{18F05861-9277-4BC3-B032-E865F44344D4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5DE7384A-9BA2-43ED-B936-EBE963CE506A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5DE7384A-9BA2-43ED-B936-EBE963CE506A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5DE7384A-9BA2-43ED-B936-EBE963CE506A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5DE7384A-9BA2-43ED-B936-EBE963CE506A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E82F1D2B-4725-427B-AACA-ECC2E3FFCF0E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E82F1D2B-4725-427B-AACA-ECC2E3FFCF0E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E82F1D2B-4725-427B-AACA-ECC2E3FFCF0E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E82F1D2B-4725-427B-AACA-ECC2E3FFCF0E}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{52AFA814-CA97-4E0E-84B6-252271379320} = {3CEB15F3-26EF-42A4-B613-48167EAEF38A}
@@ -74,5 +86,6 @@ Global
 		{121C4B4E-E89C-4109-AFB2-456F0E69FA9F} = {992B1882-C333-4F3A-962C-E6994A1967D1}
 		{FDB9EA11-142B-495F-831C-5A029430C203} = {992B1882-C333-4F3A-962C-E6994A1967D1}
 		{18F05861-9277-4BC3-B032-E865F44344D4} = {992B1882-C333-4F3A-962C-E6994A1967D1}
+		{5DE7384A-9BA2-43ED-B936-EBE963CE506A} = {992B1882-C333-4F3A-962C-E6994A1967D1}
 	EndGlobalSection
 EndGlobal

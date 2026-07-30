@@ -3,6 +3,20 @@ info:
   title: SargentNexus Ideas and Engagement API
   version: 1.0.0
 paths:
+  /api/v1/organizations/{organizationId}/tags:
+    get:
+      summary: List organization tag autocomplete suggestions
+      responses:
+        '200':
+          description: Matching tag suggestions
+        '400':
+          description: Bad Request
+        '401':
+          description: Missing, expired, or invalid authentication
+        '403':
+          description: Authenticated caller is not allowed to list tags for this organization
+        '404':
+          description: Organization not found
   /api/v1/boards/{boardId}/ideas:
     get:
       summary: List ideas on a board
@@ -189,7 +203,7 @@ components:
                   type: string
     IdeaWriteRequest:
       type: object
-      required: [title, description]
+      required: [title, description, priority]
       properties:
         title:
           type: string
@@ -197,6 +211,17 @@ components:
         description:
           type: string
           maxLength: 4000
+        priority:
+          type: string
+          enum: [Low, Medium, High, Critical]
+        dueDate:
+          type: string
+          format: date
+          nullable: true
+        assigneeUserId:
+          type: string
+          format: uuid
+          nullable: true
         statusId:
           type: string
           format: uuid
@@ -216,3 +241,5 @@ components:
       properties:
         body:
           type: string
+          maxLength: 2000
+          description: Plain text only. Line breaks allowed.

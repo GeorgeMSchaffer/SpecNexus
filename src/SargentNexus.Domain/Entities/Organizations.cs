@@ -61,6 +61,8 @@ public sealed class User : EntityBase
 
     public ICollection<Idea> AuthoredIdeas { get; set; } = new List<Idea>();
 
+    public ICollection<Idea> AssignedIdeas { get; set; } = new List<Idea>();
+
     public ICollection<Comment> Comments { get; set; } = new List<Comment>();
 
     public ICollection<Upvote> Upvotes { get; set; } = new List<Upvote>();

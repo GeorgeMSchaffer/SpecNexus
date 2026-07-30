@@ -1,10 +1,50 @@
 paths:
+  /api/v1/organizations/{organizationId}/tags:
+    get:
+      summary: List organization tag autocomplete suggestions
+      responses:
+        '200':
+          description: Matching tag suggestions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+        '400':
+          description: Malformed request body or invalid field constraints
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ValidationProblemDetails
+        '401':
+          description: Missing, expired, or invalid authentication
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '403':
+          description: Authenticated caller is not allowed to list tags for this organization
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '404':
+          description: Organization not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
   /api/v1/boards/{boardId}/ideas:
     get:
       summary: List ideas on a board
       responses:
         '200':
           description: Paginated ideas
+          content:
+            application/json:
+              schema:
+                type: object
         '401':
           description: Missing, expired, or invalid authentication
           content:
@@ -34,6 +74,10 @@ paths:
       responses:
         '201':
           description: Idea created
+          content:
+            application/json:
+              schema:
+                type: object
         '400':
           description: Malformed request body or invalid field constraints
           content:
@@ -64,6 +108,10 @@ paths:
       responses:
         '200':
           description: Idea detail
+          content:
+            application/json:
+              schema:
+                type: object
         '401':
           description: Missing, expired, or invalid authentication
           content:
@@ -93,6 +141,10 @@ paths:
       responses:
         '200':
           description: Idea updated
+          content:
+            application/json:
+              schema:
+                type: object
         '400':
           description: Malformed request body or invalid field constraints
           content:
@@ -164,6 +216,10 @@ paths:
       responses:
         '200':
           description: Paginated comments
+          content:
+            application/json:
+              schema:
+                type: object
         '401':
           description: Missing, expired, or invalid authentication
           content:
@@ -193,6 +249,10 @@ paths:
       responses:
         '201':
           description: Comment created
+          content:
+            application/json:
+              schema:
+                type: object
         '400':
           description: Malformed request body or invalid field constraints
           content:
@@ -229,6 +289,10 @@ paths:
       responses:
         '200':
           description: Comment updated
+          content:
+            application/json:
+              schema:
+                type: object
         '400':
           description: Malformed request body or invalid field constraints
           content:
@@ -282,6 +346,10 @@ paths:
       responses:
         '200':
           description: New upvote state
+          content:
+            application/json:
+              schema:
+                type: object
         '401':
           description: Missing, expired, or invalid authentication
           content:

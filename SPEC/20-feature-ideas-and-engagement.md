@@ -64,6 +64,16 @@ Users can create, discuss, organize, and support ideas within their organization
 4, Upvotes are counted per Idea and displayed next to the upvote icon.
 5. Only the user who cast an upvote can remove it.
 
+## Approval Workflow Decisions
+The following implementation decisions were clarified for any future approval or review workflow around ideas:
+
+- Approval is modeled as a workflow state transition, not as a separate entity.
+- The idea remains editable while pending approval, but only authorized roles can move it to the next state.
+- A pending approval request expires after 24 hours and automatically returns to the previous state if no action is taken.
+- Rejection returns the idea to the last non-terminal state and preserves the existing revision history.
+- Concurrent edits are resolved with last-write-wins semantics, and the latest approved state wins on save.
+- AI-generated or AI-assisted content is treated as untrusted until reviewed by a human; the system must not auto-approve AI-generated submissions.
+
 ## Acceptance Criteria
 - [ ] Required idea fields are enforced
 - [ ] Idea title is limited to 150 characters

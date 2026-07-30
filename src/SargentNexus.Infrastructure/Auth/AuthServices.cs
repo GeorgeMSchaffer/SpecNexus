@@ -291,7 +291,7 @@ internal sealed class AuthSeeder : IAuthSeeder
             SiteAdminEmail = configuration["Seed:SiteAdminEmail"] ?? "siteadmin@sargentnexus.local",
             SiteAdminFirstName = configuration["Seed:SiteAdminFirstName"] ?? "Site",
             SiteAdminLastName = configuration["Seed:SiteAdminLastName"] ?? "Admin",
-            SiteAdminPassword = configuration["Seed:SiteAdminPassword"]
+            SiteAdminPassword = configuration["Seed:SiteAdminPassword"] ?? "Abc123!Demo"
         };
     }
 
@@ -299,21 +299,54 @@ internal sealed class AuthSeeder : IAuthSeeder
     {
         await EnsureDatabaseAsync(cancellationToken);
 
-        var siteAdminExists = await _dbContext.Users.AnyAsync(item => item.Role == UserRole.SiteAdmin, cancellationToken);
-
-        if (siteAdminExists)
-        {
-            return;
-        }
+        var siteAdmin = await _dbContext.Users.SingleOrDefaultAsync(item => item.Role == UserRole.SiteAdmin, cancellationToken);
 
         if (string.IsNullOrWhiteSpace(_options.SiteAdminPassword))
         {
             throw new InvalidOperationException("Seed:SiteAdminPassword must be configured to create the initial Site Admin account.");
         }
 
-        var siteAdmin = new User
+        var organization = await _dbContext.Organizations.FirstOrDefaultAsync(cancellationToken);
+        if (organization is null)
+        {
+            organization = new Organization
+            {
+                Id = Guid.NewGuid(),
+                CompanyName = "Sargent Nexus",
+                Address = "1 Demo Street",
+                City = "Seattle",
+                State = "WA",
+                Zip = "98101",
+                Phone = "206-555-0100",
+                PrimaryContactFirstName = "Demo",
+                PrimaryContactLastName = "Admin",
+                IsArchived = false
+            };
+
+            _dbContext.Organizations.Add(organization);
+        }
+
+        if (siteAdmin is not null)
+        {
+            siteAdmin.OrganizationId = organization.Id;
+            siteAdmin.FirstName = _options.SiteAdminFirstName;
+            siteAdmin.LastName = _options.SiteAdminLastName;
+            siteAdmin.Email = _options.SiteAdminEmail.Trim();
+            siteAdmin.PasswordHash = _passwordHasher.Hash(_options.SiteAdminPassword);
+            siteAdmin.Role = UserRole.SiteAdmin;
+            siteAdmin.Status = UserLifecycleStatus.Active;
+            siteAdmin.MustChangePassword = true;
+            siteAdmin.FailedLoginAttemptCount = 0;
+            siteAdmin.LastFailedLoginAttemptUtc = null;
+            siteAdmin.LockoutEndUtc = null;
+            await _dbContext.SaveChangesAsync(cancellationToken);
+            return;
+        }
+
+        var createdSiteAdmin = new User
         {
             Id = Guid.NewGuid(),
+            OrganizationId = organization.Id,
             FirstName = _options.SiteAdminFirstName,
             LastName = _options.SiteAdminLastName,
             Email = _options.SiteAdminEmail.Trim(),
@@ -323,7 +356,7 @@ internal sealed class AuthSeeder : IAuthSeeder
             MustChangePassword = true
         };
 
-        _dbContext.Users.Add(siteAdmin);
+        _dbContext.Users.Add(createdSiteAdmin);
         await _dbContext.SaveChangesAsync(cancellationToken);
     }
 
@@ -331,12 +364,36 @@ internal sealed class AuthSeeder : IAuthSeeder
     {
         await EnsureDatabaseAsync(cancellationToken);
 
+        var siteAdmin = await _dbContext.Users.SingleOrDefaultAsync(item => item.Role == UserRole.SiteAdmin, cancellationToken);
+        if (siteAdmin is null)
+        {
+            siteAdmin = new User
+            {
+                Id = Guid.NewGuid(),
+                OrganizationId = null,
+                FirstName = _options.SiteAdminFirstName,
+                LastName = _options.SiteAdminLastName,
+                Email = _options.SiteAdminEmail.Trim(),
+                PasswordHash = _passwordHasher.Hash(_options.SiteAdminPassword ?? "Abc123!Demo"),
+                Role = UserRole.SiteAdmin,
+                Status = UserLifecycleStatus.Active,
+                MustChangePassword = true
+            };
+
+            _dbContext.Users.Add(siteAdmin);
+        }
+
         var nowUtc = DateTime.UtcNow;
         var demoPasswordHash = _passwordHasher.Hash(DemoPassword);
 
         foreach (var demoOrganization in DemoOrganizations)
         {
             var organization = await FindOrCreateOrganizationAsync(demoOrganization, cancellationToken);
+            if (siteAdmin.OrganizationId is null)
+            {
+                siteAdmin.OrganizationId = organization.Id;
+            }
+
             var statuses = await EnsureStatusesAsync(organization, cancellationToken);
             var board = await EnsureBoardAsync(organization, demoOrganization, cancellationToken);
             await EnsureBoardSwimlanesAsync(board, statuses, cancellationToken);
@@ -593,6 +650,9 @@ internal sealed class AuthSeeder : IAuthSeeder
                     AuthorUserId = author.Id,
                     Title = title,
                     Description = description,
+                    Priority = IdeaPriority.Medium,
+                    DueDate = null,
+                    AssigneeUserId = null,
                     StatusId = status.Id,
                     CreatedAtUtc = nowUtc,
                     UpdatedAtUtc = null
@@ -604,6 +664,9 @@ internal sealed class AuthSeeder : IAuthSeeder
             else
             {
                 idea.Description = description;
+                idea.Priority = IdeaPriority.Medium;
+                idea.DueDate = null;
+                idea.AssigneeUserId = null;
                 idea.StatusId = status.Id;
             }
 

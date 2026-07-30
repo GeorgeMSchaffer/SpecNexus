@@ -30,6 +30,13 @@ Email notifications are sent when:
 7. Notification events are persisted for internal processing and verification only in MVP; read or query endpoints are not required in MVP.
 8. MVP verification uses tests and internal diagnostics outside the public API surface rather than public event query endpoints.
 
+## Approval Workflow Decisions
+The notification rules for the approval workflow are:
+
+- Approval-related events generate notifications to the idea author and any reviewer or approver involved in the transition.
+- Notification payloads include the idea title and a canonical idea link.
+- Expiration and rejection events are also notified so the actor can understand why the workflow moved back.
+
 ## Acceptance Criteria
 - [ ] Notification triggers are defined for mentions, comments, and status changes
 - [ ] Email delivery remains deferred outside MVP

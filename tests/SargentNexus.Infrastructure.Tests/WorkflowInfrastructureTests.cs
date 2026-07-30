@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using SargentNexus.Application.Workflow;
 using SargentNexus.Domain;
@@ -67,18 +68,60 @@ public sealed class WorkflowInfrastructureTests
             OrganizationId = Guid.NewGuid(),
             Name = "Delivery"
         };
+        var actorUserId = Guid.NewGuid();
 
         var orderedStatusIds = new[] { Guid.NewGuid(), Guid.NewGuid() };
 
-        await writer.WriteBoardSwimlanesReorderedAsync(Guid.NewGuid(), board, orderedStatusIds, CancellationToken.None);
+        await writer.WriteBoardSwimlanesReorderedAsync(actorUserId, board, orderedStatusIds, CancellationToken.None);
 
         var auditEvent = await dbContext.AuditEvents.SingleAsync();
         Assert.Equal("Workflow.BoardSwimlanesReordered", auditEvent.EventType);
         Assert.Equal("Board", auditEvent.EntityType);
         Assert.Equal(board.Id, auditEvent.EntityId);
         Assert.Equal(board.OrganizationId, auditEvent.OrganizationId);
+        Assert.Equal(actorUserId, auditEvent.ActorUserId);
         Assert.Equal(nowUtc, auditEvent.OccurredAtUtc);
-        Assert.Contains(orderedStatusIds[0].ToString(), auditEvent.Metadata, StringComparison.Ordinal);
+
+        using var metadata = JsonDocument.Parse(auditEvent.Metadata);
+        var orderedIds = metadata.RootElement.GetProperty("OrderedStatusIds").EnumerateArray().Select(item => item.GetGuid()).ToArray();
+        Assert.Equal(orderedStatusIds, orderedIds);
+    }
+
+    [Fact]
+    public async Task WorkflowAuditWriter_WriteIdeaUpvoteToggledAsync_PersistsAuditEvent()
+    {
+        await using var dbContext = CreateDbContext();
+        var nowUtc = new DateTime(2026, 7, 24, 12, 0, 0, DateTimeKind.Utc);
+        var timeProvider = new FixedTimeProvider(nowUtc);
+        var writer = new WorkflowAuditWriter(dbContext, timeProvider);
+
+        var idea = new Idea
+        {
+            Id = Guid.NewGuid(),
+            OrganizationId = Guid.NewGuid(),
+            BoardId = Guid.NewGuid(),
+            AuthorUserId = Guid.NewGuid(),
+            Title = "Audit idea",
+            Description = "Audit description",
+            Priority = IdeaPriority.Medium,
+            StatusId = Guid.NewGuid(),
+            CreatedAtUtc = nowUtc
+        };
+        var actorUserId = Guid.NewGuid();
+
+        await writer.WriteIdeaUpvoteToggledAsync(actorUserId, idea, true, 3, CancellationToken.None);
+
+        var auditEvent = await dbContext.AuditEvents.SingleAsync();
+        Assert.Equal("Workflow.IdeaUpvoteToggled", auditEvent.EventType);
+        Assert.Equal("Idea", auditEvent.EntityType);
+        Assert.Equal(idea.Id, auditEvent.EntityId);
+        Assert.Equal(idea.OrganizationId, auditEvent.OrganizationId);
+        Assert.Equal(actorUserId, auditEvent.ActorUserId);
+        Assert.Equal(nowUtc, auditEvent.OccurredAtUtc);
+
+        using var metadata = JsonDocument.Parse(auditEvent.Metadata);
+        Assert.True(metadata.RootElement.GetProperty("HasUpvoted").GetBoolean());
+        Assert.Equal(3, metadata.RootElement.GetProperty("UpvoteCount").GetInt32());
     }
 
     private static SargentNexusDbContext CreateDbContext()

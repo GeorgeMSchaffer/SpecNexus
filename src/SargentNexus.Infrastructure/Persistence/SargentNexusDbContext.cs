@@ -86,6 +86,7 @@ public sealed class SargentNexusDbContext : DbContext
             entity.ToTable("boards");
             entity.HasKey(item => item.Id);
             entity.Property(item => item.Name).HasMaxLength(150).IsRequired();
+            entity.Property(item => item.AllowUserStatusUpdate).HasDefaultValue(false);
             entity.HasOne(item => item.Organization)
                 .WithMany(item => item.Boards)
                 .HasForeignKey(item => item.OrganizationId)
@@ -113,6 +114,8 @@ public sealed class SargentNexusDbContext : DbContext
             entity.HasKey(item => item.Id);
             entity.Property(item => item.Title).HasMaxLength(150).IsRequired();
             entity.Property(item => item.Description).HasMaxLength(4000).IsRequired();
+            entity.Property(item => item.Priority).HasConversion<string>().HasMaxLength(20).HasDefaultValue(IdeaPriority.Medium).IsRequired();
+            entity.Property(item => item.DueDate).HasColumnType("date");
             entity.HasOne(item => item.Board)
                 .WithMany(item => item.Ideas)
                 .HasForeignKey(item => item.BoardId)
@@ -125,6 +128,10 @@ public sealed class SargentNexusDbContext : DbContext
                 .WithMany(item => item.AuthoredIdeas)
                 .HasForeignKey(item => item.AuthorUserId)
                 .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(item => item.AssigneeUser)
+                .WithMany(item => item.AssignedIdeas)
+                .HasForeignKey(item => item.AssigneeUserId)
+                .OnDelete(DeleteBehavior.Restrict);
             entity.HasOne(item => item.Status)
                 .WithMany(item => item.Ideas)
                 .HasForeignKey(item => item.StatusId)

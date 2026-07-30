@@ -17,6 +17,7 @@ components:
         - recipientUserId
         - occurredAtUtc
         - ideaLink
+        - message
       properties:
         eventId:
           type: string
@@ -43,6 +44,8 @@ components:
           type: string
           format: date-time
         ideaLink:
+          type: string
+        message:
           type: string
         metadata:
           type: object

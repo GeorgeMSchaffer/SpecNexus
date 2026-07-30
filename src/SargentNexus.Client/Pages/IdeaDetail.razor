@@ -1,0 +1,244 @@
+@page "/ideas/{IdeaId:guid}"
+@inject IAuthSessionService AuthSessionService
+@inject IClientErrorMessageService ErrorMessageService
+@inject NavigationManager NavigationManager
+@inject WorkflowApiClient WorkflowApiClient
+
+<PageTitle>Idea details</PageTitle>
+
+<AuthGate>
+    <div class="container py-4">
+        <a class="btn btn-outline-secondary btn-sm mb-3" href="/workflow">← Back to workflow</a>
+
+        @if (_loading)
+        {
+            <div class="alert alert-info">Loading idea…</div>
+        }
+        else if (_errorMessage is not null)
+        {
+            <div class="alert alert-danger">@_errorMessage</div>
+        }
+        else if (_idea is null)
+        {
+            <div class="alert alert-warning">The requested idea could not be found.</div>
+        }
+        else
+        {
+            <div class="card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+                        <div>
+                            <h1 class="h3 mb-2">@_idea.Title</h1>
+                            <div class="text-muted">Priority: @_idea.Priority • Status: @_idea.StatusName</div>
+                            @if (_idea.DueDate is not null)
+                            {
+                                <div class="text-muted">Due: @_idea.DueDate.Value.ToString("d")</div>
+                            }
+                        </div>
+                        <div class="d-flex flex-column align-items-end gap-2">
+                            <span class="badge text-bg-primary">@_idea.UpvoteCount upvotes</span>
+                            <button class="btn btn-outline-primary btn-sm" @onclick="HandleToggleUpvoteAsync" disabled="@_isSubmitting">@(_hasUpvoted ? "Remove upvote" : "Upvote")</button>
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Status</label>
+                            <select class="form-select" value="@_selectedStatusId" @onchange="HandleStatusChangeAsync">
+                                @foreach (var swimlane in _boardSwimlanes)
+                                {
+                                    <option value="@swimlane.StatusId">@swimlane.StatusName</option>
+                                }
+                            </select>
+                        </div>
+                    </div>
+
+                    <p class="mb-4">@_idea.Description</p>
+
+                    @if (_idea.TagNames.Count > 0)
+                    {
+                        <div class="mb-3">
+                            <div class="fw-semibold mb-2">Tags</div>
+                            <div class="d-flex flex-wrap gap-2">
+                                @foreach (var tag in _idea.TagNames)
+                                {
+                                    <span class="badge text-bg-light">@tag</span>
+                                }
+                            </div>
+                        </div>
+                    }
+
+                    @if (_idea.Mentions.Count > 0)
+                    {
+                        <div class="mb-3">
+                            <div class="fw-semibold mb-2">Mentions</div>
+                            <div class="d-flex flex-wrap gap-2">
+                                @foreach (var mention in _idea.Mentions)
+                                {
+                                    <span class="badge text-bg-secondary">@mention</span>
+                                }
+                            </div>
+                        </div>
+                    }
+
+                    <hr />
+
+                    <h2 class="h6 mb-3">Comments</h2>
+                    @if (_idea.Comments.Count == 0)
+                    {
+                        <p class="text-muted mb-3">No comments yet.</p>
+                    }
+                    else
+                    {
+                        <div class="list-group mb-3">
+                            @foreach (var comment in _idea.Comments)
+                            {
+                                <div class="list-group-item">
+                                    <div class="fw-semibold">Comment</div>
+                                    <div class="small text-muted">@comment.CreatedAtUtc.ToLocalTime().ToString("g")</div>
+                                    <div class="mt-2">@comment.Body</div>
+                                </div>
+                            }
+                        </div>
+                    }
+
+                    <EditForm Model="_commentModel" OnValidSubmit="HandleCommentAsync">
+                        <DataAnnotationsValidator />
+                        <div class="mb-3">
+                            <label class="form-label">Add a comment</label>
+                            <InputTextArea class="form-control" rows="3" @bind-Value="_commentModel.Body" />
+                            <ValidationMessage For="() => _commentModel.Body" />
+                        </div>
+                        <button class="btn btn-primary" type="submit" disabled="@_isSubmitting">@(_isSubmitting ? "Posting..." : "Post comment")</button>
+                    </EditForm>
+                </div>
+            </div>
+        }
+    </div>
+</AuthGate>
+
+@code {
+    [Parameter]
+    public Guid IdeaId { get; set; }
+
+    private IdeaDetailDto? _idea;
+    private bool _loading = true;
+    private bool _isSubmitting;
+    private bool _hasUpvoted;
+    private string? _errorMessage;
+    private Guid _selectedStatusId;
+    private List<SwimlaneDto> _boardSwimlanes = new();
+    private CommentFormModel _commentModel = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _errorMessage = null;
+
+        try
+        {
+            _idea = await WorkflowApiClient.GetIdeaDetailAsync(AuthSessionService.AccessToken!, IdeaId, CancellationToken.None);
+
+            var board = await WorkflowApiClient.GetBoardDetailAsync(AuthSessionService.AccessToken!, _idea.BoardId, CancellationToken.None);
+            _boardSwimlanes = board.Swimlanes.ToList();
+            _selectedStatusId = _idea.StatusId;
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = ErrorMessageService.GetDisplayMessage(null, null, ex);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task HandleCommentAsync()
+    {
+        if (_idea is null)
+        {
+            return;
+        }
+
+        _isSubmitting = true;
+        try
+        {
+            await WorkflowApiClient.CreateCommentAsync(AuthSessionService.AccessToken!, _idea.IdeaId, new CommentWriteRequestDto
+            {
+                Body = _commentModel.Body.Trim()
+            }, CancellationToken.None);
+
+            _commentModel = new CommentFormModel();
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = ErrorMessageService.GetDisplayMessage(null, null, ex);
+        }
+        finally
+        {
+            _isSubmitting = false;
+        }
+    }
+
+    private async Task HandleToggleUpvoteAsync()
+    {
+        if (_idea is null)
+        {
+            return;
+        }
+
+        _isSubmitting = true;
+        try
+        {
+            var result = await WorkflowApiClient.ToggleUpvoteAsync(AuthSessionService.AccessToken!, _idea.IdeaId, CancellationToken.None);
+            _hasUpvoted = result.HasUpvoted;
+            _idea.UpvoteCount = result.UpvoteCount;
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = ErrorMessageService.GetDisplayMessage(null, null, ex);
+        }
+        finally
+        {
+            _isSubmitting = false;
+        }
+    }
+
+    private async Task HandleStatusChangeAsync(ChangeEventArgs args)
+    {
+        if (_idea is null || !Guid.TryParse(args.Value?.ToString(), out var statusId))
+        {
+            return;
+        }
+
+        _isSubmitting = true;
+        try
+        {
+            await WorkflowApiClient.MoveIdeaStatusAsync(AuthSessionService.AccessToken!, _idea.IdeaId, statusId, CancellationToken.None);
+            _selectedStatusId = statusId;
+            _idea.StatusId = statusId;
+            _idea.StatusName = _boardSwimlanes.FirstOrDefault(x => x.StatusId == statusId)?.StatusName ?? _idea.StatusName;
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = ErrorMessageService.GetDisplayMessage(null, null, ex);
+        }
+        finally
+        {
+            _isSubmitting = false;
+        }
+    }
+
+    private sealed class CommentFormModel
+    {
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.StringLength(2000)]
+        public string Body { get; set; } = string.Empty;
+    }
+}

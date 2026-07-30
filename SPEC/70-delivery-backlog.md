@@ -217,6 +217,7 @@ Tasks:
 - implement unit tests from the test strategy
 - implement integration tests for auth, protected routes, organization scope, and collaboration flows
 - implement contract tests for schemas and problem-details error responses
+- add a critical-path smoke test for sign-in, board creation, and idea creation as a release-readiness gate
 - verify seed behavior, default organization bootstrap, and audit generation end-to-end
 - verify Development-only demo seed graph, idempotent startup behavior, and non-Development seed suppression
 - confirm deferred work remains deferred

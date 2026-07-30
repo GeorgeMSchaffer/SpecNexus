@@ -1,14 +1,37 @@
 BoardWriteRequest:
   type: object
-  required: [name, swimlanes]
+  required: [name, allowUserStatusUpdate, swimlanes]
   properties:
     name:
       type: string
+    allowUserStatusUpdate:
+      type: boolean
     swimlanes:
       type: array
       minItems: 2
       items:
         $ref: '#/Swimlane'
+BoardSummary:
+  type: object
+  required: [boardId, organizationId, name, allowUserStatusUpdate, swimlanes]
+  properties:
+    boardId:
+      type: string
+      format: uuid
+    organizationId:
+      type: string
+      format: uuid
+    name:
+      type: string
+    allowUserStatusUpdate:
+      type: boolean
+    swimlanes:
+      type: array
+      items:
+        $ref: '#/Swimlane'
+BoardDetail:
+  allOf:
+    - $ref: '#/BoardSummary'
 ReorderRequest:
   type: object
   required: [swimlanes]

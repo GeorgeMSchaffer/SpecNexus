@@ -10,6 +10,10 @@ public sealed class AuthSessionService : IAuthSessionService
     private const string StorageUserEmailKey = "sn.auth.userEmail";
     private const string StorageUserRoleKey = "sn.auth.userRole";
     private const string StorageUserIdKey = "sn.auth.userId";
+    private const string StorageOrganizationIdKey = "sn.auth.organizationId";
+    private const string StorageFirstNameKey = "sn.auth.firstName";
+    private const string StorageLastNameKey = "sn.auth.lastName";
+    private const string StorageStatusKey = "sn.auth.status";
 
     private readonly AuthApiClient _authApiClient;
     private readonly IJSRuntime _jsRuntime;
@@ -41,7 +45,7 @@ public sealed class AuthSessionService : IAuthSessionService
 
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
     {
-        if (_initialized)
+        if (_initialized && !string.IsNullOrWhiteSpace(_accessToken) && _user is not null)
         {
             return;
         }
@@ -54,6 +58,10 @@ public sealed class AuthSessionService : IAuthSessionService
         var userEmail = await ReadStorageAsync(StorageUserEmailKey);
         var userRole = await ReadStorageAsync(StorageUserRoleKey);
         var userIdText = await ReadStorageAsync(StorageUserIdKey);
+        var organizationIdText = await ReadStorageAsync(StorageOrganizationIdKey);
+        var firstName = await ReadStorageAsync(StorageFirstNameKey);
+        var lastName = await ReadStorageAsync(StorageLastNameKey);
+        var status = await ReadStorageAsync(StorageStatusKey);
 
         if (!string.IsNullOrWhiteSpace(_accessToken) &&
             !string.IsNullOrWhiteSpace(userEmail) &&
@@ -64,7 +72,11 @@ public sealed class AuthSessionService : IAuthSessionService
             {
                 UserId = userId,
                 Email = userEmail,
-                Role = userRole
+                Role = userRole,
+                OrganizationId = Guid.TryParse(organizationIdText, out var organizationId) ? organizationId : null,
+                FirstName = firstName ?? string.Empty,
+                LastName = lastName ?? string.Empty,
+                Status = status ?? string.Empty
             };
 
             if (_requiresPasswordChange)
@@ -73,24 +85,27 @@ public sealed class AuthSessionService : IAuthSessionService
                 return;
             }
 
-            var me = await _authApiClient.GetCurrentUserAsync(_accessToken, cancellationToken);
-            if (me is null)
+            if (string.IsNullOrWhiteSpace(_user.Email) || _user.OrganizationId is null || _user.OrganizationId == Guid.Empty)
             {
-                await ClearSessionAsync();
-                NotifyStateChanged();
-                return;
-            }
+                var me = await _authApiClient.GetCurrentUserAsync(_accessToken, cancellationToken);
+                if (me is null)
+                {
+                    await ClearSessionAsync();
+                    NotifyStateChanged();
+                    return;
+                }
 
-            _user = new LoginUserDto
-            {
-                UserId = me.UserId,
-                OrganizationId = me.OrganizationId,
-                Role = me.Role,
-                FirstName = me.FirstName,
-                LastName = me.LastName,
-                Email = me.Email,
-                Status = me.Status
-            };
+                _user = new LoginUserDto
+                {
+                    UserId = me.UserId,
+                    OrganizationId = me.OrganizationId,
+                    Role = me.Role,
+                    FirstName = me.FirstName,
+                    LastName = me.LastName,
+                    Email = me.Email,
+                    Status = me.Status
+                };
+            }
         }
         else
         {
@@ -187,6 +202,10 @@ public sealed class AuthSessionService : IAuthSessionService
         await WriteStorageAsync(StorageUserEmailKey, _user?.Email);
         await WriteStorageAsync(StorageUserRoleKey, _user?.Role);
         await WriteStorageAsync(StorageUserIdKey, _user?.UserId.ToString());
+        await WriteStorageAsync(StorageOrganizationIdKey, _user?.OrganizationId?.ToString());
+        await WriteStorageAsync(StorageFirstNameKey, _user?.FirstName);
+        await WriteStorageAsync(StorageLastNameKey, _user?.LastName);
+        await WriteStorageAsync(StorageStatusKey, _user?.Status);
     }
 
     private async Task ClearSessionAsync()
@@ -200,6 +219,10 @@ public sealed class AuthSessionService : IAuthSessionService
         await WriteStorageAsync(StorageUserEmailKey, null);
         await WriteStorageAsync(StorageUserRoleKey, null);
         await WriteStorageAsync(StorageUserIdKey, null);
+        await WriteStorageAsync(StorageOrganizationIdKey, null);
+        await WriteStorageAsync(StorageFirstNameKey, null);
+        await WriteStorageAsync(StorageLastNameKey, null);
+        await WriteStorageAsync(StorageStatusKey, null);
     }
 
     private async Task<string?> ReadStorageAsync(string key)

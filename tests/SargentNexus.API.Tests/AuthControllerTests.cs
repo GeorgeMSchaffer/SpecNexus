@@ -43,6 +43,43 @@ public sealed class AuthControllerTests
         Assert.Equal("Password1!", loginService.LastRequest.Password);
     }
 
+    [Fact]
+    public async Task Login_WhenSeededAdminLoginSucceeds_ReturnsOkWithPasswordChangeFlag()
+    {
+        var response = new LoginResponseModel
+        {
+            AccessToken = "admin-token",
+            ExpiresInSeconds = 3600,
+            RequiresPasswordChange = true,
+            User = new LoginUserModel
+            {
+                UserId = Guid.NewGuid(),
+                OrganizationId = null,
+                Role = "SiteAdmin",
+                FirstName = "Site",
+                LastName = "Admin",
+                Email = "siteadmin@sargentnexus.local",
+                Status = "Active"
+            }
+        };
+
+        var loginService = new StubLoginService(_ => Task.FromResult(LoginResult.Success(response)));
+        var controller = CreateController(loginService, new StubAuthAccountService());
+
+        var result = await controller.Login(new LoginRequestModel
+        {
+            Email = "siteadmin@sargentnexus.local",
+            Password = "Abc123!Demo"
+        }, CancellationToken.None);
+
+        var ok = Assert.IsType<OkObjectResult>(result);
+        Assert.Equal(StatusCodes.Status200OK, ok.StatusCode);
+        Assert.Same(response, ok.Value);
+        Assert.NotNull(loginService.LastRequest);
+        Assert.Equal("siteadmin@sargentnexus.local", loginService.LastRequest!.Email);
+        Assert.Equal("Abc123!Demo", loginService.LastRequest.Password);
+    }
+
     [Theory]
     [InlineData(LoginFailureReason.InvalidCredentials, StatusCodes.Status401Unauthorized, "Invalid credentials.")]
     [InlineData(LoginFailureReason.InactiveUser, StatusCodes.Status403Forbidden, "User account is inactive.")]

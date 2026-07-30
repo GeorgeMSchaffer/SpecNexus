@@ -33,6 +33,8 @@ public sealed class NotificationEvent : EntityBase
 
     public string IdeaLink { get; set; } = string.Empty;
 
+    public string Message { get; set; } = string.Empty;
+
     public DateTime OccurredAtUtc { get; set; }
 
     public string Metadata { get; set; } = string.Empty;

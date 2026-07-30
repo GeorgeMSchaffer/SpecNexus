@@ -6,4 +6,10 @@
     /admin/organization/{orgId}/users: Create and Manage Users for an org
     /admin/organization/{orgId}/statuses:  Create and manage statuses for the org
 
-- /boards/{orgId}/board/{boardId}/ :  
+- /boards/{orgId}/board/{boardId}/ :
+
+## ERROR DISPLAY
+
+- Frontend error surfaces must show the full underlying error message in Development.
+- Frontend error surfaces must show a generic user-safe message in Production.
+- The same UI should remain available in both modes, but the content should differ based on the runtime environment.

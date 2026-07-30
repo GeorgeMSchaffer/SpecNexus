@@ -98,6 +98,9 @@ Persists immediate swimlane reorder.
 
 ## Ideas
 
+### `GET /api/v1/organizations/{organizationId}/tags`
+Returns organization-scoped tag autocomplete suggestions when `search` has at least 2 characters.
+
 ### `GET /api/v1/boards/{boardId}/ideas`
 Paginated idea list with basic filtering and one sort field.
 

@@ -65,6 +65,11 @@ namespace SargentNexus.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<bool>("AllowUserStatusUpdate")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(150)
@@ -139,6 +144,12 @@ namespace SargentNexus.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<int>("ApprovalState")
+                        .HasColumnType("int");
+
+                    b.Property<Guid?>("AssigneeUserId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<Guid>("AuthorUserId")
                         .HasColumnType("uniqueidentifier");
 
@@ -153,8 +164,30 @@ namespace SargentNexus.Infrastructure.Persistence.Migrations
                         .HasMaxLength(4000)
                         .HasColumnType("nvarchar(4000)");
 
+                    b.Property<DateOnly?>("DueDate")
+                        .HasColumnType("date");
+
                     b.Property<Guid>("OrganizationId")
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("PendingApprovalExpiresAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("PendingApprovalPreviousStatusId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("PendingApprovalRequestedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("PendingApprovalTargetStatusId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Priority")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasDefaultValue("Medium");
 
                     b.Property<Guid>("StatusId")
                         .HasColumnType("uniqueidentifier");
@@ -168,6 +201,8 @@ namespace SargentNexus.Infrastructure.Persistence.Migrations
                         .HasColumnType("datetime2");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("AssigneeUserId");
 
                     b.HasIndex("AuthorUserId");
 
@@ -256,6 +291,10 @@ namespace SargentNexus.Infrastructure.Persistence.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
+                    b.Property<string>("Message")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("Metadata")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -282,8 +321,8 @@ namespace SargentNexus.Infrastructure.Persistence.Migrations
 
                     b.Property<string>("Address")
                         .IsRequired()
-                        .HasMaxLength(250)
-                        .HasColumnType("nvarchar(250)");
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
 
                     b.Property<string>("City")
                         .IsRequired()
@@ -300,8 +339,8 @@ namespace SargentNexus.Infrastructure.Persistence.Migrations
 
                     b.Property<string>("Phone")
                         .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                        .HasMaxLength(25)
+                        .HasColumnType("nvarchar(25)");
 
                     b.Property<string>("PrimaryContactFirstName")
                         .IsRequired()
@@ -456,9 +495,10 @@ namespace SargentNexus.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("OrganizationId", "Email")
-                        .IsUnique()
-                        .HasFilter("[OrganizationId] IS NOT NULL");
+                    b.HasIndex("Email")
+                        .IsUnique();
+
+                    b.HasIndex("OrganizationId");
 
                     b.ToTable("users", (string)null);
                 });
@@ -514,6 +554,11 @@ namespace SargentNexus.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("SargentNexus.Domain.Idea", b =>
                 {
+                    b.HasOne("SargentNexus.Domain.User", "AssigneeUser")
+                        .WithMany("AssignedIdeas")
+                        .HasForeignKey("AssigneeUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("SargentNexus.Domain.User", "AuthorUser")
                         .WithMany("AuthoredIdeas")
                         .HasForeignKey("AuthorUserId")
@@ -537,6 +582,8 @@ namespace SargentNexus.Infrastructure.Persistence.Migrations
                         .HasForeignKey("StatusId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.Navigation("AssigneeUser");
 
                     b.Navigation("AuthorUser");
 
@@ -570,11 +617,13 @@ namespace SargentNexus.Infrastructure.Persistence.Migrations
                 {
                     b.HasOne("SargentNexus.Domain.Comment", "Comment")
                         .WithMany("Mentions")
-                        .HasForeignKey("CommentId");
+                        .HasForeignKey("CommentId")
+                        .OnDelete(DeleteBehavior.NoAction);
 
                     b.HasOne("SargentNexus.Domain.Idea", "Idea")
                         .WithMany("Mentions")
-                        .HasForeignKey("IdeaId");
+                        .HasForeignKey("IdeaId")
+                        .OnDelete(DeleteBehavior.NoAction);
 
                     b.HasOne("SargentNexus.Domain.User", "MentionedUser")
                         .WithMany()
@@ -696,6 +745,8 @@ namespace SargentNexus.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("SargentNexus.Domain.User", b =>
                 {
+                    b.Navigation("AssignedIdeas");
+
                     b.Navigation("AuthoredIdeas");
 
                     b.Navigation("Comments");

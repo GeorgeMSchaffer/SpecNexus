@@ -33,3 +33,16 @@ UserUpdateRequest:
       format: email
     role: { type: string }
     status: { type: string }
+OrganizationLogoResponse:
+  type: object
+  required: [logoUrl, logoThumbnailUrl, logoHeightPx]
+  properties:
+    logoUrl:
+      type: string
+      format: uri
+    logoThumbnailUrl:
+      type: string
+      format: uri
+    logoHeightPx:
+      type: integer
+      maximum: 150

@@ -23,6 +23,8 @@ public sealed class Board : EntityBase
 
     public string Name { get; set; } = string.Empty;
 
+    public bool AllowUserStatusUpdate { get; set; }
+
     public ICollection<BoardSwimlane> Swimlanes { get; set; } = new List<BoardSwimlane>();
 
     public ICollection<Idea> Ideas { get; set; } = new List<Idea>();

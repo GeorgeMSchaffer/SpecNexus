@@ -78,6 +78,85 @@ public sealed class WorkflowDataAccess : IWorkflowDataAccess
             .ToArrayAsync(cancellationToken);
     }
 
+    public Task<Idea?> FindIdeaByIdAsync(Guid ideaId, CancellationToken cancellationToken)
+    {
+        return _dbContext.Ideas
+            .Include(item => item.Status)
+            .Include(item => item.AssigneeUser)
+            .Include(item => item.IdeaTags)
+                .ThenInclude(item => item.Tag)
+            .Include(item => item.Mentions)
+                .ThenInclude(item => item.MentionedUser)
+            .Include(item => item.Comments)
+            .Include(item => item.Upvotes)
+            .SingleOrDefaultAsync(item => item.Id == ideaId, cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<Idea>> ListIdeasByBoardIdAsync(Guid boardId, CancellationToken cancellationToken)
+    {
+        return await _dbContext.Ideas
+            .Include(item => item.Status)
+            .Include(item => item.AssigneeUser)
+            .Include(item => item.IdeaTags)
+                .ThenInclude(item => item.Tag)
+            .Include(item => item.Upvotes)
+            .Where(item => item.BoardId == boardId)
+            .ToArrayAsync(cancellationToken);
+    }
+
+    public Task<Comment?> FindCommentByIdAsync(Guid commentId, CancellationToken cancellationToken)
+    {
+        return _dbContext.Comments
+            .Include(item => item.Idea)
+            .SingleOrDefaultAsync(item => item.Id == commentId, cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<Comment>> ListCommentsByIdeaIdAsync(Guid ideaId, CancellationToken cancellationToken)
+    {
+        return await _dbContext.Comments
+            .Where(item => item.IdeaId == ideaId)
+            .ToArrayAsync(cancellationToken);
+    }
+
+    public Task<User?> FindUserByEmailAsync(Guid organizationId, string email, CancellationToken cancellationToken)
+    {
+        return _dbContext.Users.SingleOrDefaultAsync(
+            item => item.OrganizationId == organizationId && item.Email == email,
+            cancellationToken);
+    }
+
+    public Task<User?> FindOrganizationUserByIdAsync(Guid organizationId, Guid userId, CancellationToken cancellationToken)
+    {
+        return _dbContext.Users.SingleOrDefaultAsync(
+            item => item.OrganizationId == organizationId && item.Id == userId,
+            cancellationToken);
+    }
+
+    public Task<Upvote?> FindUpvoteAsync(Guid ideaId, Guid userId, CancellationToken cancellationToken)
+    {
+        return _dbContext.Upvotes.SingleOrDefaultAsync(item => item.IdeaId == ideaId && item.UserId == userId, cancellationToken);
+    }
+
+    public Task<Tag?> FindTagByNormalizedNameAsync(Guid organizationId, string normalizedName, CancellationToken cancellationToken)
+    {
+        return _dbContext.Tags.SingleOrDefaultAsync(
+            item => item.OrganizationId == organizationId && item.NormalizedName == normalizedName,
+            cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<Tag>> ListTagsByPrefixAsync(
+        Guid organizationId,
+        string normalizedPrefix,
+        int limit,
+        CancellationToken cancellationToken)
+    {
+        return await _dbContext.Tags
+            .Where(item => item.OrganizationId == organizationId && item.NormalizedName.StartsWith(normalizedPrefix))
+            .OrderBy(item => item.NormalizedName)
+            .Take(limit)
+            .ToArrayAsync(cancellationToken);
+    }
+
     public void AddStatus(Status status)
     {
         _dbContext.Statuses.Add(status);
@@ -96,6 +175,61 @@ public sealed class WorkflowDataAccess : IWorkflowDataAccess
     public void RemoveBoardSwimlanes(IEnumerable<BoardSwimlane> swimlanes)
     {
         _dbContext.BoardSwimlanes.RemoveRange(swimlanes);
+    }
+
+    public void AddIdea(Idea idea)
+    {
+        _dbContext.Ideas.Add(idea);
+    }
+
+    public void AddComment(Comment comment)
+    {
+        _dbContext.Comments.Add(comment);
+    }
+
+    public void RemoveComment(Comment comment)
+    {
+        _dbContext.Comments.Remove(comment);
+    }
+
+    public void AddUpvote(Upvote upvote)
+    {
+        _dbContext.Upvotes.Add(upvote);
+    }
+
+    public void RemoveUpvote(Upvote upvote)
+    {
+        _dbContext.Upvotes.Remove(upvote);
+    }
+
+    public void AddTag(Tag tag)
+    {
+        _dbContext.Tags.Add(tag);
+    }
+
+    public void AddIdeaTag(IdeaTag ideaTag)
+    {
+        _dbContext.IdeaTags.Add(ideaTag);
+    }
+
+    public void RemoveIdeaTags(IEnumerable<IdeaTag> ideaTags)
+    {
+        _dbContext.IdeaTags.RemoveRange(ideaTags);
+    }
+
+    public void RemoveMentions(IEnumerable<Mention> mentions)
+    {
+        _dbContext.Mentions.RemoveRange(mentions);
+    }
+
+    public void AddMention(Mention mention)
+    {
+        _dbContext.Mentions.Add(mention);
+    }
+
+    public void AddNotificationEvent(NotificationEvent notificationEvent)
+    {
+        _dbContext.NotificationEvents.Add(notificationEvent);
     }
 
     public Task SaveChangesAsync(CancellationToken cancellationToken)
@@ -209,6 +343,129 @@ public sealed class WorkflowAuditWriter : IWorkflowAuditWriter
             {
                 board.Name,
                 OrderedStatusIds = orderedStatusIds
+            },
+            cancellationToken);
+    }
+
+    public Task WriteIdeaCreatedAsync(Guid actorUserId, Idea idea, CancellationToken cancellationToken)
+    {
+        return WriteAsync(
+            actorUserId,
+            idea.OrganizationId,
+            "Idea",
+            idea.Id,
+            "Workflow.IdeaCreated",
+            new
+            {
+                idea.BoardId,
+                idea.StatusId,
+                idea.Priority,
+                idea.DueDate,
+                idea.AssigneeUserId
+            },
+            cancellationToken);
+    }
+
+    public Task WriteIdeaUpdatedAsync(Guid actorUserId, Idea idea, CancellationToken cancellationToken)
+    {
+        return WriteAsync(
+            actorUserId,
+            idea.OrganizationId,
+            "Idea",
+            idea.Id,
+            "Workflow.IdeaUpdated",
+            new
+            {
+                idea.BoardId,
+                idea.StatusId,
+                idea.Priority,
+                idea.DueDate,
+                idea.AssigneeUserId,
+                idea.UpdatedAtUtc
+            },
+            cancellationToken);
+    }
+
+    public Task WriteIdeaStatusMovedAsync(Guid actorUserId, Idea idea, Guid previousStatusId, CancellationToken cancellationToken)
+    {
+        return WriteAsync(
+            actorUserId,
+            idea.OrganizationId,
+            "Idea",
+            idea.Id,
+            "Workflow.IdeaStatusMoved",
+            new
+            {
+                PreviousStatusId = previousStatusId,
+                idea.StatusId,
+                idea.UpdatedAtUtc
+            },
+            cancellationToken);
+    }
+
+    public Task WriteCommentCreatedAsync(Guid actorUserId, Guid organizationId, Comment comment, CancellationToken cancellationToken)
+    {
+        return WriteAsync(
+            actorUserId,
+            organizationId,
+            "Comment",
+            comment.Id,
+            "Workflow.CommentCreated",
+            new
+            {
+                comment.IdeaId,
+                comment.AuthorUserId,
+                comment.CreatedAtUtc
+            },
+            cancellationToken);
+    }
+
+    public Task WriteCommentUpdatedAsync(Guid actorUserId, Guid organizationId, Comment comment, string previousBody, CancellationToken cancellationToken)
+    {
+        return WriteAsync(
+            actorUserId,
+            organizationId,
+            "Comment",
+            comment.Id,
+            "Workflow.CommentUpdated",
+            new
+            {
+                comment.IdeaId,
+                comment.AuthorUserId,
+                PreviousBody = previousBody,
+                comment.UpdatedAtUtc
+            },
+            cancellationToken);
+    }
+
+    public Task WriteCommentDeletedAsync(Guid actorUserId, Guid organizationId, Comment comment, CancellationToken cancellationToken)
+    {
+        return WriteAsync(
+            actorUserId,
+            organizationId,
+            "Comment",
+            comment.Id,
+            "Workflow.CommentDeleted",
+            new
+            {
+                comment.IdeaId,
+                comment.AuthorUserId
+            },
+            cancellationToken);
+    }
+
+    public Task WriteIdeaUpvoteToggledAsync(Guid actorUserId, Idea idea, bool hasUpvoted, int upvoteCount, CancellationToken cancellationToken)
+    {
+        return WriteAsync(
+            actorUserId,
+            idea.OrganizationId,
+            "Idea",
+            idea.Id,
+            "Workflow.IdeaUpvoteToggled",
+            new
+            {
+                HasUpvoted = hasUpvoted,
+                UpvoteCount = upvoteCount
             },
             cancellationToken);
     }

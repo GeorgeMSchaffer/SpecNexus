@@ -59,6 +59,36 @@ public sealed class LoginServiceTests
     }
 
     [Fact]
+    public async Task GivenSeededSiteAdmin_WhenLoginWithDefaultPassword_ThenLoginSucceedsAndRequiresPasswordChange()
+    {
+        var user = TestUsers.CreateDefault();
+        user.Email = "siteadmin@sargentnexus.local";
+        user.Role = UserRole.SiteAdmin;
+        user.MustChangePassword = true;
+        user.PasswordHash = "hash:Abc123!Demo";
+
+        var lookup = new FakeAuthUserLookup(new[] { TestUsers.Record(user) });
+        var audit = new FakeAuthAuditWriter();
+        var issuer = new FakeAccessTokenIssuer();
+        var service = CreateService(lookup, audit, issuer);
+
+        var result = await service.LoginAsync(new LoginRequestModel
+        {
+            Email = user.Email,
+            Password = "Abc123!Demo"
+        }, CancellationToken.None);
+
+        Assert.True(result.Succeeded);
+        Assert.NotNull(result.Response);
+        Assert.True(result.Response!.RequiresPasswordChange);
+        Assert.Equal(UserRole.SiteAdmin.ToString(), result.Response.User!.Role);
+        Assert.Equal("siteadmin@sargentnexus.local", result.Response.User.Email);
+        Assert.Equal(1, issuer.IssueCount);
+        Assert.Single(audit.LoginSuccesses);
+        Assert.Empty(audit.LoginFailures);
+    }
+
+    [Fact]
     public async Task GivenUnknownEmail_WhenLogin_ThenInvalidCredentialsReturnedAndFailureAudited()
     {
         var lookup = new FakeAuthUserLookup();

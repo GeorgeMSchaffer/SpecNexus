@@ -1,4 +1,5 @@
 using SargentNexus.Infrastructure;
+using SargentNexus.API;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Mvc;
@@ -10,6 +11,16 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddProblemDetails();
+builder.Services.AddCors(options =>
+{
+	options.AddDefaultPolicy(policy =>
+	{
+		policy.WithOrigins("http://127.0.0.1:5237", "http://localhost:5237")
+			.AllowAnyHeader()
+			.AllowAnyMethod()
+			.AllowCredentials();
+	});
+});
 builder.Services.AddControllers()
 	.AddJsonOptions(options =>
 	{
@@ -81,12 +92,7 @@ app.UseStatusCodePages();
 await using (var scope = app.Services.CreateAsyncScope())
 {
 	var authSeeder = scope.ServiceProvider.GetRequiredService<IAuthSeeder>();
-	await authSeeder.SeedSiteAdminAsync(CancellationToken.None);
-
-	if (app.Environment.IsDevelopment())
-	{
-		await authSeeder.SeedDevelopmentDemoEnvironmentAsync(CancellationToken.None);
-	}
+	await StartupSeeding.SeedAuthAsync(authSeeder, app.Environment.IsDevelopment(), CancellationToken.None);
 }
 
 if (isSwaggerEnabled)
@@ -138,6 +144,7 @@ app.Use(async (context, next) =>
 	await next();
 });
 
+app.UseCors();
 app.UseAuthorization();
 
 app.MapControllers();

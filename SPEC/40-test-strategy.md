@@ -29,6 +29,14 @@
 - Problem-details-style error envelope required for all non-2xx responses
 - Authentication, organization, user, board, status, and idea contracts stay aligned with `30-Contracts.md`
 
+## Smoke Tests
+- Critical-path smoke test: sign in successfully, create a new board, and create a new idea
+- Smoke test success criteria:
+  - the user can authenticate with a seeded account and reach the main workspace experience
+  - a board can be created with the expected default status structure and saved successfully
+  - an idea can be created on the new board and appears in the board view without validation errors
+- Smoke test is intended as a release-readiness check for the MVP critical workflow, alongside the detailed unit, integration, and contract coverage
+
 ## Startup Safety
 - Demo environment seed runs only in Development
 - Non-Development startup does not apply demo data seed

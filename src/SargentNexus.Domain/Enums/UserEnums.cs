@@ -13,3 +13,17 @@ public enum UserLifecycleStatus
     Active = 1,
     Inactive = 2
 }
+
+public enum IdeaPriority
+{
+    Low = 1,
+    Medium = 2,
+    High = 3,
+    Critical = 4
+}
+
+public enum IdeaApprovalState
+{
+    None = 0,
+    PendingApproval = 1
+}

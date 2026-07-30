@@ -55,6 +55,8 @@ public sealed class BoardSummaryModel
 
     public string Name { get; init; } = string.Empty;
 
+    public bool AllowUserStatusUpdate { get; init; }
+
     public IReadOnlyList<SwimlaneModel> Swimlanes { get; init; } = Array.Empty<SwimlaneModel>();
 }
 
@@ -65,6 +67,8 @@ public sealed class BoardDetailModel
     public Guid OrganizationId { get; init; }
 
     public string Name { get; init; } = string.Empty;
+
+    public bool AllowUserStatusUpdate { get; init; }
 
     public IReadOnlyList<SwimlaneModel> Swimlanes { get; init; } = Array.Empty<SwimlaneModel>();
 }
@@ -77,6 +81,8 @@ public sealed class CreateBoardRequestModel
 
     [Required]
     public IReadOnlyList<Guid> StatusIds { get; set; } = Array.Empty<Guid>();
+
+    public bool AllowUserStatusUpdate { get; set; }
 }
 
 public sealed class UpdateBoardRequestModel
@@ -87,12 +93,203 @@ public sealed class UpdateBoardRequestModel
 
     [Required]
     public IReadOnlyList<Guid> StatusIds { get; set; } = Array.Empty<Guid>();
+
+    public bool AllowUserStatusUpdate { get; set; }
 }
 
 public sealed class ReorderSwimlanesRequestModel
 {
     [Required]
     public IReadOnlyList<Guid> OrderedStatusIds { get; set; } = Array.Empty<Guid>();
+}
+
+public sealed class PagedResultModel<T>
+{
+    public int Page { get; init; }
+
+    public int PageSize { get; init; }
+
+    public int TotalCount { get; init; }
+
+    public IReadOnlyList<T> Items { get; init; } = Array.Empty<T>();
+}
+
+public sealed class IdeaListQueryModel
+{
+    [Range(1, int.MaxValue)]
+    public int Page { get; set; } = 1;
+
+    [Range(1, 100)]
+    public int PageSize { get; set; } = 20;
+
+    public string? Search { get; set; }
+
+    public Guid? StatusId { get; set; }
+
+    public string? Tag { get; set; }
+
+    public string? Priority { get; set; }
+
+    public DateOnly? DueBefore { get; set; }
+
+    public string? SortBy { get; set; }
+
+    public string? SortDirection { get; set; }
+}
+
+public sealed class CommentListQueryModel
+{
+    [Range(1, int.MaxValue)]
+    public int Page { get; set; } = 1;
+
+    [Range(1, 100)]
+    public int PageSize { get; set; } = 20;
+
+    public string? SortDirection { get; set; }
+}
+
+public sealed class TagAutocompleteQueryModel
+{
+    public string Search { get; set; } = string.Empty;
+
+    [Range(1, 50)]
+    public int Limit { get; set; } = 10;
+}
+
+public sealed class IdeaListItemModel
+{
+    public Guid IdeaId { get; init; }
+
+    public Guid BoardId { get; init; }
+
+    public string Title { get; init; } = string.Empty;
+
+    public string Priority { get; init; } = string.Empty;
+
+    public DateOnly? DueDate { get; init; }
+
+    public Guid? AssigneeUserId { get; init; }
+
+    public string? AssigneeDisplayName { get; init; }
+
+    public Guid StatusId { get; init; }
+
+    public string StatusName { get; init; } = string.Empty;
+
+    public int UpvoteCount { get; init; }
+
+    public Guid AuthorUserId { get; init; }
+
+    public DateTime CreatedAtUtc { get; init; }
+}
+
+public sealed class IdeaDetailModel
+{
+    public Guid IdeaId { get; init; }
+
+    public Guid BoardId { get; init; }
+
+    public string Title { get; init; } = string.Empty;
+
+    public string Description { get; init; } = string.Empty;
+
+    public string Priority { get; init; } = string.Empty;
+
+    public DateOnly? DueDate { get; init; }
+
+    public Guid? AssigneeUserId { get; init; }
+
+    public string? AssigneeDisplayName { get; init; }
+
+    public Guid StatusId { get; init; }
+
+    public string StatusName { get; init; } = string.Empty;
+
+    public string ApprovalState { get; init; } = string.Empty;
+
+    public Guid? PendingApprovalTargetStatusId { get; init; }
+
+    public Guid? PendingApprovalPreviousStatusId { get; init; }
+
+    public DateTime? PendingApprovalRequestedAtUtc { get; init; }
+
+    public DateTime? PendingApprovalExpiresAtUtc { get; init; }
+
+    public IReadOnlyList<string> TagNames { get; init; } = Array.Empty<string>();
+
+    public IReadOnlyList<string> Mentions { get; init; } = Array.Empty<string>();
+
+    public IReadOnlyList<CommentModel> Comments { get; init; } = Array.Empty<CommentModel>();
+
+    public int UpvoteCount { get; init; }
+}
+
+public sealed class IdeaWriteRequestModel
+{
+    [Required]
+    [StringLength(150)]
+    public string Title { get; set; } = string.Empty;
+
+    [Required]
+    [StringLength(4000)]
+    public string Description { get; set; } = string.Empty;
+
+    [Required]
+    [RegularExpression("Low|Medium|High|Critical")]
+    public string Priority { get; set; } = string.Empty;
+
+    public DateOnly? DueDate { get; set; }
+
+    public Guid? AssigneeUserId { get; set; }
+
+    public Guid? StatusId { get; set; }
+
+    public IReadOnlyList<string> TagNames { get; set; } = Array.Empty<string>();
+
+    public IReadOnlyList<string> MentionEmails { get; set; } = Array.Empty<string>();
+}
+
+public sealed class MoveIdeaStatusRequestModel
+{
+    [Required]
+    public Guid StatusId { get; set; }
+
+    public bool SubmitForApproval { get; set; }
+
+    public bool Approve { get; set; }
+
+    public bool Reject { get; set; }
+}
+
+public sealed class CommentModel
+{
+    public Guid CommentId { get; init; }
+
+    public Guid IdeaId { get; init; }
+
+    public Guid AuthorUserId { get; init; }
+
+    public string Body { get; init; } = string.Empty;
+
+    public DateTime CreatedAtUtc { get; init; }
+
+    public DateTime? UpdatedAtUtc { get; init; }
+}
+
+public sealed class CommentWriteRequestModel
+{
+    [Required]
+    [StringLength(2000)]
+    public string Body { get; set; } = string.Empty;
+}
+
+public sealed class UpvoteToggleResultModel
+{
+    public Guid IdeaId { get; init; }
+
+    public bool HasUpvoted { get; init; }
+
+    public int UpvoteCount { get; init; }
 }
 
 public enum WorkflowFailureReason
@@ -102,7 +299,9 @@ public enum WorkflowFailureReason
     OrganizationNotFound = 3,
     StatusNotFound = 4,
     BoardNotFound = 5,
-    ValidationError = 6
+    ValidationError = 6,
+    IdeaNotFound = 7,
+    CommentNotFound = 8
 }
 
 public sealed class WorkflowResult<T>

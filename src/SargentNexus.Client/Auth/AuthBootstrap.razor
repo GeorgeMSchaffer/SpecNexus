@@ -1,8 +1,17 @@
 @inject IAuthSessionService AuthSessionService
+@inject NavigationManager NavigationManager
 
 @code {
     protected override async Task OnInitializedAsync()
     {
         await AuthSessionService.InitializeAsync();
+
+        var relative = NavigationManager.ToBaseRelativePath(NavigationManager.Uri);
+        var path = relative.Split('?', '#')[0].Trim('/').ToLowerInvariant();
+
+        if (AuthSessionService.IsAuthenticated && !AuthSessionService.RequiresPasswordChange && path == "")
+        {
+            NavigationManager.NavigateTo("/workflow", forceLoad: false);
+        }
     }
 }

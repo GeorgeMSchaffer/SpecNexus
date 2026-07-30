@@ -6,6 +6,15 @@ using SargentNexus.Infrastructure;
 
 public sealed class AuthSeederTests
 {
+    private static readonly string[] DefaultStatusNames =
+    {
+        "New / Pending",
+        "In Review",
+        "In Progress",
+        "Client Review",
+        "Complete"
+    };
+
     [Fact]
     public async Task SeedDevelopmentDemoEnvironmentAsync_FirstRun_CreatesExpectedDemoGraph()
     {
@@ -65,6 +74,183 @@ public sealed class AuthSeederTests
     }
 
     [Fact]
+    public async Task SeedDevelopmentDemoEnvironmentAsync_FirstRun_AssociatesSiteAdminWithAnOrganization()
+    {
+        await using var dbContext = CreateDbContext();
+        var hasher = CreateInternal<IPasswordHasher>("SargentNexus.Infrastructure.Pbkdf2PasswordHasher");
+        var seeder = CreateSeeder(dbContext, hasher);
+
+        await seeder.SeedDevelopmentDemoEnvironmentAsync(CancellationToken.None);
+
+        var siteAdmin = await dbContext.Users.SingleAsync(item => item.Role == UserRole.SiteAdmin);
+        var organizationIds = await dbContext.Organizations.Select(item => item.Id).ToListAsync();
+
+        Assert.NotNull(siteAdmin.OrganizationId);
+        Assert.Contains(siteAdmin.OrganizationId!.Value, organizationIds);
+    }
+
+    [Fact]
+    public async Task SeedDevelopmentDemoEnvironmentAsync_FirstRun_CreatesExpectedPerOrganizationGraphQuality()
+    {
+        await using var dbContext = CreateDbContext();
+        var hasher = CreateInternal<IPasswordHasher>("SargentNexus.Infrastructure.Pbkdf2PasswordHasher");
+        var seeder = CreateSeeder(dbContext, hasher);
+
+        await seeder.SeedDevelopmentDemoEnvironmentAsync(CancellationToken.None);
+
+        var organizations = await dbContext.Organizations.ToListAsync();
+        var boards = await dbContext.Boards.ToListAsync();
+        var swimlanes = await dbContext.BoardSwimlanes.ToListAsync();
+        var ideas = await dbContext.Ideas.ToListAsync();
+        var comments = await dbContext.Comments.ToListAsync();
+        var statuses = await dbContext.Statuses.ToListAsync();
+        var users = await dbContext.Users.ToListAsync();
+
+        foreach (var organization in organizations)
+        {
+            var organizationBoards = boards.Where(item => item.OrganizationId == organization.Id).ToList();
+            var board = Assert.Single(organizationBoards);
+
+            var boardSwimlanes = swimlanes
+                .Where(item => item.BoardId == board.Id)
+                .OrderBy(item => item.Order)
+                .ToList();
+
+            Assert.Equal(5, boardSwimlanes.Count);
+            Assert.Equal(new[] { 0, 1, 2, 3, 4 }, boardSwimlanes.Select(item => item.Order).ToArray());
+
+            var organizationStatuses = statuses.Where(item => item.OrganizationId == organization.Id).ToList();
+            Assert.Equal(DefaultStatusNames.Length, organizationStatuses.Count);
+            Assert.Equal(
+                DefaultStatusNames.OrderBy(item => item).ToArray(),
+                organizationStatuses.Select(item => item.Name).OrderBy(item => item).ToArray());
+
+            var boardIdeas = ideas.Where(item => item.BoardId == board.Id).ToList();
+            Assert.Equal(DefaultStatusNames.Length, boardIdeas.Count);
+            Assert.Equal(DefaultStatusNames.Length, boardIdeas.Select(item => item.StatusId).Distinct().Count());
+
+            var boardStatusIds = boardSwimlanes.Select(item => item.StatusId).ToHashSet();
+            var statusById = organizationStatuses.ToDictionary(item => item.Id);
+
+            var orderedStatusNames = boardSwimlanes
+                .OrderBy(item => item.Order)
+                .Select(item => statusById[item.StatusId].Name)
+                .ToArray();
+
+            Assert.Equal(DefaultStatusNames, orderedStatusNames);
+
+            Assert.All(boardIdeas, idea =>
+            {
+                Assert.Equal(organization.Id, idea.OrganizationId);
+                Assert.Contains(idea.StatusId, boardStatusIds);
+
+                var ideaStatus = statuses.Single(item => item.Id == idea.StatusId);
+                Assert.Equal(organization.Id, ideaStatus.OrganizationId);
+
+                var ideaComments = comments.Where(item => item.IdeaId == idea.Id).ToList();
+                Assert.Equal(2, ideaComments.Count);
+
+                var authorRoles = ideaComments
+                    .Select(item => users.Single(user => user.Id == item.AuthorUserId).Role)
+                    .ToHashSet();
+
+                Assert.Contains(UserRole.OrgAdmin, authorRoles);
+                Assert.Contains(UserRole.ReadOnly, authorRoles);
+            });
+        }
+    }
+
+    [Fact]
+    public async Task SeedDevelopmentDemoEnvironmentAsync_RerunAfterMutation_RepairsDemoInvariantsWithoutDuplication()
+    {
+        await using var dbContext = CreateDbContext();
+        var hasher = CreateInternal<IPasswordHasher>("SargentNexus.Infrastructure.Pbkdf2PasswordHasher");
+        var seeder = CreateSeeder(dbContext, hasher);
+
+        await seeder.SeedDevelopmentDemoEnvironmentAsync(CancellationToken.None);
+
+        var organizationA = await dbContext.Organizations.OrderBy(item => item.CompanyName).FirstAsync();
+        var organizationB = await dbContext.Organizations
+            .Where(item => item.Id != organizationA.Id)
+            .OrderBy(item => item.CompanyName)
+            .FirstAsync();
+
+        var boardA = await dbContext.Boards.SingleAsync(item => item.OrganizationId == organizationA.Id);
+        var ideaOriginalStatus = await dbContext.Statuses
+            .SingleAsync(item => item.OrganizationId == organizationA.Id && item.Name == "New / Pending");
+        var ideaA = await dbContext.Ideas
+            .SingleAsync(item => item.BoardId == boardA.Id && item.StatusId == ideaOriginalStatus.Id);
+
+        var foreignStatus = await dbContext.Statuses
+            .SingleAsync(item => item.OrganizationId == organizationB.Id && item.Name == "Complete");
+
+        var statusToRestore = await dbContext.Statuses
+            .SingleAsync(item => item.OrganizationId == organizationA.Id && item.Name == "In Review");
+
+        var swimlaneToRepair = await dbContext.BoardSwimlanes
+            .SingleAsync(item => item.BoardId == boardA.Id && item.StatusId == statusToRestore.Id);
+
+        var readOnlyUserToReset = await dbContext.Users
+            .SingleAsync(item => item.OrganizationId == organizationA.Id && item.Role == UserRole.ReadOnly);
+
+        ideaA.StatusId = foreignStatus.Id;
+        statusToRestore.IsDeleted = true;
+        swimlaneToRepair.Order = 99;
+        readOnlyUserToReset.Status = UserLifecycleStatus.Inactive;
+        readOnlyUserToReset.MustChangePassword = false;
+        readOnlyUserToReset.TemporaryPasswordHash = "temp-hash";
+        readOnlyUserToReset.TemporaryPasswordExpiresAtUtc = DateTime.UtcNow.AddHours(1);
+
+        await dbContext.SaveChangesAsync();
+
+        await seeder.SeedDevelopmentDemoEnvironmentAsync(CancellationToken.None);
+
+        var repairedStatus = await dbContext.Statuses
+            .SingleAsync(item => item.OrganizationId == organizationA.Id && item.Name == "In Review");
+
+        var repairedSwimlanes = await dbContext.BoardSwimlanes
+            .Where(item => item.BoardId == boardA.Id)
+            .OrderBy(item => item.Order)
+            .ToListAsync();
+
+        var repairedIdea = await dbContext.Ideas.SingleAsync(item => item.Id == ideaA.Id);
+        var repairedIdeaStatus = await dbContext.Statuses.SingleAsync(item => item.Id == repairedIdea.StatusId);
+
+        var repairedReadOnly = await dbContext.Users.SingleAsync(item => item.Id == readOnlyUserToReset.Id);
+
+        Assert.False(repairedStatus.IsDeleted);
+        Assert.Equal(new[] { 0, 1, 2, 3, 4 }, repairedSwimlanes.Select(item => item.Order).ToArray());
+        Assert.Equal(organizationA.Id, repairedIdeaStatus.OrganizationId);
+        Assert.Equal(UserLifecycleStatus.Active, repairedReadOnly.Status);
+        Assert.True(repairedReadOnly.MustChangePassword);
+        Assert.Null(repairedReadOnly.TemporaryPasswordHash);
+        Assert.Null(repairedReadOnly.TemporaryPasswordExpiresAtUtc);
+        Assert.True(hasher.Verify("abc123!", repairedReadOnly.PasswordHash));
+
+        Assert.Equal(3, await dbContext.Organizations.CountAsync());
+        Assert.Equal(9, await dbContext.Users.CountAsync(item => item.Role != UserRole.SiteAdmin));
+        Assert.Equal(3, await dbContext.Boards.CountAsync());
+        Assert.Equal(15, await dbContext.Statuses.CountAsync());
+        Assert.Equal(15, await dbContext.BoardSwimlanes.CountAsync());
+        Assert.Equal(15, await dbContext.Ideas.CountAsync());
+        Assert.Equal(30, await dbContext.Comments.CountAsync());
+    }
+
+    [Fact]
+    public async Task SeedSiteAdminAsync_WithoutConfiguredPassword_UsesDefaultDemoPassword()
+    {
+        await using var dbContext = CreateDbContext();
+        var hasher = CreateInternal<IPasswordHasher>("SargentNexus.Infrastructure.Pbkdf2PasswordHasher");
+        var seeder = CreateSeeder(dbContext, hasher, configuration: new ConfigurationManager());
+
+        await seeder.SeedSiteAdminAsync(CancellationToken.None);
+
+        var siteAdmin = await dbContext.Users.SingleAsync(item => item.Role == UserRole.SiteAdmin);
+
+        Assert.True(hasher.Verify("Abc123!Demo", siteAdmin.PasswordHash));
+    }
+
+    [Fact]
     public async Task SeedSiteAdminAsync_WithInMemoryProvider_CreatesSiteAdmin()
     {
         await using var dbContext = CreateDbContext();
@@ -104,16 +290,18 @@ public sealed class AuthSeederTests
         return new SargentNexusDbContext(options);
     }
 
-    private static IAuthSeeder CreateSeeder(SargentNexusDbContext dbContext, IPasswordHasher hasher)
+    private static IAuthSeeder CreateSeeder(SargentNexusDbContext dbContext, IPasswordHasher hasher, ConfigurationManager? configuration = null)
     {
-        var configuration = new ConfigurationManager
+        var effectiveConfiguration = configuration ?? new ConfigurationManager();
+
+        if (configuration is null)
         {
-            ["Seed:SiteAdminPassword"] = "Abc123!Demo"
-        };
+            effectiveConfiguration["Seed:SiteAdminPassword"] = "Abc123!Demo";
+        }
 
         var type = typeof(SargentNexusDbContext).Assembly.GetType("SargentNexus.Infrastructure.AuthSeeder", throwOnError: true)!;
 
-        return (IAuthSeeder)(Activator.CreateInstance(type, dbContext, hasher, configuration)
+        return (IAuthSeeder)(Activator.CreateInstance(type, dbContext, hasher, effectiveConfiguration)
             ?? throw new InvalidOperationException("Unable to construct AuthSeeder."));
     }
 

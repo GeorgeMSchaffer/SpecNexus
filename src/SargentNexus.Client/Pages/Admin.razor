@@ -1,0 +1,59 @@
+@page "/admin"
+@inject IAuthSessionService AuthSessionService
+
+<PageTitle>Admin</PageTitle>
+
+<AuthGate>
+    @if (!CanAccessAdmin)
+    {
+        <div class="container py-4">
+            <h1 class="h3 mb-3">Admin</h1>
+            <div class="alert alert-warning" role="alert">
+                You do not have permission to access the Admin area.
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="container py-4">
+            <h1 class="h3 mb-3">Admin</h1>
+            <p class="text-muted">Manage organizations, users, and workflow configuration.</p>
+
+            <div class="row g-3 mt-1">
+                <div class="col-md-4">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <h2 class="h6">Organizations</h2>
+                            <p class="mb-0 text-muted">Create, edit, and archive organizations.</p>
+                            <NavLink class="btn btn-sm btn-outline-primary mt-3" href="/admin/organizations">Open organizations</NavLink>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <h2 class="h6">Users</h2>
+                            <p class="mb-0 text-muted">Manage organization users and roles.</p>
+                            <button class="btn btn-sm btn-outline-secondary mt-3" type="button" disabled>Coming next</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <h2 class="h6">Boards &amp; Statuses</h2>
+                            <p class="mb-0 text-muted">Configure boards, statuses, and swimlanes.</p>
+                            <button class="btn btn-sm btn-outline-secondary mt-3" type="button" disabled>Coming next</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</AuthGate>
+
+@code {
+    private bool CanAccessAdmin =>
+        string.Equals(AuthSessionService.User?.Role, "SiteAdmin", StringComparison.OrdinalIgnoreCase)
+        || string.Equals(AuthSessionService.User?.Role, "OrgAdmin", StringComparison.OrdinalIgnoreCase);
+}

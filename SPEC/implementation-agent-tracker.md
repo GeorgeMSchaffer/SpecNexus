@@ -4,10 +4,10 @@
 Track implementation work that Copilot-driven implementation agents should complete, what is currently active, and what has already been finished.
 
 ## Current Status
-- Current implementation slice: T051 Implement Development-only demo environment seed and startup gating.
-- Current owner: infrastructure implementation agent
+- Current implementation slice: T049 contract tests for schema and problem-details behavior.
+- Current owner: hardening implementation agent
 - Current state: In Progress
-- Last updated: 2026-07-24
+- Last updated: 2026-07-30
 
 ## Completed
 - T001 Create the solution structure and project references.
@@ -21,12 +21,18 @@ Track implementation work that Copilot-driven implementation agents should compl
 - T009 Implement forced first-login password change.
 - T010 Emit audit events for authentication outcomes and password changes.
 - T011 Implement admin-issued temporary password reset as the P1 extension path.
+- T051 Implement Development-only demo environment seed and startup gating.
+- T052 Add unit and integration coverage for demo seed idempotency and dataset validation.
+- T046 Align OpenAPI with the written contracts.
+- T034 Allow board-configured Users to move any idea on an eligible board.
+- T036 Emit audit events for idea creation, edits, status changes, comments, and upvotes.
+- T048 Implement integration tests for auth, organization scope, and collaboration flows.
 
 ## In Progress
-- T051 Implement Development-only demo environment seed and startup gating.
+- T049 Implement contract tests for schema and problem-details error behavior.
 
 ## Ready Next
-- T052 Add unit and integration coverage for demo seed idempotency and dataset validation.
+- T050 Verify seed behavior, organization bootstrap, audit generation, and deferred-scope boundaries end-to-end.
 
 ## Progress Notes
 - T001 completed: created `SargentNexus.sln`, `global.json`, and the five core projects under `src/`.
@@ -45,6 +51,29 @@ Track implementation work that Copilot-driven implementation agents should compl
 - T011 completed: added temporary password issuance, 24-hour expiry tracking, login consumption of valid temporary passwords, and the admin-issued `/api/v1/users/{userId}/temporary-password` endpoint.
 - Project layout note: the solution and source tree were moved from `SPEC/` to the project root, and the relocated solution builds successfully from there.
 - T051 started: added Development-only startup hook and Infrastructure seeding implementation for 3 demo organizations, role users, board swimlane idea coverage, and example comments.
+- T051 completed: startup now seeds demo data only in Development while always seeding Site Admin.
+- T052 completed: added API startup-gating unit tests and expanded Infrastructure seed tests for per-organization graph validity plus reseed repair/idempotency invariants.
+- T046 in progress: synced merged OpenAPI route inventory to include organization logo endpoint, corrected misplaced user update method in merged path fragments, and aligned idea/notification schemas with canonical contract fields.
+- T046 completed: added merged OpenAPI response-schema coverage checks and contract drift tests, then aligned domain/infrastructure idea planning data fields (`priority`, `dueDate`, `assigneeUserId`) plus migration and seed compatibility updates.
+- Collaboration baseline started: added `IdeasController` endpoints for idea list/create/detail/update/status move, comment list/create/edit/delete, and upvote toggle.
+- Collaboration baseline started: expanded `IWorkflowManagementService` and `IWorkflowDataAccess` for idea/comment/upvote/tag/mention workflows and implemented end-to-end persistence-backed behavior in `WorkflowManagementService` and EF `WorkflowDataAccess`.
+- Collaboration baseline quality gate: added API and Application tests for new ideas/upvote flows; API/Application/Infrastructure suites all pass.
+- T028 completed: added `GET /api/v1/organizations/{organizationId}/tags` autocomplete endpoint with minimum-2-character validation, organization-scoped normalized-prefix matching, and limit support.
+- T028 contract sync: updated canonical contracts and SPECKIT OpenAPI (feature and merged) with tag autocomplete route and problem-details response definitions.
+- T028 test gate: added API controller tests, application service tests, and OpenAPI drift assertion for the new tags endpoint; API/Application suites pass.
+- T034 completed: added board-level `allowUserStatusUpdate` configuration through domain, workflow models, and board create/update/detail/list responses.
+- T034 authorization gate: `MoveIdeaStatusAsync` now permits User role status moves only when the board has `allowUserStatusUpdate=true`; Site Admin and Org Admin behavior is unchanged.
+- T034 persistence and quality gate: added EF migration `AddBoardAllowUserStatusUpdate` and application tests covering both allowed and forbidden user move paths; API/Application/Infrastructure suites pass.
+- T036 completed: workflow service now emits audit events for idea create/update/status move, comment create/update/delete, and upvote toggle actions.
+- T036 infrastructure support: extended `IWorkflowAuditWriter` and `WorkflowAuditWriter` with persisted event types for each idea lifecycle action.
+- T036 quality gate: expanded Application and Infrastructure tests to assert lifecycle audit emission; API/Application/Infrastructure suites pass.
+- T047 progress: aligned collaboration role behavior to spec by allowing Read Only users to create/edit/delete their own comments and toggle upvotes while preserving Read Only denial for idea create/edit paths.
+- T047 quality gate: added Read Only collaboration matrix unit tests in workflow service coverage; API/Application/Infrastructure suites pass.
+- T047 progress: blocked unresolved idea mentions during save and added validation coverage for same-organization mention resolution.
+- T047 quality gate: application tests now cover both failing and passing mention-resolution paths; API/Application/Infrastructure suites pass.
+- T048 completed: added in-process API integration tests using `WebApplicationFactory` plus in-memory EF startup seeding to validate auth success/failure/lockout branches, unauthenticated protected-route rejection, and org-admin organization-scope collaboration read flows.
+- T048 quality gate: API test suite passes with integration coverage included.
+- Client slice progress: added Admin navigation entry for Site Admin/Org Admin plus new `/admin/organizations` client workflow for organization list/create/update/archive actions backed by the existing organization administration API.
 
 ## Backlog By Slice
 

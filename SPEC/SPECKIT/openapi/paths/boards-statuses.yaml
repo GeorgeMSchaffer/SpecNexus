@@ -5,6 +5,12 @@ paths:
       responses:
         '200':
           description: Status list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
         '401':
           description: Missing, expired, or invalid authentication
           content:
@@ -38,6 +44,10 @@ paths:
       responses:
         '201':
           description: Status created
+          content:
+            application/json:
+              schema:
+                type: object
         '400':
           description: Malformed request body or invalid field constraints
           content:
@@ -78,6 +88,10 @@ paths:
       responses:
         '200':
           description: Status updated
+          content:
+            application/json:
+              schema:
+                type: object
         '400':
           description: Malformed request body or invalid field constraints
           content:
@@ -131,6 +145,12 @@ paths:
       responses:
         '200':
           description: Board list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: ../components/schemas/boards-statuses.yaml#/BoardSummary
         '401':
           description: Missing, expired, or invalid authentication
           content:
@@ -160,6 +180,10 @@ paths:
       responses:
         '201':
           description: Board created
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/boards-statuses.yaml#/BoardDetail
         '400':
           description: Malformed request body or invalid field constraints
           content:
@@ -190,6 +214,10 @@ paths:
       responses:
         '200':
           description: Board detail
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/boards-statuses.yaml#/BoardDetail
         '401':
           description: Missing, expired, or invalid authentication
           content:
@@ -219,6 +247,10 @@ paths:
       responses:
         '200':
           description: Board updated
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/boards-statuses.yaml#/BoardDetail
         '400':
           description: Malformed request body or invalid field constraints
           content:

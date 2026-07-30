@@ -159,6 +159,271 @@ public sealed class WorkflowControllersTests
         Assert.Equal(UserRole.OrgAdmin.ToString(), service.LastActor?.Role);
     }
 
+    [Fact]
+    public async Task IdeasCreate_WhenSucceeded_ReturnsCreated()
+    {
+        var model = new IdeaDetailModel
+        {
+            IdeaId = Guid.NewGuid(),
+            BoardId = Guid.NewGuid(),
+            Title = "Improve onboarding",
+            Description = "Add guided setup",
+            Priority = "High",
+            StatusId = Guid.NewGuid(),
+            StatusName = "New / Pending"
+        };
+
+        var service = new StubWorkflowManagementService
+        {
+            CreateIdeaAsyncHandler = (_, _, _, _) => Task.FromResult(WorkflowResult<IdeaDetailModel>.Success(model))
+        };
+
+        var controller = CreateIdeasController(service, Guid.NewGuid(), UserRole.User.ToString(), Guid.NewGuid());
+
+        var result = await controller.CreateIdea(
+            model.BoardId,
+            new IdeaWriteRequestModel
+            {
+                Title = model.Title,
+                Description = model.Description,
+                Priority = model.Priority
+            },
+            CancellationToken.None);
+
+        var created = Assert.IsType<CreatedResult>(result);
+        Assert.Equal(StatusCodes.Status201Created, created.StatusCode);
+        Assert.Equal($"/api/v1/ideas/{model.IdeaId}", created.Location);
+        Assert.Same(model, created.Value);
+    }
+
+    [Fact]
+    public async Task IdeasToggleUpvote_WhenSucceeded_ReturnsOk()
+    {
+        var ideaId = Guid.NewGuid();
+        var response = new UpvoteToggleResultModel
+        {
+            IdeaId = ideaId,
+            HasUpvoted = true,
+            UpvoteCount = 5
+        };
+
+        var service = new StubWorkflowManagementService
+        {
+            ToggleIdeaUpvoteAsyncHandler = (_, _, _) => Task.FromResult(WorkflowResult<UpvoteToggleResultModel>.Success(response))
+        };
+
+        var controller = CreateIdeasController(service, Guid.NewGuid(), UserRole.User.ToString(), Guid.NewGuid());
+
+        var result = await controller.ToggleUpvote(ideaId, CancellationToken.None);
+
+        var ok = Assert.IsType<OkObjectResult>(result);
+        Assert.Equal(StatusCodes.Status200OK, ok.StatusCode);
+        Assert.Same(response, ok.Value);
+    }
+
+    [Fact]
+    public async Task IdeasCreate_WhenValidationError_ReturnsValidationProblem()
+    {
+        var service = new StubWorkflowManagementService
+        {
+            CreateIdeaAsyncHandler = (_, _, _, _) => Task.FromResult(
+                WorkflowResult<IdeaDetailModel>.Failure(
+                    WorkflowFailureReason.ValidationError,
+                    new[] { "Idea title is required." }))
+        };
+
+        var controller = CreateIdeasController(service, Guid.NewGuid(), UserRole.User.ToString(), Guid.NewGuid());
+
+        var result = await controller.CreateIdea(
+            Guid.NewGuid(),
+            new IdeaWriteRequestModel
+            {
+                Title = string.Empty,
+                Description = "desc",
+                Priority = "Medium"
+            },
+            CancellationToken.None);
+
+        var badRequest = Assert.IsType<BadRequestObjectResult>(result);
+        Assert.Equal(StatusCodes.Status400BadRequest, badRequest.StatusCode);
+
+        var validation = Assert.IsType<ValidationProblemDetails>(badRequest.Value);
+        Assert.True(validation.Errors.TryGetValue("workflow", out var errors));
+        Assert.Contains("Idea title is required.", errors);
+    }
+
+    [Fact]
+    public async Task IdeasCreate_WhenUnauthorized_ReturnsUnauthorizedProblem()
+    {
+        var service = new StubWorkflowManagementService
+        {
+            CreateIdeaAsyncHandler = (_, _, _, _) => Task.FromResult(
+                WorkflowResult<IdeaDetailModel>.Failure(WorkflowFailureReason.Unauthorized))
+        };
+
+        var controller = CreateIdeasController(service, Guid.NewGuid(), UserRole.User.ToString(), Guid.NewGuid());
+
+        var result = await controller.CreateIdea(
+            Guid.NewGuid(),
+            new IdeaWriteRequestModel
+            {
+                Title = "Idea",
+                Description = "desc",
+                Priority = "Medium"
+            },
+            CancellationToken.None);
+
+        AssertProblem(result, StatusCodes.Status401Unauthorized, "Authentication required.");
+    }
+
+    [Fact]
+    public async Task IdeasCreate_WhenBoardNotFound_ReturnsNotFoundProblem()
+    {
+        var service = new StubWorkflowManagementService
+        {
+            CreateIdeaAsyncHandler = (_, _, _, _) => Task.FromResult(
+                WorkflowResult<IdeaDetailModel>.Failure(WorkflowFailureReason.BoardNotFound))
+        };
+
+        var controller = CreateIdeasController(service, Guid.NewGuid(), UserRole.User.ToString(), Guid.NewGuid());
+
+        var result = await controller.CreateIdea(
+            Guid.NewGuid(),
+            new IdeaWriteRequestModel
+            {
+                Title = "Idea",
+                Description = "desc",
+                Priority = "Medium"
+            },
+            CancellationToken.None);
+
+        AssertProblem(result, StatusCodes.Status404NotFound, "Board not found.");
+    }
+
+    [Fact]
+    public async Task IdeasToggleUpvote_WhenUnauthorized_ReturnsUnauthorizedProblem()
+    {
+        var service = new StubWorkflowManagementService
+        {
+            ToggleIdeaUpvoteAsyncHandler = (_, _, _) => Task.FromResult(
+                WorkflowResult<UpvoteToggleResultModel>.Failure(WorkflowFailureReason.Unauthorized))
+        };
+
+        var controller = CreateIdeasController(service, Guid.NewGuid(), UserRole.User.ToString(), Guid.NewGuid());
+
+        var result = await controller.ToggleUpvote(Guid.NewGuid(), CancellationToken.None);
+
+        AssertProblem(result, StatusCodes.Status401Unauthorized, "Authentication required.");
+    }
+
+    [Fact]
+    public async Task IdeasToggleUpvote_WhenIdeaNotFound_ReturnsNotFoundProblem()
+    {
+        var service = new StubWorkflowManagementService
+        {
+            ToggleIdeaUpvoteAsyncHandler = (_, _, _) => Task.FromResult(
+                WorkflowResult<UpvoteToggleResultModel>.Failure(WorkflowFailureReason.IdeaNotFound))
+        };
+
+        var controller = CreateIdeasController(service, Guid.NewGuid(), UserRole.User.ToString(), Guid.NewGuid());
+
+        var result = await controller.ToggleUpvote(Guid.NewGuid(), CancellationToken.None);
+
+        AssertProblem(result, StatusCodes.Status404NotFound, "Idea not found.");
+    }
+
+    [Fact]
+    public async Task IdeasCreateComment_WhenValidationError_ReturnsValidationProblem()
+    {
+        var service = new StubWorkflowManagementService
+        {
+            CreateCommentAsyncHandler = (_, _, _, _) => Task.FromResult(
+                WorkflowResult<CommentModel>.Failure(
+                    WorkflowFailureReason.ValidationError,
+                    new[] { "Comment body is required." }))
+        };
+
+        var controller = CreateIdeasController(service, Guid.NewGuid(), UserRole.User.ToString(), Guid.NewGuid());
+
+        var result = await controller.CreateComment(
+            Guid.NewGuid(),
+            new CommentWriteRequestModel { Body = string.Empty },
+            CancellationToken.None);
+
+        var badRequest = Assert.IsType<BadRequestObjectResult>(result);
+        Assert.Equal(StatusCodes.Status400BadRequest, badRequest.StatusCode);
+
+        var validation = Assert.IsType<ValidationProblemDetails>(badRequest.Value);
+        Assert.True(validation.Errors.TryGetValue("workflow", out var errors));
+        Assert.Contains("Comment body is required.", errors);
+    }
+
+    [Fact]
+    public async Task IdeasDeleteComment_WhenCommentNotFound_ReturnsNotFoundProblem()
+    {
+        var service = new StubWorkflowManagementService
+        {
+            DeleteCommentAsyncHandler = (_, _, _) => Task.FromResult(
+                WorkflowResult.Failure(WorkflowFailureReason.CommentNotFound))
+        };
+
+        var controller = CreateIdeasController(service, Guid.NewGuid(), UserRole.User.ToString(), Guid.NewGuid());
+
+        var result = await controller.DeleteComment(Guid.NewGuid(), CancellationToken.None);
+
+        AssertProblem(result, StatusCodes.Status404NotFound, "Comment not found.");
+    }
+
+    [Fact]
+    public async Task IdeasListTagSuggestions_WhenSucceeded_ReturnsOk()
+    {
+        var suggestions = new[] { "Security", "Service" };
+        var organizationId = Guid.NewGuid();
+
+        var service = new StubWorkflowManagementService
+        {
+            ListTagSuggestionsAsyncHandler = (_, _, _, _) => Task.FromResult(
+                WorkflowResult<IReadOnlyList<string>>.Success(suggestions))
+        };
+
+        var controller = CreateIdeasController(service, Guid.NewGuid(), UserRole.User.ToString(), organizationId);
+
+        var result = await controller.ListTagSuggestions(
+            organizationId,
+            new TagAutocompleteQueryModel { Search = "Se" },
+            CancellationToken.None);
+
+        var ok = Assert.IsType<OkObjectResult>(result);
+        Assert.Equal(StatusCodes.Status200OK, ok.StatusCode);
+        Assert.Same(suggestions, ok.Value);
+    }
+
+    [Fact]
+    public async Task IdeasListTagSuggestions_WhenValidationError_ReturnsValidationProblem()
+    {
+        var service = new StubWorkflowManagementService
+        {
+            ListTagSuggestionsAsyncHandler = (_, _, _, _) => Task.FromResult(
+                WorkflowResult<IReadOnlyList<string>>.Failure(
+                    WorkflowFailureReason.ValidationError,
+                    new[] { "Tag autocomplete requires at least 2 characters." }))
+        };
+
+        var controller = CreateIdeasController(service, Guid.NewGuid(), UserRole.User.ToString(), Guid.NewGuid());
+
+        var result = await controller.ListTagSuggestions(
+            Guid.NewGuid(),
+            new TagAutocompleteQueryModel { Search = "A" },
+            CancellationToken.None);
+
+        var badRequest = Assert.IsType<BadRequestObjectResult>(result);
+        Assert.Equal(StatusCodes.Status400BadRequest, badRequest.StatusCode);
+
+        var validation = Assert.IsType<ValidationProblemDetails>(badRequest.Value);
+        Assert.True(validation.Errors.TryGetValue("workflow", out var errors));
+        Assert.Contains("Tag autocomplete requires at least 2 characters.", errors);
+    }
+
     private static StatusesController CreateStatusesController(
         IWorkflowManagementService service,
         Guid userId,
@@ -184,6 +449,24 @@ public sealed class WorkflowControllersTests
         Guid? organizationId)
     {
         var controller = new BoardsController(service)
+        {
+            ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext()
+            }
+        };
+
+        controller.ControllerContext.HttpContext.User = CreatePrincipal(userId, role, organizationId);
+        return controller;
+    }
+
+    private static IdeasController CreateIdeasController(
+        IWorkflowManagementService service,
+        Guid userId,
+        string role,
+        Guid? organizationId)
+    {
+        var controller = new IdeasController(service)
         {
             ControllerContext = new ControllerContext
             {
@@ -240,6 +523,28 @@ public sealed class WorkflowControllersTests
         public Func<WorkflowActorContext, Guid, UpdateBoardRequestModel, CancellationToken, Task<WorkflowResult<BoardDetailModel>>>? UpdateBoardAsyncHandler { get; init; }
 
         public Func<WorkflowActorContext, Guid, ReorderSwimlanesRequestModel, CancellationToken, Task<WorkflowResult>>? ReorderSwimlanesAsyncHandler { get; init; }
+
+        public Func<WorkflowActorContext, Guid, IdeaListQueryModel, CancellationToken, Task<WorkflowResult<PagedResultModel<IdeaListItemModel>>>>? ListIdeasAsyncHandler { get; init; }
+
+        public Func<WorkflowActorContext, Guid, CancellationToken, Task<WorkflowResult<IdeaDetailModel>>>? GetIdeaDetailAsyncHandler { get; init; }
+
+        public Func<WorkflowActorContext, Guid, IdeaWriteRequestModel, CancellationToken, Task<WorkflowResult<IdeaDetailModel>>>? CreateIdeaAsyncHandler { get; init; }
+
+        public Func<WorkflowActorContext, Guid, IdeaWriteRequestModel, CancellationToken, Task<WorkflowResult<IdeaDetailModel>>>? UpdateIdeaAsyncHandler { get; init; }
+
+        public Func<WorkflowActorContext, Guid, MoveIdeaStatusRequestModel, CancellationToken, Task<WorkflowResult>>? MoveIdeaStatusAsyncHandler { get; init; }
+
+        public Func<WorkflowActorContext, Guid, CommentListQueryModel, CancellationToken, Task<WorkflowResult<PagedResultModel<CommentModel>>>>? ListCommentsAsyncHandler { get; init; }
+
+        public Func<WorkflowActorContext, Guid, CommentWriteRequestModel, CancellationToken, Task<WorkflowResult<CommentModel>>>? CreateCommentAsyncHandler { get; init; }
+
+        public Func<WorkflowActorContext, Guid, CommentWriteRequestModel, CancellationToken, Task<WorkflowResult<CommentModel>>>? UpdateCommentAsyncHandler { get; init; }
+
+        public Func<WorkflowActorContext, Guid, CancellationToken, Task<WorkflowResult>>? DeleteCommentAsyncHandler { get; init; }
+
+        public Func<WorkflowActorContext, Guid, CancellationToken, Task<WorkflowResult<UpvoteToggleResultModel>>>? ToggleIdeaUpvoteAsyncHandler { get; init; }
+
+        public Func<WorkflowActorContext, Guid, TagAutocompleteQueryModel, CancellationToken, Task<WorkflowResult<IReadOnlyList<string>>>>? ListTagSuggestionsAsyncHandler { get; init; }
 
         public WorkflowActorContext? LastActor { get; private set; }
 
@@ -351,6 +656,135 @@ public sealed class WorkflowControllersTests
             return ReorderSwimlanesAsyncHandler is null
                 ? Task.FromResult(WorkflowResult.Failure(WorkflowFailureReason.Forbidden))
                 : ReorderSwimlanesAsyncHandler(actor, boardId, request, cancellationToken);
+        }
+
+        public Task<WorkflowResult<PagedResultModel<IdeaListItemModel>>> ListIdeasAsync(
+            WorkflowActorContext actor,
+            Guid boardId,
+            IdeaListQueryModel query,
+            CancellationToken cancellationToken)
+        {
+            LastActor = actor;
+            return ListIdeasAsyncHandler is null
+                ? Task.FromResult(WorkflowResult<PagedResultModel<IdeaListItemModel>>.Failure(WorkflowFailureReason.Forbidden))
+                : ListIdeasAsyncHandler(actor, boardId, query, cancellationToken);
+        }
+
+        public Task<WorkflowResult<IdeaDetailModel>> GetIdeaDetailAsync(
+            WorkflowActorContext actor,
+            Guid ideaId,
+            CancellationToken cancellationToken)
+        {
+            LastActor = actor;
+            return GetIdeaDetailAsyncHandler is null
+                ? Task.FromResult(WorkflowResult<IdeaDetailModel>.Failure(WorkflowFailureReason.Forbidden))
+                : GetIdeaDetailAsyncHandler(actor, ideaId, cancellationToken);
+        }
+
+        public Task<WorkflowResult<IdeaDetailModel>> CreateIdeaAsync(
+            WorkflowActorContext actor,
+            Guid boardId,
+            IdeaWriteRequestModel request,
+            CancellationToken cancellationToken)
+        {
+            LastActor = actor;
+            return CreateIdeaAsyncHandler is null
+                ? Task.FromResult(WorkflowResult<IdeaDetailModel>.Failure(WorkflowFailureReason.Forbidden))
+                : CreateIdeaAsyncHandler(actor, boardId, request, cancellationToken);
+        }
+
+        public Task<WorkflowResult<IdeaDetailModel>> UpdateIdeaAsync(
+            WorkflowActorContext actor,
+            Guid ideaId,
+            IdeaWriteRequestModel request,
+            CancellationToken cancellationToken)
+        {
+            LastActor = actor;
+            return UpdateIdeaAsyncHandler is null
+                ? Task.FromResult(WorkflowResult<IdeaDetailModel>.Failure(WorkflowFailureReason.Forbidden))
+                : UpdateIdeaAsyncHandler(actor, ideaId, request, cancellationToken);
+        }
+
+        public Task<WorkflowResult> MoveIdeaStatusAsync(
+            WorkflowActorContext actor,
+            Guid ideaId,
+            MoveIdeaStatusRequestModel request,
+            CancellationToken cancellationToken)
+        {
+            LastActor = actor;
+            return MoveIdeaStatusAsyncHandler is null
+                ? Task.FromResult(WorkflowResult.Failure(WorkflowFailureReason.Forbidden))
+                : MoveIdeaStatusAsyncHandler(actor, ideaId, request, cancellationToken);
+        }
+
+        public Task<WorkflowResult<PagedResultModel<CommentModel>>> ListCommentsAsync(
+            WorkflowActorContext actor,
+            Guid ideaId,
+            CommentListQueryModel query,
+            CancellationToken cancellationToken)
+        {
+            LastActor = actor;
+            return ListCommentsAsyncHandler is null
+                ? Task.FromResult(WorkflowResult<PagedResultModel<CommentModel>>.Failure(WorkflowFailureReason.Forbidden))
+                : ListCommentsAsyncHandler(actor, ideaId, query, cancellationToken);
+        }
+
+        public Task<WorkflowResult<CommentModel>> CreateCommentAsync(
+            WorkflowActorContext actor,
+            Guid ideaId,
+            CommentWriteRequestModel request,
+            CancellationToken cancellationToken)
+        {
+            LastActor = actor;
+            return CreateCommentAsyncHandler is null
+                ? Task.FromResult(WorkflowResult<CommentModel>.Failure(WorkflowFailureReason.Forbidden))
+                : CreateCommentAsyncHandler(actor, ideaId, request, cancellationToken);
+        }
+
+        public Task<WorkflowResult<CommentModel>> UpdateCommentAsync(
+            WorkflowActorContext actor,
+            Guid commentId,
+            CommentWriteRequestModel request,
+            CancellationToken cancellationToken)
+        {
+            LastActor = actor;
+            return UpdateCommentAsyncHandler is null
+                ? Task.FromResult(WorkflowResult<CommentModel>.Failure(WorkflowFailureReason.Forbidden))
+                : UpdateCommentAsyncHandler(actor, commentId, request, cancellationToken);
+        }
+
+        public Task<WorkflowResult> DeleteCommentAsync(
+            WorkflowActorContext actor,
+            Guid commentId,
+            CancellationToken cancellationToken)
+        {
+            LastActor = actor;
+            return DeleteCommentAsyncHandler is null
+                ? Task.FromResult(WorkflowResult.Failure(WorkflowFailureReason.Forbidden))
+                : DeleteCommentAsyncHandler(actor, commentId, cancellationToken);
+        }
+
+        public Task<WorkflowResult<UpvoteToggleResultModel>> ToggleIdeaUpvoteAsync(
+            WorkflowActorContext actor,
+            Guid ideaId,
+            CancellationToken cancellationToken)
+        {
+            LastActor = actor;
+            return ToggleIdeaUpvoteAsyncHandler is null
+                ? Task.FromResult(WorkflowResult<UpvoteToggleResultModel>.Failure(WorkflowFailureReason.Forbidden))
+                : ToggleIdeaUpvoteAsyncHandler(actor, ideaId, cancellationToken);
+        }
+
+        public Task<WorkflowResult<IReadOnlyList<string>>> ListTagSuggestionsAsync(
+            WorkflowActorContext actor,
+            Guid organizationId,
+            TagAutocompleteQueryModel query,
+            CancellationToken cancellationToken)
+        {
+            LastActor = actor;
+            return ListTagSuggestionsAsyncHandler is null
+                ? Task.FromResult(WorkflowResult<IReadOnlyList<string>>.Failure(WorkflowFailureReason.Forbidden))
+                : ListTagSuggestionsAsyncHandler(actor, organizationId, query, cancellationToken);
         }
     }
 }

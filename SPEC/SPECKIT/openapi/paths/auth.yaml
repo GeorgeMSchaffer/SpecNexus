@@ -45,6 +45,10 @@ paths:
       responses:
         '200':
           description: Current user summary
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/UserSummary
         '401':
           description: Missing, expired, or invalid authentication
           content:

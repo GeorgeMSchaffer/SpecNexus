@@ -1,5 +1,6 @@
 @page "/login"
 @inject IAuthSessionService AuthSessionService
+@inject IClientErrorMessageService ErrorMessageService
 @inject NavigationManager NavigationManager
 
 <PageTitle>Sign In</PageTitle>
@@ -69,12 +70,12 @@
                 return;
             }
 
-            NavigationManager.NavigateTo("/", forceLoad: false);
+            NavigationManager.NavigateTo("/workflow", forceLoad: false);
         }
         catch (AuthApiException ex)
         {
             _errorTitle = ex.Title;
-            _errorDetail = ex.Detail;
+            _errorDetail = ErrorMessageService.GetDisplayMessage(ex.Title, ex.Detail, ex);
         }
         finally
         {

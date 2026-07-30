@@ -28,6 +28,14 @@ Organizations can manage idea boards using configurable workflow swimlanes.
 7. Board views must provide guided empty states with a primary action and short explanatory text when no ideas exist.
 8. In Development, each seeded demo organization includes one example board with at least one idea in each default swimlane.
 
+## Approval Workflow Decisions
+The following workflow decisions apply to board and status transitions that may participate in approval flows:
+
+- A board may expose an approval-required state transition only when the target status is configured as reviewable by the organization.
+- Only Org Admins and the idea author can initiate or resolve approval actions for an idea.
+- Approval actions are logged as audit events and remain visible in the idea history.
+- A status transition that is rejected or expired must not silently drop the original state; the previous state is restored and the reason is retained.
+
 ## Acceptance Criteria
 - [ ] Organization-scoped statuses can be created and maintained
 - [ ] A new organization receives the default status set automatically
