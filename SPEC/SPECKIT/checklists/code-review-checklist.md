@@ -36,4 +36,5 @@
 
 ## Drift Control
 - [ ] Differences between `SPEC` and `SPECKIT` are called out as findings, not silently harmonized.
+- [ ] Derived feature specs show current canonical source metadata and sync date.
 - [ ] Recommended remediation updates canonical `SPEC` first, then syncs derivative `SPECKIT` artifacts.

@@ -1,0 +1,28 @@
+name: Spec Drift Gate
+
+on:
+  pull_request:
+    paths:
+      - 'SPEC/**'
+      - '.github/pull_request_template.md'
+      - 'scripts/spec_drift_gate.ps1'
+
+permissions:
+  contents: read
+
+jobs:
+  spec-drift-gate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run spec drift checks
+        shell: pwsh
+        run: |
+          ./scripts/spec_drift_gate.ps1 `
+            -BaseSha "${{ github.event.pull_request.base.sha }}" `
+            -HeadSha "${{ github.event.pull_request.head.sha }}"

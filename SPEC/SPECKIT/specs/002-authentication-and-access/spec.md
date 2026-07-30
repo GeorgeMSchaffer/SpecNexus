@@ -1,5 +1,15 @@
 # Feature Specification: Authentication and Access
 
+## Derived Sync Metadata
+- Status: Derived
+- Canonical Sources:
+	- `SPEC/10-requirements.md`
+	- `SPEC/20-feature-auth.md`
+	- `SPEC/20-feature-user-login.md`
+	- `SPEC/30-Contracts.md`
+	- `SPEC/40-test-strategy.md`
+- Last Canonical Sync Date: 2026-07-30
+
 ## Summary
 Implement authentication with globally unique email credentials, seeded global Site Admin bootstrap, password rules, inactive-account denial, and account lockout behavior.
 

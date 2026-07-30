@@ -8,6 +8,11 @@ Define when to use the reviewer personas and checklists during the SargentNexus 
 - Use `SPECKIT` artifacts as derived cross-checks and workflow helpers.
 - If drift is found, resolve canonical `SPEC` docs first, then sync `SPECKIT`.
 
+## Mandatory Drift Gate
+- Every review stage must include a canonical-vs-derived drift check.
+- Derived-only behavior changes are blocking findings until canonical `SPEC` docs are updated and synchronized.
+- Sign-off is blocked when any impacted `SPECKIT` artifact is stale against canonical `SPEC` sources.
+
 ## Review Stages
 
 ### 1. Spec Review
@@ -24,6 +29,7 @@ Focus:
 - implementation ambiguity
 - workflow clarity
 - validation and state handling
+- derived artifact freshness and sync scope
 
 ### 2. Plan Review
 Use when `30-Contracts.md`, `50-technical-implementation-plan.md`, `70-delivery-backlog.md`, or related SPECKIT planning artifacts change.
@@ -39,6 +45,7 @@ Focus:
 - service boundaries
 - persistence integrity
 - testability
+- stale-derived-file detection and remediation order
 
 ### 3. UI Review
 Use when mockups, client workflows, or page plans change.
@@ -53,6 +60,7 @@ Focus:
 - empty states
 - validation behavior
 - visual and interaction consistency
+- canonical-to-mockup behavior traceability
 
 ### 4. Implementation Review
 Use during or after code changes.
@@ -67,6 +75,7 @@ Focus:
 - maintainability and practical design quality
 - missing tests
 - usability regressions
+- canonical and derived sync completeness
 
 ## Suggested Sequence
 1. Review canonical feature specs under `SPEC/`.
@@ -74,6 +83,7 @@ Focus:
 3. Review SPECKIT artifacts for derivative consistency and review readiness.
 4. Review UI mockups or client behavior.
 5. Review implemented changes before sign-off.
+6. Fail sign-off if any derived artifact is stale or introduces behavior absent from canonical `SPEC` docs.
 
 ## Spec-Kit Style Invocation
 Use prompt files in `.specify/prompts` and command wrappers in `.specify/commands` to run consistent reviews:

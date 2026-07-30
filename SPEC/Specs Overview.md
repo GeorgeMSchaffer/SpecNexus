@@ -2,7 +2,7 @@
 
 ## Document Metadata
 - Status: Draft
-- Last Updated: 2026-07-24
+- Last Updated: 2026-07-30
 - Audience: Engineering, Product, QA, AI coding agents
 - Purpose: Provide one implementation-ready spec that reduces duplication while preserving canonical rules from `SPEC/*.md`.
 
@@ -98,7 +98,8 @@ Key rule: all tenant-owned data is organization-scoped; Site Admin is global and
 - Audit events are required for auth, admin, and idea lifecycle actions.
 
 ## API Contract Summary Matrix
-Route and payload authority: `SPEC/30-Contracts.md` and `SPEC/SPECKIT/openapi/openapi.yaml`.
+Route and payload authority: `SPEC/30-Contracts.md`.
+Derived API tooling surface: `SPEC/SPECKIT/openapi/openapi.yaml`.
 
 | Endpoint | Primary Actors | Request Summary | Success Summary | Key Errors |
 |---|---|---|---|---|
@@ -182,11 +183,13 @@ Route and payload authority: `SPEC/30-Contracts.md` and `SPEC/SPECKIT/openapi/op
 - Deferred scope must not leak into MVP implementation.
 - Spec changes must be reflected in contract and verification artifacts.
 
-## Open Questions
-- Validation message wording conventions across API and UI.
-- Future reporting requirements and export formats.
-- OAuth sequencing is resolved as post-MVP Phase 2 (Entra first); detailed account-link edge-case rules remain a pre-Phase-2 refinement item.
-- Future rich-content or attachment requirements for idea/comment workflows.
+## Resolved Decisions (2026-07-30)
+- Validation message conventions are standardized in `SPEC/30-Contracts.md` and must be mirrored by UI text where practical.
+- Reporting baseline requirements and export formats are defined in `SPEC/20-feature-reporting.md` as post-MVP scope.
+- OAuth account-link and claim-mapping edge-case decisions are defined in `SPEC/20-feature-oauth.md`.
+- Rich-content and attachment direction is defined in `SPEC/20-feature-ideas-and-engagement.md` as out of MVP and out of initial OAuth phase scope.
+
+Open questions remaining for MVP: none.
 
 ## AI Agent Usage Notes
 ### Recommended Reading Order for Implementation

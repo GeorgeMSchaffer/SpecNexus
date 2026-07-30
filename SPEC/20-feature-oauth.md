@@ -20,6 +20,17 @@ Organizations can enable Microsoft Entra ID sign-in while preserving existing lo
 9. OAuth success and failure outcomes and provisioning events are audited.
 10. OAuth configuration must not weaken global email uniqueness rules.
 
+## Account-Link and Claim-Mapping Edge Cases (Resolved)
+1. Linking precedence is strict: external identity mapping by provider + subject (`sub`) is evaluated before email fallback.
+2. Email fallback matching is case-insensitive and requires a verified email claim.
+3. If required claims (`sub`, `email`, `email_verified`) are missing, authentication is denied with a contract-aligned error.
+4. If a subject mapping exists but callback email maps to a different local account, authentication is denied and an audit conflict event is emitted.
+5. If no subject mapping exists and the verified email belongs to a user in a different organization than the initiating organization, authentication is denied and no auto-provision occurs.
+6. Auto-provision occurs only when no subject mapping exists, no local email match exists, and required claims are present.
+7. Auto-provisioned users are created in the initiating organization with default role `User`.
+8. Name claims (`given_name`, `family_name`) are optional; missing names are allowed and can be completed later by user or admin.
+9. Any ambiguous identity condition (multiple candidate local users for a normalized email) is treated as a hard deny and audited.
+
 ## Acceptance Criteria
 - [ ] OAuth endpoints and callbacks are not required for MVP release completion
 - [ ] Microsoft Entra ID sign-in works in Phase 2 using organization-scoped entry points
@@ -28,3 +39,7 @@ Organizations can enable Microsoft Entra ID sign-in while preserving existing lo
 - [ ] Missing users can be auto-provisioned with default role `User`
 - [ ] Inactive users are denied authentication
 - [ ] OAuth outcomes and provisioning actions generate audit events
+- [ ] Callback requests with missing required claims are denied with contract-aligned failures
+- [ ] Subject-mapping and email-fallback conflicts are denied and audited
+- [ ] Cross-organization fallback email matches are denied and do not auto-provision
+- [ ] Ambiguous fallback identity matches are denied and audited

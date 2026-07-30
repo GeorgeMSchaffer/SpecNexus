@@ -1,5 +1,16 @@
 # Feature Specification: Notifications and Audit
 
+## Derived Sync Metadata
+- Status: Derived
+- Canonical Sources:
+	- `SPEC/20-feature-notifications.md`
+	- `SPEC/20-feature-auth.md`
+	- `SPEC/20-feature-organizations-and-users.md`
+	- `SPEC/20-feature-ideas-and-engagement.md`
+	- `SPEC/30-Contracts.md`
+	- `SPEC/40-test-strategy.md`
+- Last Canonical Sync Date: 2026-07-30
+
 ## Summary
 Generate notification events for collaboration activity and audit events for security-sensitive and workflow-changing actions, while deferring guaranteed outbound email delivery.
 

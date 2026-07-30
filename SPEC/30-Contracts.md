@@ -3,6 +3,11 @@
 ## Purpose
 Defines the system contracts that implementations must follow.
 
+## Contract Authorship and Sync Rule
+- Canonical contract behavior is authored in this file and related canonical `SPEC/20-feature-*.md` docs.
+- OpenAPI artifacts under `SPEC/SPECKIT` are derived contract surfaces used for tooling and review.
+- Do not introduce net-new API behavior by editing derived OpenAPI artifacts without corresponding canonical updates in `SPEC`.
+
 ## Route Conventions
 - HTTP APIs use path versioning under `/api/v1`.
 - Resource routes use plural nouns.
@@ -37,6 +42,18 @@ Defines the system contracts that implementations must follow.
 ## Validation Ownership
 - The API contract validates request shape, required fields, and basic field constraints.
 - The Application and Domain layers enforce business rules, authorization rules, and cross-entity invariants.
+
+## Validation Message Conventions
+- API validation messages follow these canonical templates:
+	- Required: `<FieldName> is required.`
+	- Max length: `<FieldName> must be <N> characters or fewer.`
+	- Min length: `<FieldName> must be at least <N> characters.`
+	- Invalid format: `<FieldName> must be a valid <FormatName>.`
+	- Invalid enum value: `<FieldName> must be one of: <Value1>, <Value2>, <Value3>.`
+	- Numeric or date range: `<FieldName> must be between <Min> and <Max>.`
+	- Mention resolution: `Mention '<Value>' could not be resolved to a user in your organization.`
+- Validation failures use the `errors` object keyed by request field names.
+- UI should mirror API validation wording where practical to reduce interpretation drift.
 
 ## Shared Data Rules
 - Identifiers are GUID strings.

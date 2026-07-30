@@ -1,5 +1,14 @@
 # Feature Specification: Boards and Statuses
 
+## Derived Sync Metadata
+- Status: Derived
+- Canonical Sources:
+	- `SPEC/10-requirements.md`
+	- `SPEC/20-feature-boards-and-statuses.md`
+	- `SPEC/30-Contracts.md`
+	- `SPEC/40-test-strategy.md`
+- Last Canonical Sync Date: 2026-07-30
+
 ## Summary
 Implement organization-scoped statuses and boards with swimlane ordering, default provisioning, and safe status lifecycle behavior.
 

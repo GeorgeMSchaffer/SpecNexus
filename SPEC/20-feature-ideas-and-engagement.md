@@ -27,6 +27,13 @@ Users can create, discuss, organize, and support ideas within their organization
 7. Idea creation, edits, status changes, comments, and upvote toggles must generate audit events.
 8. In Development, seeded demo boards include example ideas whose description fields contain sample spec-style detail text.
 
+## Rich Content and Attachments Direction (Resolved)
+1. MVP idea descriptions and comment bodies remain plain text only.
+2. Rich text formatting (HTML, Markdown rendering, WYSIWYG controls) is out of MVP scope.
+3. File attachments and embedded media are out of MVP scope.
+4. URLs may appear as plain text content but are not treated as trusted embedded content.
+5. Rich-content and attachment support is deferred to a future post-MVP phase and requires explicit security and storage contracts before implementation.
+
 ## Permissions
 - Site Admin, Org Admin, and User can create and edit ideas.
 - Read Only cannot edit idea content.
@@ -105,3 +112,5 @@ The following implementation decisions were clarified for any future approval or
 - [ ] Idea lifecycle actions generate audit events
 - [ ] Development startup seed provides example ideas with description-based spec content
 - [ ] Development startup seed provides example comments on seeded ideas
+- [ ] MVP idea and comment content remains plain text only
+- [ ] Rich text, embedded media, and file attachments are excluded from MVP implementation

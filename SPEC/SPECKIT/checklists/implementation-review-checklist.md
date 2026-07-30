@@ -4,6 +4,7 @@
 - [ ] Each critical behavior has one authoritative source document.
 - [ ] Canonical `SPEC/*.md` docs are used as the active MVP authority.
 - [ ] Split feature specs agree with umbrella MVP docs on auth and identity rules.
+- [ ] Derived feature specs include current sync metadata (status, canonical sources, and last sync date).
 - [ ] Contracts and OpenAPI artifacts encode current rule decisions.
 - [ ] Roadmap and backlog wording matches current business constraints.
 

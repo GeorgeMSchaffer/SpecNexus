@@ -1,5 +1,13 @@
 # Tasks: Ideas and Engagement
 
+## Derived Sync Metadata
+- Status: Derived
+- Canonical Sources:
+	- `SPEC/20-feature-ideas-and-engagement.md`
+	- `SPEC/40-test-strategy.md`
+	- `SPEC/70-delivery-backlog.md`
+- Last Canonical Sync Date: 2026-07-30
+
 - [ ] I001 Implement idea create, detail, list, update, and status move flows.
 - [ ] I002 Enforce title and description limits.
 - [ ] I003 Implement left-most-swimlane default status behavior.

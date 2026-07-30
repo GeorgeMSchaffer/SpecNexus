@@ -1,5 +1,14 @@
 # Feature Specification: Organizations and Users
 
+## Derived Sync Metadata
+- Status: Derived
+- Canonical Sources:
+	- `SPEC/10-requirements.md`
+	- `SPEC/20-feature-organizations-and-users.md`
+	- `SPEC/30-Contracts.md`
+	- `SPEC/40-test-strategy.md`
+- Last Canonical Sync Date: 2026-07-30
+
 ## Summary
 Implement organization lifecycle, tenant bootstrap, user administration, role boundaries, user lifecycle state management, and organization branding controls.
 

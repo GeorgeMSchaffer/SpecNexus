@@ -1,6 +1,6 @@
 # Feature Specification: SargentNexus MVP
 
-> Archived umbrella reference. Active edits should be made in split features `002` through `007`.
+> Archived umbrella reference. Active edits should be made in split features `002` through `006`.
 
 **Feature Branch**: `001-sargentnexus-mvp`
 

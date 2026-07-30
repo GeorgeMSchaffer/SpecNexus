@@ -1,5 +1,14 @@
 # Tasks: Authentication and Access
 
+## Derived Sync Metadata
+- Status: Derived
+- Canonical Sources:
+	- `SPEC/20-feature-auth.md`
+	- `SPEC/20-feature-user-login.md`
+	- `SPEC/40-test-strategy.md`
+	- `SPEC/70-delivery-backlog.md`
+- Last Canonical Sync Date: 2026-07-30
+
 Note: OAuth/OIDC and SAML implementation tasks are intentionally excluded from MVP and tracked in post-MVP planning artifacts.
 
 - [ ] A001 Implement login with globally unique email credentials.

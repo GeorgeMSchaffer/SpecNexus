@@ -6,9 +6,9 @@ Use this guide to migrate the manual `SPECKIT` port into a real repository initi
 ## Current Repository Policy (2026-07-24)
 - `SPEC/*.md` is the canonical source for active MVP decisions.
 - `SPECKIT` artifacts are derived and synced from canonical docs.
-- Split features `002-007` are the active organization model for this port.
+- Split features `002-006` are the active organization model for this port.
 - `001-sargentnexus-mvp` is retained as an archived umbrella reference.
-- Per-feature `specs/*/contracts/openapi.yaml` files are the editable OpenAPI source in this port.
+- Per-feature `specs/*/contracts/openapi.yaml` files are derived contract surfaces in this port.
 - `openapi/openapi.yaml` is a derived merged tooling surface.
 - `007-kubernetes-containerization` is future/non-MVP exploratory scope.
 
@@ -26,7 +26,8 @@ Use this guide to migrate the manual `SPECKIT` port into a real repository initi
    - `tasks.md`
 5. Compare the copied files against the active Spec Kit templates or presets in the new repo.
 6. Regenerate or refine tasks using the real `/speckit.tasks` flow if desired.
-7. Keep per-feature `contracts/openapi.yaml` as editable source and generate or sync merged `openapi/openapi.yaml` as needed for tooling.
+7. Keep per-feature `contracts/openapi.yaml` and merged `openapi/openapi.yaml` synchronized as derived outputs from canonical contract behavior.
+8. Add a drift gate in your target workflow so derived artifacts cannot diverge from canonical sources at merge time.
 
 ## Suggested Feature Mapping
 - `002-authentication-and-access`
@@ -38,6 +39,6 @@ Use this guide to migrate the manual `SPECKIT` port into a real repository initi
 ## Handoff Checklist
 - constitution copied
 - feature folders selected
-- contract strategy selected: per-feature editable source with merged derived surface
+- contract strategy selected: canonical-first authoring with derived per-feature and merged OpenAPI surfaces
 - unresolved validation questions reviewed from `SPEC/60-spec-q-and-a-backlog.md`
 - project-specific presets or overrides reviewed before regeneration

@@ -1,5 +1,14 @@
 # Feature Specification: Ideas and Engagement
 
+## Derived Sync Metadata
+- Status: Derived
+- Canonical Sources:
+	- `SPEC/10-requirements.md`
+	- `SPEC/20-feature-ideas-and-engagement.md`
+	- `SPEC/30-Contracts.md`
+	- `SPEC/40-test-strategy.md`
+- Last Canonical Sync Date: 2026-07-30
+
 ## Summary
 Implement ideas, tags, mentions, comments, and upvotes within organization-scoped collaboration rules.
 

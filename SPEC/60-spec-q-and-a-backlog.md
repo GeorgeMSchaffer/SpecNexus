@@ -1,13 +1,16 @@
 # Remaining Spec Q&A Backlog
 
 ## Purpose
-Track only unresolved clarification items that still affect future scope or incomplete contract details.
+Track clarification decisions and any unresolved items that affect future scope or incomplete contract details.
 
-## Remaining MVP Clarifications
+## Decision Log (2026-07-30)
 
 ### 1. Validation message conventions
-Question: What standard validation message patterns should the API and UI use for required fields, max lengths, and invalid formats?
-Why it matters: the field-level limits are now defined, but consistent validation messaging would further reduce implementation drift.
+Resolved: Standard validation message patterns are defined in `SPEC/30-Contracts.md`.
+Implementation direction:
+- API uses standardized wording templates for required, length, format, enum, range, and unresolved mention cases.
+- UI mirrors API wording where practical.
+- `errors` object keys use request field names.
 
 Resolved field decisions:
 - user email is globally unique across the system
@@ -31,21 +34,24 @@ Resolved field decisions:
 - board and admin views use guided empty states with a primary action and short explanatory text
 - event verification uses tests and internal diagnostics outside the public API surface
 
-## Later Decisions
-
 ### 2. Reporting requirements
-Question: What reports, metrics, and export formats will reporting need when it is specified later?
-Why it matters: some data retention and audit decisions are easier to make now than retrofit later.
+Resolved: Initial reporting scope and export baseline are defined in `SPEC/20-feature-reporting.md`.
+Implementation direction:
+- Reporting remains out of MVP.
+- First reporting phase defines specific report categories plus CSV-required and JSON-optional exports.
 
 ### 3. OAuth and SSO direction
 Resolved: OAuth implementation is scheduled for post-MVP Phase 2 with Microsoft Entra ID first, and SAML is scheduled after OAuth stabilization.
-Open follow-up: finalize Phase 2 account-link conflict handling and claim-mapping edge-case rules before implementation kickoff.
+Resolved follow-up: account-link conflict handling and claim-mapping edge-case rules are now defined in `SPEC/20-feature-oauth.md`.
 
 ### 4. Attachments and rich content
-Question: Are attachments, rich text, or embedded links expected in future idea or comment workflows?
-Why it matters: content storage and sanitization approaches differ if richer content is expected later.
+Resolved: Direction is defined in `SPEC/20-feature-ideas-and-engagement.md`.
+Implementation direction:
+- MVP remains plain text for idea descriptions and comments.
+- Rich text, embedded content, and file attachments are deferred to a future phase.
 
-## Recommended Resolution Order
-1. Finish the remaining field-level validation rules needed for complete OpenAPI and UI contracts.
-2. Resolve reporting expectations before designing export-friendly data views.
-3. Resolve future rich-content direction before expanding content models.
+## Remaining MVP Clarifications
+None.
+
+## Remaining Post-MVP Clarifications
+- None currently blocking planning. New questions should be added here when introduced.
