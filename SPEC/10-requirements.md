@@ -38,6 +38,7 @@ SargentNexus is a collaboration and project management tool for submitting, trac
 | Edit own organization | ✓ | ✓ | | |
 | Manage users (all orgs) | ✓ | | | |
 | Manage users (own org) | ✓ | ✓ | | |
+| Import users by CSV (authorized orgs) | ✓ | ✓ | | |
 | Create/manage boards | ✓ | ✓ | | |
 | Manage statuses | ✓ | ✓ | | |
 | View boards and ideas | ✓ | ✓ | ✓ | ✓ |

@@ -320,6 +320,57 @@ Error responses:
 - `403` caller is authenticated but not allowed to create users in this organization
 - `404` organization does not exist or is outside caller scope
 
+### `GET /api/v1/organizations/{organizationId}/users/import-template`
+Purpose: Download the canonical CSV template for organization user import.
+
+Success response `200`:
+- content type `text/csv; charset=utf-8`
+- attachment filename `user-import-template.csv`
+- exact header row `firstName,lastName,email,role,status,initialPassword`
+- one example data row using an allowed non-Site-Admin role and status
+
+Error responses:
+- `401` caller is not authenticated
+- `403` caller is authenticated but not allowed to manage users in this organization
+- `404` organization does not exist or is outside caller scope
+
+### `POST /api/v1/organizations/{organizationId}/users/import`
+Purpose: Validate and atomically import organization users from CSV.
+
+Request body:
+- `multipart/form-data`
+- field `csvFile` required
+- UTF-8 CSV, maximum 5 MB
+- exact header row `firstName,lastName,email,role,status,initialPassword`
+- maximum 1,000 non-blank data rows
+
+Row rules:
+- `firstName`, `lastName`, `email`, `role`, and `initialPassword` are required
+- `status` is optional and defaults to `Active`
+- `role` must be `Org Admin`, `User`, or `Read Only`; CSV import cannot create a Site Admin
+- `status` must be `Active` or `Inactive`
+- names, email, role, and status use the shared trimming and field-validation rules
+- `initialPassword` is not trimmed and must satisfy the authentication complexity policy
+- email must be unique globally and within the uploaded file
+- blank rows are ignored; at least one data row is required
+
+Behavior rules:
+- validate the complete file before creating any users
+- if any row fails validation, create no users
+- validation errors use keys in the form `rows[<one-based-row-number>].<fieldName>`
+- do not include plaintext passwords or CSV file contents in responses, logs, or audit events
+- successful imports generate the required user-administration audit events
+
+Success response `201`:
+- `organizationId`
+- `createdCount`
+
+Error responses:
+- `400` file is missing, malformed, empty, exceeds limits, has invalid headers, or contains one or more invalid rows
+- `401` caller is not authenticated
+- `403` caller is authenticated but not allowed to create users in this organization
+- `404` organization does not exist or is outside caller scope
+
 ### `GET /api/v1/users/{userId}`
 Purpose: Return user detail.
 

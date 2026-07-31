@@ -33,6 +33,17 @@ UserUpdateRequest:
       format: email
     role: { type: string }
     status: { type: string }
+UserImportResponse:
+  type: object
+  required: [organizationId, createdCount]
+  properties:
+    organizationId:
+      type: string
+      format: uuid
+    createdCount:
+      type: integer
+      minimum: 1
+      maximum: 1000
 OrganizationLogoResponse:
   type: object
   required: [logoUrl, logoThumbnailUrl, logoHeightPx]

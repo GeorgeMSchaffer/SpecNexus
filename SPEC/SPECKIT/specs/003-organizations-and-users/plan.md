@@ -8,12 +8,13 @@
 	- `SPEC/30-Contracts.md`
 	- `SPEC/50-technical-implementation-plan.md`
 	- `SPEC/70-delivery-backlog.md`
-- Last Canonical Sync Date: 2026-07-30
+- Last Canonical Sync Date: 2026-07-31
 
 ## Scope
 - organization CRUD except hard delete
 - automatic tenant bootstrap
 - organization-scoped user management
+- canonical user CSV template download and atomic CSV import with row-specific validation
 - role and lifecycle protections
 - admin audit coverage
 - organization logo upload/replace workflow with thumbnail preview

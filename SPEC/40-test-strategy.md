@@ -6,6 +6,8 @@
 - Development demo seed creates expected organizations, users by role, boards, swimlanes, ideas, and comments
 - Development demo seed is idempotent across repeated startup execution
 - Organization-scoped authorization checks
+- User CSV parsing, trimming, default status, allowed role, row-count, and file-size validation
+- User CSV import rejects duplicate emails within the file and performs no persistence when any row is invalid
 - Lockout threshold of 5 failed attempts in 15 minutes and 15-minute expiration rules
 - Board validation rules
 - Tag normalization and create-on-save behavior
@@ -21,6 +23,11 @@
 - each demo organization has one seeded example board with ideas across each default swimlane and example comments
 - organization CRUD follows Site Admin and Org Admin role boundaries
 - user CRUD is limited to the correct organization scope
+- user CSV template downloads with the canonical content type, filename, header order, and example row
+- valid user CSV import creates every row in the selected organization and returns the created count
+- user CSV import enforces Site Admin and Org Admin organization scope and rejects Site Admin as an imported role
+- invalid, duplicate, empty, oversized, and over-row-limit CSV imports return row-specific validation where applicable and create no users
+- user CSV import responses, logs, and audit events do not expose plaintext initial passwords or uploaded file contents
 - board creation rejects fewer than 2 swimlanes
 - idea comment and upvote flows enforce role rules
 
@@ -28,6 +35,7 @@
 - Response schema validation against the published OpenAPI documents
 - Problem-details-style error envelope required for all non-2xx responses
 - Authentication, organization, user, board, status, and idea contracts stay aligned with `30-Contracts.md`
+- User CSV template and import content types, request limits, response shape, and problem-details errors stay aligned with `30-Contracts.md`
 
 ## Smoke Tests
 - Critical-path smoke test: sign in successfully, create a new board, and create a new idea

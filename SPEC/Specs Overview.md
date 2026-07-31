@@ -115,6 +115,8 @@ Derived API tooling surface: `SPEC/SPECKIT/openapi/openapi.yaml`.
 | `POST /api/v1/organizations/{organizationId}/archive` | Site Admin, Org Admin (scope) | None | 204 | 401, 403, 404 |
 | `GET /api/v1/organizations/{organizationId}/users` | Site Admin, Org Admin (scope) | Paging/filter/sort query | Paged user list | 401, 403, 404 |
 | `POST /api/v1/organizations/{organizationId}/users` | Site Admin, Org Admin (scope) | User create fields | User create summary | 400, 401, 403, 404 |
+| `GET /api/v1/organizations/{organizationId}/users/import-template` | Site Admin, Org Admin (scope) | None | UTF-8 CSV template attachment | 401, 403, 404 |
+| `POST /api/v1/organizations/{organizationId}/users/import` | Site Admin, Org Admin (scope) | `multipart/form-data` CSV file | Organization ID + created-user count | 400, 401, 403, 404 |
 | `GET /api/v1/users/{userId}` | Site Admin, Org Admin (scope) | None | User detail | 401, 403, 404 |
 | `PUT /api/v1/users/{userId}` | Site Admin, Org Admin (scope) | User update fields | Updated user detail | 400, 401, 403, 404 |
 | `GET /api/v1/organizations/{organizationId}/statuses` | Site Admin, Org Admin, User, Read Only (scope) | None | Status list | 401, 403, 404 |
@@ -154,6 +156,7 @@ Derived API tooling surface: `SPEC/SPECKIT/openapi/openapi.yaml`.
 ### Unit
 - Authentication rules and lockout behavior
 - Site Admin and Development seed rules, including idempotency
+- User CSV parsing, validation, duplicate detection, and atomic rejection behavior
 - Board validation rules
 - Tag normalization and concurrency merge behavior
 - Mention resolution behavior
@@ -165,6 +168,7 @@ Derived API tooling surface: `SPEC/SPECKIT/openapi/openapi.yaml`.
 - Site Admin forced password change on first login
 - Development demo seed graph and user setup
 - Tenant-scoped organization and user CRUD
+- User CSV template download and authorized atomic import success/failure paths
 - Board minimum-swimlane enforcement
 - Idea comment and upvote role behavior
 
@@ -210,6 +214,7 @@ Update canonical `SPEC/*.md` first, then sync this file and derived SPECKIT arti
 | Behavior Rule | Canonical Source(s) | Verification Target(s) |
 |---|---|---|
 | Global email uniqueness for login and users | `SPEC/10-requirements.md`, `SPEC/20-feature-auth.md`, `SPEC/20-feature-organizations-and-users.md`, `SPEC/30-Contracts.md` | Unit: auth and user uniqueness rules. Integration: login and user CRUD scope checks. |
+| Organization user CSV template and atomic import | `SPEC/10-requirements.md`, `SPEC/20-feature-organizations-and-users.md`, `SPEC/30-Contracts.md` | Unit: CSV parsing, limits, defaults, role restrictions, and duplicate detection. Integration/Contract: template response and import success, authorization, row errors, and no partial persistence. |
 | Lockout after 5 failed attempts in 15 minutes with 15-minute lockout | `SPEC/20-feature-auth.md`, `SPEC/20-feature-user-login.md`, `SPEC/30-Contracts.md` | Unit: lockout threshold/expiry. Integration: `/api/v1/auth/login` lockout branch. |
 | Seeded Site Admin must change password on first login | `SPEC/20-feature-auth.md`, `SPEC/20-feature-user-login.md` | Unit: first-login flag behavior. Integration: first-login password-change gating. |
 | Development-only demo seed and non-Development suppression | `SPEC/10-requirements.md`, `SPEC/20-feature-auth.md`, `SPEC/20-feature-organizations-and-users.md`, `SPEC/40-test-strategy.md` | Unit: idempotent seed graph creation. Integration/Startup Safety: Development-only seeding and suppression outside Development. |

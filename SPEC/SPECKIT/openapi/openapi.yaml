@@ -19,6 +19,10 @@ paths:
     $ref: ./paths/organizations-users.yaml#/paths/~1api~1v1~1organizations~1{organizationId}~1archive
   /api/v1/organizations/{organizationId}/users:
     $ref: ./paths/organizations-users.yaml#/paths/~1api~1v1~1organizations~1{organizationId}~1users
+  /api/v1/organizations/{organizationId}/users/import-template:
+    $ref: ./paths/organizations-users.yaml#/paths/~1api~1v1~1organizations~1{organizationId}~1users~1import-template
+  /api/v1/organizations/{organizationId}/users/import:
+    $ref: ./paths/organizations-users.yaml#/paths/~1api~1v1~1organizations~1{organizationId}~1users~1import
   /api/v1/users/{userId}:
     $ref: ./paths/organizations-users.yaml#/paths/~1api~1v1~1users~1{userId}
   /api/v1/users/{userId}/temporary-password:
@@ -78,6 +82,8 @@ components:
       $ref: ./components/schemas/organizations-users.yaml#/OrganizationCreateRequest
     UserCreateRequest:
       $ref: ./components/schemas/organizations-users.yaml#/UserCreateRequest
+    UserImportResponse:
+      $ref: ./components/schemas/organizations-users.yaml#/UserImportResponse
     UserUpdateRequest:
       $ref: ./components/schemas/organizations-users.yaml#/UserUpdateRequest
     BoardWriteRequest:

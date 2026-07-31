@@ -40,7 +40,7 @@ Produce an implementation plan that is detailed enough to drive engineering exec
 #### Application
 - Orchestrate feature workflows and authorization checks.
 - Resolve organization scope from caller identity and resource context.
-- Coordinate login, organization bootstrap, tag normalization, mention resolution, comment permissions, upvote toggling, audit emission, and notification event creation.
+- Coordinate login, organization bootstrap, atomic user CSV import validation and creation, tag normalization, mention resolution, comment permissions, upvote toggling, audit emission, and notification event creation.
 - Define ports for persistence, password hashing, token generation, environment configuration, and event persistence.
 
 #### Infrastructure
@@ -81,7 +81,7 @@ Produce an implementation plan that is detailed enough to drive engineering exec
 - login, password verification, lockout behavior, inactive-account denial, current-user retrieval, first-login password change
 
 ### Slice 2: Tenant Administration
-- organization create and archive flows, automatic default board and status provisioning, organization-scoped user CRUD, lifecycle state handling, last-Org-Admin safeguards
+- organization create and archive flows, automatic default board and status provisioning, organization-scoped user CRUD, downloadable user CSV template, atomic user CSV import, lifecycle state handling, last-Org-Admin safeguards
 
 ### Slice 3: Workflow Configuration
 - statuses, boards, swimlane ordering, soft-delete status behavior, board status subset selection

@@ -80,16 +80,18 @@ Dependencies:
 Outcome: tenant administration works with the required role boundaries.
 
 Suggested sequencing by team:
-- Infrastructure: organization, user, and bootstrap persistence
-- Application: organization bootstrap, archive flow, user CRUD, lifecycle guardrails, last-Org-Admin protection
-- API: organization and user endpoints, filters, and validation
-- Client: Admin section pages for organizations and users
-- QA: org scope, lifecycle, and archive behavior verification
+- Infrastructure: organization, user, bootstrap, and atomic bulk-create persistence
+- Application: organization bootstrap, archive flow, user CRUD, CSV import validation, lifecycle guardrails, last-Org-Admin protection
+- API: organization and user endpoints, CSV template/import endpoints, filters, and validation
+- Client: Admin section pages for organizations and users, including template download and CSV import feedback
+- QA: org scope, lifecycle, archive behavior, template contract, and atomic import verification
 
 Tasks:
 - implement organization create, edit, detail, list, and archive flows
 - auto-provision default statuses and one default board for each new organization
 - implement user create, edit, detail, and list flows within organization scope
+- provide the canonical downloadable user import CSV template
+- implement atomic user CSV import for up to 1,000 rows and 5 MB with row-specific validation errors
 - enforce one organization and one role per non-Site Admin user
 - enforce globally unique email addresses
 - support `Active` and `Inactive` user states
@@ -99,6 +101,7 @@ Tasks:
 Exit criteria:
 - Site Admin and Org Admin boundaries match the feature specs
 - archived organizations remain retained and inaccessible according to policy
+- authorized administrators can download the canonical template and import valid users without partial creation on validation failure
 
 Dependencies:
 - Epics 1 and 2

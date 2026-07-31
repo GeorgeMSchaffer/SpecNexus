@@ -47,6 +47,24 @@ All organization text fields are trimmed before validation and persistence.
 10. User accounts support `Active` and `Inactive` states only in MVP.
 11. Organization changes, user changes, role changes, and account status changes must be audited.
 12. Development startup seed creates one Org Admin, one User, and one Read Only user in each seeded demo organization.
+13. Site Admin and Org Admin can import users through CSV within the same organization scope as individual user creation.
+14. CSV import creates organization-scoped users only and cannot create a Site Admin.
+
+## User CSV Import
+- The user administration screen provides `Download CSV template` and `Import CSV` actions.
+- The downloadable template is UTF-8 CSV with the exact header row `firstName,lastName,email,role,status,initialPassword` and one example row.
+- Imported CSV files must use the template header names and order.
+- `firstName`, `lastName`, `email`, `role`, and `initialPassword` are required for every non-blank row.
+- `status` is optional and defaults to `Active`; when supplied, it must be `Active` or `Inactive`.
+- `role` must be `Org Admin`, `User`, or `Read Only`.
+- Imported names, emails, roles, and statuses are trimmed before validation; email uniqueness remains global.
+- `initialPassword` must satisfy the authentication complexity policy and is not trimmed or returned in import results.
+- Blank rows are ignored. A file containing no data rows is rejected.
+- The import accepts at most 1,000 data rows and a maximum file size of 5 MB.
+- The entire file is validated before persistence. Any invalid row, duplicate email within the file, or email already in the system rejects the complete import without creating users.
+- Validation failures identify the one-based CSV row number, field, and message so administrators can correct and retry the file.
+- A successful import returns the number of users created and writes user-administration audit events without storing plaintext passwords or CSV file contents.
+- The organization user list refreshes after a successful import and displays a summary of the created-user count.
 
 ## User Fields
 - First Name (max 100 characters)
@@ -90,3 +108,11 @@ User profile text fields are trimmed before validation and persistence.
 - [ ] Inactive users cannot authenticate
 - [ ] Organization and user administration actions generate audit events
 - [ ] Users are assigned exactly one organization and one role
+- [ ] Site Admin can download the user CSV template and import users for any organization
+- [ ] Org Admin can download the user CSV template and import users only for their own organization
+- [ ] The CSV template contains the documented headers and an example row
+- [ ] A valid CSV import creates all users in the selected organization and reports the created-user count
+- [ ] CSV import defaults an omitted status to `Active` and rejects unsupported roles or statuses
+- [ ] CSV import rejects files over 5 MB or 1,000 data rows
+- [ ] Invalid rows and duplicate emails return row-specific errors and create no users from the file
+- [ ] CSV import cannot create Site Admin users and does not expose or audit plaintext passwords or file contents
