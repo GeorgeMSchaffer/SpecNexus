@@ -483,7 +483,7 @@ Behavior rules:
 - two or more rows in the same file sharing the same `Title` (case-insensitive) are validation errors reported against the second and subsequent duplicate row numbers
 - rows whose `Title` (case-insensitive) matches an existing idea on the target board are silently skipped
 - `AssignedTo` values are resolved by email within the same organization; unresolved values are validation errors
-- `Status` values must match an active swimlane name on the target board; unresolved values are validation errors; omitted `Status` defaults to the leftmost swimlane
+- `Status` values are **name strings** matched case-insensitively against the organization's configured statuses; a value that does not match any org status is a validation error; omitted `Status` defaults to the leftmost swimlane on the target board
 - new `Tags` values are auto-created using standard organization tag normalization rules
 - the creation phase runs in a single database transaction; a persistence failure rolls back all created ideas
 - on success, one bulk-import audit event is emitted (including when `importedCount` is 0) plus one individual idea-creation audit event per created idea

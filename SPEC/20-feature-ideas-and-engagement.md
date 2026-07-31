@@ -92,7 +92,7 @@ Users can create, discuss, organize, and support ideas within their organization
    | `Description`| Yes      | max 4000 characters                                                        |
    | `Priority`   | Yes      | must be `Low`, `Medium`, `High`, or `Critical`                             |
    | `DueDate`    | No       | ISO-8601 date format (`YYYY-MM-DD`); omit or leave blank to skip           |
-   | `Status`     | No       | must match a swimlane name on the target board; defaults to leftmost lane  |
+   | `Status`     | No       | status name string; matched case-insensitively against the org's configured statuses; if omitted, defaults to the leftmost swimlane on the board |
    | `AssignedTo` | No       | email address of a user in the same organization                           |
    | `Tags`       | No       | pipe-delimited (`\|`) list of tag values; max 100 characters per tag       |
 
@@ -101,7 +101,7 @@ Users can create, discuss, organize, and support ideas within their organization
 6. If two or more rows within the same CSV share the same `Title` (case-insensitive), the second and any subsequent duplicate rows are validation errors.
 7. If a row's `Title` (case-insensitive) already exists as an idea on the target board, that row is silently skipped without error.
 8. An unresolved `AssignedTo` email (not an active user in the same organization) is a validation error.
-9. An unrecognized `Status` value (not a swimlane on the target board) is a validation error.
+9. The `Status` column value is a **status name string**. The validator performs a case-insensitive name lookup against the organization's configured statuses. If a match is found, the idea is assigned that status. If no org status with that name exists, it is a validation error.
 10. New `Tags` values that do not yet exist in the organization are created automatically using the same normalization rules as manual tag creation (trimmed, case-insensitive deduplication).
 11. The creation phase (after validation passes) runs inside a single database transaction. If any row fails to persist, all created ideas are rolled back.
 12. A successful import generates one bulk-import audit event for the upload action, plus one individual audit event per idea created (same event type as manual idea creation). The bulk-import audit event fires even when all rows were skipped (`importedCount: 0`).
@@ -116,7 +116,7 @@ Users can create, discuss, organize, and support ideas within their organization
 - [ ] `Description` is validated to max 4000 characters per row
 - [ ] `Priority` must be one of `Low`, `Medium`, `High`, or `Critical`; unrecognized values are validation errors
 - [ ] `DueDate` must be a valid `YYYY-MM-DD` date when provided; invalid formats are validation errors
-- [ ] `Status` must match a swimlane name on the target board when provided; unrecognized values are validation errors
+- [ ] `Status` is a name string matched case-insensitively against the organization's configured statuses; a value that does not match any org status is a validation error
 - [ ] Ideas with no `Status` value default to the leftmost swimlane of the target board
 - [ ] `AssignedTo` must resolve to an active user in the same organization by email; unresolved values are validation errors
 - [ ] `Tags` values are pipe-delimited; new tag values are auto-created using existing normalization rules
