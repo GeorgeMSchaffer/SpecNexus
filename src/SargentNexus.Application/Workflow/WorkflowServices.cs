@@ -1,4 +1,3 @@
-using System.Text.Json;
 using System.Text.RegularExpressions;
 using SargentNexus.Domain;
 
@@ -270,13 +269,16 @@ public sealed class WorkflowManagementService : IWorkflowManagementService
 
     private readonly IWorkflowDataAccess _dataAccess;
     private readonly IWorkflowAuditWriter _auditWriter;
+    private readonly INotificationWriter _notificationWriter;
 
     public WorkflowManagementService(
         IWorkflowDataAccess dataAccess,
-        IWorkflowAuditWriter auditWriter)
+        IWorkflowAuditWriter auditWriter,
+        INotificationWriter notificationWriter)
     {
         _dataAccess = dataAccess;
         _auditWriter = auditWriter;
+        _notificationWriter = notificationWriter;
     }
 
     public async Task<WorkflowResult<IReadOnlyList<StatusSummaryModel>>> ListStatusesAsync(
@@ -1020,54 +1022,40 @@ public sealed class WorkflowManagementService : IWorkflowManagementService
             idea.PendingApprovalRequestedAtUtc = null;
             idea.PendingApprovalExpiresAtUtc = null;
             idea.UpdatedAtUtc = now;
-            _dataAccess.AddNotificationEvent(new NotificationEvent
-            {
-                Id = Guid.NewGuid(),
-                OrganizationId = idea.OrganizationId,
-                BoardId = idea.BoardId,
-                IdeaId = idea.Id,
-                ActorUserId = actor.UserId,
-                RecipientUserId = idea.AuthorUserId,
-                EventType = "IdeaStatusChanged",
-                IdeaLink = BuildIdeaLink(idea),
-                Message = $"The status of idea '{idea.Title}' changed.",
-                OccurredAtUtc = now,
-                Metadata = JsonSerializer.Serialize(new
-                {
-                    IdeaTitle = idea.Title,
-                    PreviousStatusId = previousStatusId,
-                    NewStatusId = statusId.Value
-                })
-            });
             await _dataAccess.SaveChangesAsync(cancellationToken);
             await _auditWriter.WriteIdeaStatusMovedAsync(actor.UserId, idea, previousStatusId, cancellationToken);
+            if (actor.UserId != idea.AuthorUserId)
+            {
+                await _notificationWriter.WriteAsync(idea.AuthorUserId, actor.UserId, NotificationEventType.IdeaStatusChanged,
+                    idea.Id, idea.Title, idea.OrganizationId, idea.BoardId, cancellationToken);
+            }
+
+            if (idea.AssigneeUserId.HasValue && idea.AssigneeUserId.Value != actor.UserId && idea.AssigneeUserId.Value != idea.AuthorUserId)
+            {
+                await _notificationWriter.WriteAsync(idea.AssigneeUserId.Value, actor.UserId, NotificationEventType.IdeaStatusChanged,
+                    idea.Id, idea.Title, idea.OrganizationId, idea.BoardId, cancellationToken);
+            }
+
             return WorkflowResult.Success();
         }
 
         var previousStatusIdForMove = idea.StatusId;
         idea.StatusId = statusId.Value;
         idea.UpdatedAtUtc = now;
-        _dataAccess.AddNotificationEvent(new NotificationEvent
-        {
-            Id = Guid.NewGuid(),
-            OrganizationId = idea.OrganizationId,
-            BoardId = idea.BoardId,
-            IdeaId = idea.Id,
-            ActorUserId = actor.UserId,
-            RecipientUserId = idea.AuthorUserId,
-            EventType = "IdeaStatusChanged",
-            IdeaLink = BuildIdeaLink(idea),
-            Message = $"The status of idea '{idea.Title}' changed.",
-            OccurredAtUtc = now,
-            Metadata = JsonSerializer.Serialize(new
-            {
-                IdeaTitle = idea.Title,
-                PreviousStatusId = previousStatusIdForMove,
-                NewStatusId = statusId.Value
-            })
-        });
         await _dataAccess.SaveChangesAsync(cancellationToken);
         await _auditWriter.WriteIdeaStatusMovedAsync(actor.UserId, idea, previousStatusIdForMove, cancellationToken);
+
+        if (actor.UserId != idea.AuthorUserId)
+        {
+            await _notificationWriter.WriteAsync(idea.AuthorUserId, actor.UserId, NotificationEventType.IdeaStatusChanged,
+                idea.Id, idea.Title, idea.OrganizationId, idea.BoardId, cancellationToken);
+        }
+
+        if (idea.AssigneeUserId.HasValue && idea.AssigneeUserId.Value != actor.UserId && idea.AssigneeUserId.Value != idea.AuthorUserId)
+        {
+            await _notificationWriter.WriteAsync(idea.AssigneeUserId.Value, actor.UserId, NotificationEventType.IdeaStatusChanged,
+                idea.Id, idea.Title, idea.OrganizationId, idea.BoardId, cancellationToken);
+        }
 
         return WorkflowResult.Success();
     }
@@ -1159,27 +1147,22 @@ public sealed class WorkflowManagementService : IWorkflowManagementService
         };
 
         _dataAccess.AddComment(comment);
-        _dataAccess.AddNotificationEvent(new NotificationEvent
-        {
-            Id = Guid.NewGuid(),
-            OrganizationId = idea.OrganizationId,
-            BoardId = idea.BoardId,
-            IdeaId = idea.Id,
-            ActorUserId = actor.UserId,
-            RecipientUserId = idea.AuthorUserId,
-            EventType = "IdeaCommented",
-            IdeaLink = BuildIdeaLink(idea),
-            Message = $"A new comment was added to idea '{idea.Title}'.",
-            OccurredAtUtc = DateTime.UtcNow,
-            Metadata = JsonSerializer.Serialize(new
-            {
-                IdeaTitle = idea.Title,
-                CommentBody = body
-            })
-        });
+        await _dataAccess.SaveChangesAsync(cancellationToken);
         await AddCommentMentionsAsync(comment, idea, actor.UserId, mentionResolution.ResolvedEmails, cancellationToken);
         await _dataAccess.SaveChangesAsync(cancellationToken);
         await _auditWriter.WriteCommentCreatedAsync(actor.UserId, idea.OrganizationId, comment, cancellationToken);
+
+        if (actor.UserId != idea.AuthorUserId)
+        {
+            await _notificationWriter.WriteAsync(idea.AuthorUserId, actor.UserId, NotificationEventType.CommentAdded,
+                idea.Id, idea.Title, idea.OrganizationId, idea.BoardId, cancellationToken);
+        }
+
+        if (idea.AssigneeUserId.HasValue && idea.AssigneeUserId.Value != actor.UserId && idea.AssigneeUserId.Value != idea.AuthorUserId)
+        {
+            await _notificationWriter.WriteAsync(idea.AssigneeUserId.Value, actor.UserId, NotificationEventType.CommentAdded,
+                idea.Id, idea.Title, idea.OrganizationId, idea.BoardId, cancellationToken);
+        }
 
         return WorkflowResult<CommentModel>.Success(ToCommentModel(comment));
     }
@@ -1644,24 +1627,11 @@ public sealed class WorkflowManagementService : IWorkflowManagementService
                 SourceText = email
             });
 
-            _dataAccess.AddNotificationEvent(new NotificationEvent
+            if (mentionedUser.Id != actorUserId)
             {
-                Id = Guid.NewGuid(),
-                OrganizationId = idea.OrganizationId,
-                BoardId = idea.BoardId,
-                IdeaId = idea.Id,
-                ActorUserId = actorUserId,
-                RecipientUserId = mentionedUser.Id,
-                EventType = "IdeaMentioned",
-                IdeaLink = BuildIdeaLink(idea),
-                Message = $"You were mentioned in idea '{idea.Title}'.",
-                OccurredAtUtc = DateTime.UtcNow,
-                Metadata = JsonSerializer.Serialize(new
-                {
-                    MentionedEmail = email,
-                    IdeaTitle = idea.Title
-                })
-            });
+                await _notificationWriter.WriteAsync(mentionedUser.Id, actorUserId, NotificationEventType.IdeaMention,
+                    idea.Id, idea.Title, idea.OrganizationId, idea.BoardId, cancellationToken);
+            }
         }
     }
 
@@ -1690,31 +1660,17 @@ public sealed class WorkflowManagementService : IWorkflowManagementService
                 SourceText = email
             });
 
-            _dataAccess.AddNotificationEvent(new NotificationEvent
+            if (mentionedUser.Id != actorUserId)
             {
-                Id = Guid.NewGuid(),
-                OrganizationId = idea.OrganizationId,
-                BoardId = idea.BoardId,
-                IdeaId = idea.Id,
-                ActorUserId = actorUserId,
-                RecipientUserId = mentionedUser.Id,
-                EventType = "CommentMentioned",
-                IdeaLink = BuildIdeaLink(idea),
-                Message = $"You were mentioned in a comment on idea '{idea.Title}'.",
-                OccurredAtUtc = DateTime.UtcNow,
-                Metadata = JsonSerializer.Serialize(new
-                {
-                    MentionedEmail = email,
-                    IdeaTitle = idea.Title,
-                    CommentBody = comment.Body
-                })
-            });
+                await _notificationWriter.WriteAsync(mentionedUser.Id, actorUserId, NotificationEventType.CommentMention,
+                    idea.Id, idea.Title, idea.OrganizationId, idea.BoardId, cancellationToken);
+            }
         }
     }
 
     private static string BuildIdeaLink(Idea idea)
     {
-        return $"/org/{idea.OrganizationId}/boards/{idea.BoardId}/ideas/{idea.Id}";
+        return $"/ideas/{idea.Id}/edit";
     }
 
     private static StatusSummaryModel ToStatusSummary(Status status)
