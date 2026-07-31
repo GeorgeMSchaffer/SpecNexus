@@ -42,6 +42,9 @@ Organizations need a structured way to capture process ideas, discuss them, move
 - Site Admin and Org Admin can edit organization details in scope.
 - Organizations can be archived but not hard-deleted.
 - Each new organization is provisioned with default statuses and one default board.
+- An invite code is auto-generated when an organization is created; displayed in list and detail views.
+- Admins can regenerate an organization's invite code; archived org codes are invalid.
+- Users can self-register using a valid invite code, which sets their organization.
 - In Development only, startup seed creates 3 demo organizations with realistic profile data.
 - Non-Site Admin users belong to exactly one organization and have exactly one role.
 - User email is globally unique across the system.

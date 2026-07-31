@@ -1,4 +1,3 @@
-using System.Text.Json;
 using SargentNexus.Application.Workflow;
 using SargentNexus.Domain;
 
@@ -601,15 +600,10 @@ public sealed class WorkflowManagementServiceTests
             CancellationToken.None);
 
         Assert.True(result.Succeeded);
-        var notification = Assert.Single(fixture.DataAccess.NotificationEvents);
-        Assert.Equal("IdeaMentioned", notification.EventType);
+        var notification = Assert.Single(fixture.NotificationWriter.Events);
+        Assert.Equal("IdeaMention", notification.EventType);
         Assert.Equal(fixture.StandardUser.Id, notification.RecipientUserId);
-        Assert.Equal($"/org/{fixture.Organization.Id}/boards/{board.Id}/ideas/{result.Response!.IdeaId}", notification.IdeaLink);
-        Assert.Contains("mentioned", notification.Message, StringComparison.OrdinalIgnoreCase);
-
-        using var metadata = JsonDocument.Parse(notification.Metadata);
-        Assert.Equal(fixture.StandardUser.Email, metadata.RootElement.GetProperty("MentionedEmail").GetString());
-        Assert.Equal("Mentioned idea", metadata.RootElement.GetProperty("IdeaTitle").GetString());
+        Assert.Equal($"/ideas/{result.Response!.IdeaId}/edit", notification.IdeaLink);
     }
 
     [Fact]
@@ -626,10 +620,10 @@ public sealed class WorkflowManagementServiceTests
             CancellationToken.None);
 
         Assert.True(result.Succeeded);
-        var notification = Assert.Single(fixture.DataAccess.NotificationEvents);
+        var notification = Assert.Single(fixture.NotificationWriter.Events);
         Assert.Equal("IdeaStatusChanged", notification.EventType);
         Assert.Equal(fixture.StandardUser.Id, notification.RecipientUserId);
-        Assert.Equal($"/org/{fixture.Organization.Id}/boards/{board.Id}/ideas/{idea.Id}", notification.IdeaLink);
+        Assert.Equal($"/ideas/{idea.Id}/edit", notification.IdeaLink);
     }
 
     [Fact]
@@ -664,7 +658,7 @@ public sealed class WorkflowManagementServiceTests
             CancellationToken.None);
 
         Assert.True(result.Succeeded);
-        Assert.Contains(fixture.DataAccess.NotificationEvents, item => item.EventType == "CommentMentioned");
+        Assert.Contains(fixture.NotificationWriter.Events, item => item.EventType == "CommentMention");
     }
 
     [Fact]
@@ -1004,6 +998,7 @@ public sealed class WorkflowManagementServiceTests
 
             DataAccess = new FakeWorkflowDataAccess();
             AuditWriter = new FakeWorkflowAuditWriter();
+            NotificationWriter = new FakeNotificationWriter();
 
             DataAccess.SeedOrganization(Organization);
             DataAccess.SeedOrganization(ForeignOrganization);
@@ -1015,7 +1010,7 @@ public sealed class WorkflowManagementServiceTests
             DataAccess.SeedStatus(StatusOne);
             DataAccess.SeedStatus(StatusTwo);
 
-            Service = new WorkflowManagementService(DataAccess, AuditWriter);
+            Service = new WorkflowManagementService(DataAccess, AuditWriter, NotificationWriter);
 
             OrgAdminActor = new WorkflowActorContext
             {
@@ -1056,6 +1051,8 @@ public sealed class WorkflowManagementServiceTests
         public FakeWorkflowDataAccess DataAccess { get; }
 
         public FakeWorkflowAuditWriter AuditWriter { get; }
+
+        public FakeNotificationWriter NotificationWriter { get; }
 
         public WorkflowManagementService Service { get; }
 

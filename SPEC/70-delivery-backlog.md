@@ -88,6 +88,9 @@ Suggested sequencing by team:
 
 Tasks:
 - implement organization create, edit, detail, list, and archive flows
+- auto-generate an invite code on organization creation; display in list and detail views
+- implement invite code regeneration for admins; invalidate codes for archived organizations
+- implement user self-registration flow: validate invite code, determine organization, create account
 - auto-provision default statuses and one default board for each new organization
 - implement user create, edit, detail, and list flows within organization scope
 - provide the canonical downloadable user import CSV template
@@ -118,6 +121,7 @@ Suggested sequencing by team:
 
 Tasks:
 - implement organization-scoped status create, edit, list, and soft-delete flows
+- block soft-delete of a status that is currently referenced as a swimlane on any active board
 - seed the default status set on organization creation
 - implement board create, edit, list, and detail flows
 - enforce minimum two swimlanes per board
@@ -143,6 +147,8 @@ Suggested sequencing by team:
 
 Tasks:
 - implement idea create, edit, detail, list, and status update flows
+- implement idea soft-delete for Site Admin and Org Admin; soft-deleted ideas excluded from board views and list queries
+- implement bulk CSV import: whole-file validation, 500-row limit, in-file duplicate detection, board-duplicate skipping, transactional creation, dual audit events
 - enforce title and description constraints
 - default new idea status to the left-most board swimlane when not supplied
 - implement tag autocomplete after 2 characters
@@ -185,23 +191,65 @@ Dependencies:
 - Epics 1 through 5
 
 ## Epic 7: Blazor Client Experience
-Outcome: the client supports the agreed workflows and role boundaries.
+Outcome: the client supports the agreed workflows and role boundaries with the revised layout and navigation.
 
 Suggested sequencing by team:
-- Client: page shells, shared components, admin flows, board flows, detail views
+- Client: page shells, shared components, layout revisions, Settings flows, board and idea flows, detail views
 - API/Application: close support loop for UI-driven gaps discovered during composition
-- QA: navigation, validation, and role-affordance checks
+- QA: navigation, validation, role-affordance, and regression checks
 
 Tasks:
-- build the login flow for globally unique email credentials
+
+**Bug fixes:**
+- fix the errant `else {` rendered as visible content on the Change Password screen
+- remove all Weather and Counter placeholder pages, routes, nav links, and sample code
+
+**Header and navigation:**
+- set header background to `rgb(33, 37, 41)`; render username in white
+- move sign-out to an icon button immediately left of the username display
+- add gear icon to header that navigates to `/settings`
+- replace vertical sidebar nav with a horizontal menu under the header: Home, Workflow, Ideas only
+
+**Settings area (formerly Admin):**
+- rename all Admin routes to `/settings/...`, page titles to "Settings", and gear icon tooltip to "Settings"
+- build Settings landing page with My Profile link for all authenticated users and role-scoped admin links:
+  - Site Admin: Organizations, Users, Boards & Statuses
+  - Org Admin: Users and Boards & Statuses (own org only)
+  - Member: no admin links rendered
+- implement list-first / form-swap pattern for Organizations, Users, and Boards & Statuses pages:
+  - default to list view; Create button visible only to permitted roles (Create Organization: Site Admin only)
+  - clicking Edit or Create swaps to form view; saving or cancelling returns to list with list refreshed
+- display invite code in organization list and detail; provide regenerate action for admins
+
+**Workflow page:**
+- restrict the Workflow page to a board list only (remove all non-list content)
+- clicking a board navigates to that board's swimlane/kanban view
+
+**Ideas page (new):**
+- build `/ideas` page listing ideas created by or assigned to the current user
+- include All / Created by me / Assigned to me filter; changing filter resets to page 1
+- inline list-to-form swap when clicking Details; saving or cancelling returns to list
+
+**Uniform list conventions (all list pages):**
+- add a uniform search bar above every entity list
+- implement server-side pagination with page size options 25 (default), 50, 100, 250
+- wire `search`, `page`, and `pageSize` query params to corresponding API endpoints
+- changing search text resets to page 1
+- organization list columns and search scope: Title, Description, Invite Code, Status
+
+**Role-aware client flows:**
+- build login flow for globally unique email credentials
 - build first-login password change and inactive-account states
-- build the Admin section for organizations and users
-- build board and status administration flows
-- build board, idea detail, comment, tag, mention, and upvote interfaces
 - enforce visible role-based UI affordances for Read Only, User, Org Admin, and Site Admin
+- build board, idea detail, comment, tag, mention, and upvote interfaces
 
 Exit criteria:
-- the client exposes each MVP workflow without relying on undefined behavior
+- all bug fixes from SPEC/20-feature-client-ui-revisions.md verified as resolved
+- header, horizontal menu, gear icon, and Settings area match the approved layout spec
+- Workflow page shows only a board list; clicking opens the swimlane view
+- Ideas page with filter and inline form is functional
+- all list pages have uniform search bar and server-side pagination with correct page sizes
+- no Admin-labeled routes, titles, or text remain
 
 Dependencies:
 - Epics 2 through 5 primarily, with Epic 6 optional for internal diagnostics only
@@ -221,8 +269,9 @@ Tasks:
 - implement integration tests for auth, protected routes, organization scope, and collaboration flows
 - implement contract tests for schemas and problem-details error responses
 - add a critical-path smoke test for sign-in, board creation, and idea creation as a release-readiness gate
-- verify seed behavior, default organization bootstrap, and audit generation end-to-end
+- verify seed behavior, default organization bootstrap, invite code generation, and audit generation end-to-end
 - verify Development-only demo seed graph, idempotent startup behavior, and non-Development seed suppression
+- regression-verify all items in SPEC/20-feature-client-ui-revisions.md acceptance criteria checklist
 - confirm deferred work remains deferred
 
 Deferred for MVP release:

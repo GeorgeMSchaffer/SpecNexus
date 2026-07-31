@@ -101,3 +101,41 @@ a, .btn-link {
 code {
     color: #c02d76;
 }
+
+/* App header */
+.app-header {
+    background-color: rgb(33, 37, 41);
+    color: white;
+    padding: 0.5rem 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.app-header .username {
+    color: white;
+    font-weight: 500;
+}
+
+.app-header .btn-icon {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 1.1rem;
+    padding: 0.25rem 0.5rem;
+    cursor: pointer;
+    line-height: 1;
+}
+
+.app-header .btn-icon:hover {
+    opacity: 0.8;
+}
+
+/* Remove legacy sidebar layout */
+.page {
+    flex-direction: column;
+}
+
+.sidebar {
+    display: none;
+}

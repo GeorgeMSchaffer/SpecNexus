@@ -47,6 +47,8 @@ public sealed class OrganizationListItemModel
 
     public string Phone { get; init; } = string.Empty;
 
+    public string InviteCode { get; init; } = string.Empty;
+
     public string? LogoThumbnailUrl { get; init; }
 
     public bool IsArchived { get; init; }
@@ -94,6 +96,8 @@ public sealed class OrganizationCreateResponseModel
     public Guid DefaultBoardId { get; init; }
 
     public int DefaultStatusCount { get; init; }
+
+    public string InviteCode { get; init; } = string.Empty;
 }
 
 public sealed class OrganizationDetailModel
@@ -115,6 +119,8 @@ public sealed class OrganizationDetailModel
     public string PrimaryContactFirstName { get; init; } = string.Empty;
 
     public string PrimaryContactLastName { get; init; } = string.Empty;
+
+    public string InviteCode { get; init; } = string.Empty;
 
     public string? LogoUrl { get; init; }
 
@@ -241,7 +247,6 @@ public enum AdministrationFailureReason
     NotFound = 2,
     ValidationFailed = 3
 }
-
 public sealed class AdministrationResult
 {
     private AdministrationResult(bool succeeded, AdministrationFailureReason? failureReason, IReadOnlyDictionary<string, string[]> errors)

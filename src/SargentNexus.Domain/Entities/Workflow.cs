@@ -10,6 +10,12 @@ public sealed class Status : EntityBase
 
     public bool IsDeleted { get; set; }
 
+    public string? Color { get; set; }
+
+    public int SortOrder { get; set; }
+
+    public bool IsDefault { get; set; }
+
     public ICollection<BoardSwimlane> BoardSwimlanes { get; set; } = new List<BoardSwimlane>();
 
     public ICollection<Idea> Ideas { get; set; } = new List<Idea>();
@@ -24,6 +30,8 @@ public sealed class Board : EntityBase
     public string Name { get; set; } = string.Empty;
 
     public bool AllowUserStatusUpdate { get; set; }
+
+    public bool IsArchived { get; set; }
 
     public ICollection<BoardSwimlane> Swimlanes { get; set; } = new List<BoardSwimlane>();
 

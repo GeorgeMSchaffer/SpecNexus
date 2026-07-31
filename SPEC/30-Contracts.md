@@ -34,10 +34,17 @@ Defines the system contracts that implementations must follow.
 - Organization, user, idea, and comment list endpoints support pagination in MVP.
 - Smaller configuration collections such as statuses, boards, and tags may return full result sets unless a feature-specific contract says otherwise.
 - Paginated collections support basic filtering plus one explicit sort field and sort direction.
+- `pageSize` defaults to 25; supported values are 25, 50, 100, and 250.
+- `search` filters across the fields displayed as list columns for that entity in the client UI (organizations: title, description, invite code, status).
 - Archived organizations are hidden from list results by default unless explicitly filtered with `isArchived=true` or an equivalent include-archived flag.
 
 ## Update Conventions
 - MVP update operations use last-write-wins behavior unless a feature-specific contract defines a stronger rule.
+
+## Authorization Invariant
+- Every idea, board, status, comment, and org-scoped resource operation must verify that the resource belongs to the caller's organization (`resource.organization_id == caller.organization_id`).
+- Site Admin is exempt from this check and can act on resources in any organization.
+- Violations must return `403 Forbidden`, not `404 Not Found`, to avoid leaking resource existence to cross-org callers (except where resource non-existence is unambiguous).
 
 ## Validation Ownership
 - The API contract validates request shape, required fields, and basic field constraints.
@@ -513,6 +520,41 @@ Success response `200` paged item shape:
 - `authorUserId`
 - `createdAtUtc`
 
+### `POST /api/v1/boards/{boardId}/ideas/import`
+Purpose: Bulk-import ideas onto a board from a CSV file.
+
+Request body:
+- `multipart/form-data`
+- field `file` required — CSV file, UTF-8 encoded, with header row
+
+Behavior rules:
+- caller must be Site Admin or Org Admin scoped to the board's organization
+- the entire file is validated before any ideas are created; partial imports are not allowed
+- maximum 500 data rows per upload; files exceeding this limit are rejected with `400`
+- two or more rows in the same file sharing the same `Title` (case-insensitive) are validation errors reported against the second and subsequent duplicate row numbers
+- rows whose `Title` (case-insensitive) matches an existing idea on the target board are silently skipped
+- `AssignedTo` values are resolved by email within the same organization; unresolved values are validation errors
+- `Status` values are **name strings** matched case-insensitively against the organization's configured statuses; a value that does not match any org status is a validation error; omitted `Status` defaults to the leftmost swimlane on the target board
+- new `Tags` values are auto-created using standard organization tag normalization rules
+- the creation phase runs in a single database transaction; a persistence failure rolls back all created ideas
+- on success, one bulk-import audit event is emitted (including when `importedCount` is 0) plus one individual idea-creation audit event per created idea
+
+Success response `200`:
+- `importedCount` integer — number of ideas created
+- `skippedCount` integer — number of rows skipped due to duplicate title
+- `errors` empty array
+
+Error response `400` (validation failure):
+- standard problem-details envelope
+- `errors` object keyed by row number (1-based, excluding header), each value an array of validation message strings
+- example: `{ "errors": { "3": ["Priority must be one of: Low, Medium, High, Critical."], "7": ["AssignedTo must be a valid email."] } }`
+
+Error responses:
+- `400` file is missing, exceeds 500 rows, has a malformed header, or contains validation errors in any row
+- `401` caller is not authenticated
+- `403` caller is authenticated but not allowed to import ideas onto this board
+- `404` board does not exist or is outside caller scope
+
 ### `POST /api/v1/boards/{boardId}/ideas`
 Purpose: Create a new idea on a board.
 
@@ -522,7 +564,7 @@ Request body:
 - `priority` required string: `Low`, `Medium`, `High`, or `Critical`
 - `dueDate` optional date string (`YYYY-MM-DD`)
 - `assigneeUserId` optional GUID string
-- `statusId` optional GUID string, defaults to the left-most swimlane when omitted
+- `statusId` optional GUID string, defaults to the left-most swimlane when omitted; if provided must correspond to an active swimlane on this board
 - `tagNames` optional string array
 - `mentionEmails` optional string array
 
@@ -562,13 +604,35 @@ Request body:
 - `priority` required string: `Low`, `Medium`, `High`, or `Critical`
 - `dueDate` optional date string (`YYYY-MM-DD`)
 - `assigneeUserId` optional GUID string
-- `tagNames` optional string array
-- `mentionEmails` optional string array
+- `tagNames` optional string array — **full replacement**: omitting this field or sending an empty array clears all tags from the idea
+- `mentionEmails` optional string array — **full replacement**: omitting this field or sending an empty array clears all mentions from the idea
 
 UI behavior contract:
 - board cards remain compact and show only `title`, `priority`, `assigneeDisplayName`, and upvote state.
 - selecting the card title opens a detail overlay for full idea editing in context.
 - full idea editing in the overlay supports all editable idea fields and collaboration fields.
+
+Error responses:
+- `400` request body is malformed or violates field constraints
+- `401` caller is not authenticated
+- `403` caller is authenticated but not allowed to edit this idea
+- `404` idea does not exist or is outside caller scope
+
+### `DELETE /api/v1/ideas/{ideaId}`
+Purpose: Soft-delete an idea.
+
+Behavior rules:
+- soft-delete only; the idea record is retained but excluded from board views and list queries
+- all associated comments, tags, mentions, and upvotes are retained for audit purposes
+- a deletion audit event is generated
+
+Success response:
+- `204 No Content`
+
+Error responses:
+- `401` caller is not authenticated
+- `403` caller is authenticated but not allowed to delete this idea (only Site Admin and Org Admin may delete)
+- `404` idea does not exist or is outside caller scope
 
 ### `POST /api/v1/ideas/{ideaId}/status`
 Purpose: Move an idea to another board status.

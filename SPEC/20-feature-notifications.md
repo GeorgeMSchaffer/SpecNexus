@@ -1,47 +1,71 @@
 # Feature: Notifications
 
 ## Outcome
-Users receive email notifications for collaboration events relevant to them.
+Notification events are persisted for collaboration events. Email delivery is deferred to a later phase.
 
 ## Scope
-- In for later phase: queued email delivery for collaboration events
-- Out for MVP: guaranteed email delivery implementation
+- **MVP (in)**: Persist `NotificationEvent` rows to the database for all trigger events below.
+- **Later phase (out)**: Queued email delivery, per-user notification preferences, notification inbox UI.
 
 ## Notification Triggers
-Email notifications are sent when:
-1. A user is @mentioned in an idea
+A notification event is created when:
+1. A user is @mentioned in an idea body
 2. A user is @mentioned in a comment
-3. A comment is added to a user's idea
-4. An idea's status changes
+3. A comment is added to an idea (notify idea author and assignee)
+4. An idea's status changes (notify idea author and assignee)
+
+Self-notifications are suppressed: no event is written when the actor and the recipient are the same user.
 
 ## Recipients
-- @mention notification → mentioned user
-- comment @mention notification → mentioned user
-- Comment notification → idea author
-- Status change notification → idea author
+- Idea mention → mentioned user only
+- Comment mention → mentioned user only
+- Comment added → idea author + idea assignee (each, if different from actor)
+- Status change → idea author + idea assignee (each, if different from actor)
 
-## Delivery Rules
-1. Notification emails must include the idea title.
-2. Notification emails must include a canonical idea link using the organization-aware board route pattern `/org/{organizationId}/boards/{boardId}/ideas/{ideaId}`.
-3. Mention notifications should include relevant idea context.
-4. Email delivery is optional for MVP and is implemented in a later phase.
-5. The initial notification feature does not include per-user notification preference settings.
-6. When notifications are enabled, each event generates its own email rather than consolidating multiple events into one message.
-7. Notification events are persisted for internal processing and verification only in MVP; read or query endpoints are not required in MVP.
-8. MVP verification uses tests and internal diagnostics outside the public API surface rather than public event query endpoints.
+## Canonical Idea Link
+Each notification event persists a canonical link to the idea:
 
-## Approval Workflow Decisions
-The notification rules for the approval workflow are:
+```
+/ideas/{ideaId}/edit
+```
 
-- Approval-related events generate notifications to the idea author and any reviewer or approver involved in the transition.
-- Notification payloads include the idea title and a canonical idea link.
-- Expiration and rejection events are also notified so the actor can understand why the workflow moved back.
+This is the single-idea edit route used by the Ideas page. The link is stored in the `NotificationEvent` row alongside the idea title.
+
+> **Change from prior spec**: The earlier route pattern `/org/{organizationId}/boards/{boardId}/ideas/{ideaId}` is superseded by `/ideas/{ideaId}/edit` to match the updated client routing (see `SPEC/20-feature-client-ui-revisions.md`).
+
+## Implementation Design (MVP)
+
+### Application layer
+- `NotificationEventType` enum: `IdeaMention`, `CommentMention`, `CommentAdded`, `IdeaStatusChanged`
+- `INotificationWriter` interface:
+  ```csharp
+  Task WriteAsync(Guid recipientUserId, Guid actorUserId, NotificationEventType eventType,
+                  Guid ideaId, string ideaTitle, Guid organizationId, CancellationToken ct);
+  ```
+- Injected into `WorkflowManagementService`; called from mention, comment, and status-move paths.
+
+### Infrastructure layer
+- `NotificationWriter` implements `INotificationWriter`
+- Inserts one `NotificationEvent` row per recipient per event (no batching in MVP)
+- Fields populated: `RecipientUserId`, `EventType`, `IdeaId`, `IdeaTitle`, `OrgId`, `TriggeredByUserId`, `Link` (`/ideas/{ideaId}/edit`), `OccurredAtUtc`
+- No SMTP, email client, or outbound HTTP — purely database writes
+
+### Test coverage (T037–T039)
+- **T037**: `WorkflowManagementService` emits `IdeaMention` / `CommentMention` / `CommentAdded` / `IdeaStatusChanged` events via `INotificationWriter`; `FakeNotificationWriter` collects events for assertion.
+- **T038**: Emitted event `Link` field equals `/ideas/{ideaId}/edit`.
+- **T039**: Infrastructure DI registration test asserts `INotificationWriter` resolves to `NotificationWriter` and that no `SmtpClient` or `IHttpClientFactory` descriptor is present in the service collection.
+
+## Delivery Rules (later phase)
+1. One email per event (no consolidation).
+2. Email must include the idea title and the canonical link.
+3. Per-user opt-out preferences are not in scope for MVP.
+4. Approval-workflow events (approve/reject/expire) follow the same rules when implemented.
 
 ## Acceptance Criteria
-- [ ] Notification triggers are defined for mentions, comments, and status changes
-- [ ] Email delivery remains deferred outside MVP
-- [ ] The initial notification feature does not include per-user opt-out preferences
-- [ ] Later-phase notifications send one email per event
-- [ ] Later-phase notification emails include the canonical organization-aware board route to the idea
-- [ ] Notification events do not require read or query endpoints in MVP
-- [ ] MVP event verification is handled through tests and internal diagnostics outside the public API surface
+- [ ] `INotificationWriter` and `NotificationWriter` are implemented and registered
+- [ ] `WorkflowManagementService` calls `INotificationWriter` for all four trigger events
+- [ ] Self-notifications are suppressed (actor == recipient → no event written)
+- [ ] Each emitted event's `Link` field stores `/ideas/{ideaId}/edit`
+- [ ] No SMTP, email client, or outbound HTTP code is present in the notification path (T039 test guard)
+- [ ] Notification events do not require read or query API endpoints in MVP
+- [ ] Email delivery and per-user preferences remain deferred outside MVP

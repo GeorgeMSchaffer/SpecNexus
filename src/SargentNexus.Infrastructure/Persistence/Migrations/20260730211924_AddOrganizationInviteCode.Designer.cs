@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using SargentNexus.Infrastructure;
 
@@ -11,9 +12,11 @@ using SargentNexus.Infrastructure;
 namespace SargentNexus.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(SargentNexusDbContext))]
-    partial class SargentNexusDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260730211924_AddOrganizationInviteCode")]
+    partial class AddOrganizationInviteCode
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -66,11 +69,6 @@ namespace SargentNexus.Infrastructure.Persistence.Migrations
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<bool>("AllowUserStatusUpdate")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
-                        .HasDefaultValue(false);
-
-                    b.Property<bool>("IsArchived")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("bit")
                         .HasDefaultValue(false);
@@ -389,15 +387,6 @@ namespace SargentNexus.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<string>("Color")
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
-
-                    b.Property<bool>("IsDefault")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
-                        .HasDefaultValue(false);
-
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
@@ -408,11 +397,6 @@ namespace SargentNexus.Infrastructure.Persistence.Migrations
 
                     b.Property<Guid>("OrganizationId")
                         .HasColumnType("uniqueidentifier");
-
-                    b.Property<int>("SortOrder")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasDefaultValue(0);
 
                     b.HasKey("Id");
 

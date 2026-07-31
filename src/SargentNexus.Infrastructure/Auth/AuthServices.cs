@@ -320,7 +320,9 @@ internal sealed class AuthSeeder : IAuthSeeder
                 Phone = "206-555-0100",
                 PrimaryContactFirstName = "Demo",
                 PrimaryContactLastName = "Admin",
-                IsArchived = false
+                IsArchived = false,
+                InviteCode = GenerateSeedInviteCode(),
+                InviteCodeGeneratedAtUtc = DateTime.UtcNow
             };
 
             _dbContext.Organizations.Add(organization);
@@ -446,7 +448,9 @@ internal sealed class AuthSeeder : IAuthSeeder
             Phone = seed.Phone,
             PrimaryContactFirstName = seed.PrimaryContactFirstName,
             PrimaryContactLastName = seed.PrimaryContactLastName,
-            IsArchived = false
+            IsArchived = false,
+            InviteCode = GenerateSeedInviteCode(),
+            InviteCodeGeneratedAtUtc = DateTime.UtcNow
         };
 
         _dbContext.Organizations.Add(organization);
@@ -461,8 +465,9 @@ internal sealed class AuthSeeder : IAuthSeeder
 
         var results = new List<Status>(DefaultStatusNames.Length);
 
-        foreach (var statusName in DefaultStatusNames)
+        for (var i = 0; i < DefaultStatusNames.Length; i++)
         {
+            var statusName = DefaultStatusNames[i];
             var status = existingStatuses.SingleOrDefault(item => item.Name == statusName);
 
             if (status is null)
@@ -472,7 +477,10 @@ internal sealed class AuthSeeder : IAuthSeeder
                     Id = Guid.NewGuid(),
                     OrganizationId = organization.Id,
                     Name = statusName,
-                    IsDeleted = false
+                    IsDeleted = false,
+                    SortOrder = i,
+                    IsDefault = i == 0,
+                    Color = null
                 };
 
                 _dbContext.Statuses.Add(status);
@@ -507,7 +515,8 @@ internal sealed class AuthSeeder : IAuthSeeder
         {
             Id = Guid.NewGuid(),
             OrganizationId = organization.Id,
-            Name = boardName
+            Name = boardName,
+            IsArchived = false
         };
 
         _dbContext.Boards.Add(board);
@@ -729,6 +738,12 @@ internal sealed class AuthSeeder : IAuthSeeder
         string LastName,
         string Email,
         UserRole Role);
+
+    private static string GenerateSeedInviteCode()
+    {
+        const string chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+        return new string(Enumerable.Range(0, 8).Select(_ => chars[Random.Shared.Next(chars.Length)]).ToArray());
+    }
 }
 
 internal sealed class AuthAuditWriter : IAuthAuditWriter

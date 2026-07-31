@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using SargentNexus.Application.Administration;
 using SargentNexus.Application.Auth;
 
 namespace SargentNexus.API.Controllers;
@@ -8,11 +9,16 @@ public sealed class AuthController : ApiControllerBase
 {
     private readonly ILoginService _loginService;
     private readonly IAuthAccountService _authAccountService;
+    private readonly ISelfRegistrationService _selfRegistrationService;
 
-    public AuthController(ILoginService loginService, IAuthAccountService authAccountService)
+    public AuthController(
+        ILoginService loginService,
+        IAuthAccountService authAccountService,
+        ISelfRegistrationService selfRegistrationService)
     {
         _loginService = loginService;
         _authAccountService = authAccountService;
+        _selfRegistrationService = selfRegistrationService;
     }
 
     [AllowAnonymous]
@@ -163,6 +169,41 @@ public sealed class AuthController : ApiControllerBase
             _ => Problem(
                 statusCode: StatusCodes.Status400BadRequest,
                 title: "Unable to issue temporary password.")
+        };
+    }
+
+    [AllowAnonymous]
+    [HttpPost("/api/v1/auth/register")]
+    [ProducesResponseType(typeof(SelfRegistrationResponseModel), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> Register([FromBody] SelfRegistrationRequestModel request, CancellationToken cancellationToken)
+    {
+        var result = await _selfRegistrationService.RegisterAsync(request, cancellationToken);
+
+        if (result.Succeeded)
+        {
+            return Created($"/api/v1/auth/me", result.Response);
+        }
+
+        return result.FailureReason switch
+        {
+            SelfRegistrationFailureReason.InvalidInviteCode => Problem(
+                statusCode: StatusCodes.Status400BadRequest,
+                title: "Invalid invite code.",
+                detail: "The provided invite code is not valid."),
+            SelfRegistrationFailureReason.ArchivedOrganization => Problem(
+                statusCode: StatusCodes.Status400BadRequest,
+                title: "Invalid invite code.",
+                detail: "The organization associated with this invite code is no longer active."),
+            SelfRegistrationFailureReason.EmailAlreadyInUse or SelfRegistrationFailureReason.InvalidPasswordPolicy =>
+                BadRequest(new ValidationProblemDetails(new Dictionary<string, string[]>(result.Errors))
+                {
+                    Status = StatusCodes.Status400BadRequest,
+                    Title = "One or more validation errors occurred."
+                }),
+            _ => Problem(
+                statusCode: StatusCodes.Status400BadRequest,
+                title: "Unable to complete registration.")
         };
     }
 }

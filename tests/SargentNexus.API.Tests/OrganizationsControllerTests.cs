@@ -149,6 +149,9 @@ public sealed class OrganizationsControllerTests
                 : ArchiveOrganizationAsyncHandler(actorUserId, organizationId, cancellationToken);
         }
 
+        public Task<AdministrationResult<string>> RegenerateInviteCodeAsync(Guid actorUserId, Guid organizationId, CancellationToken cancellationToken) =>
+            Task.FromResult(AdministrationResult<string>.Fail(AdministrationFailureReason.NotFound));
+
         public Task<AdministrationResult<OrganizationCreateResponseModel>> CreateOrganizationAsync(Guid actorUserId, OrganizationUpsertRequestModel request, CancellationToken cancellationToken)
         {
             return CreateOrganizationAsyncHandler is null

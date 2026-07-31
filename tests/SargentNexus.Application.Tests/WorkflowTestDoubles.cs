@@ -390,6 +390,39 @@ internal sealed class FakeWorkflowDataAccess : IWorkflowDataAccess
     }
 }
 
+internal sealed class FakeNotificationWriter : INotificationWriter
+{
+    public List<NotificationEvent> Events { get; } = new();
+
+    public Task WriteAsync(
+        Guid recipientUserId,
+        Guid actorUserId,
+        NotificationEventType eventType,
+        Guid ideaId,
+        string ideaTitle,
+        Guid organizationId,
+        Guid boardId,
+        CancellationToken cancellationToken)
+    {
+        Events.Add(new NotificationEvent
+        {
+            Id = Guid.NewGuid(),
+            OrganizationId = organizationId,
+            BoardId = boardId,
+            IdeaId = ideaId,
+            ActorUserId = actorUserId,
+            RecipientUserId = recipientUserId,
+            EventType = eventType.ToString(),
+            IdeaLink = $"/ideas/{ideaId}/edit",
+            Message = string.Empty,
+            OccurredAtUtc = DateTime.UtcNow,
+            Metadata = "{}"
+        });
+
+        return Task.CompletedTask;
+    }
+}
+
 internal sealed class FakeWorkflowAuditWriter : IWorkflowAuditWriter
 {
     public List<Status> StatusCreatedEvents { get; } = new();

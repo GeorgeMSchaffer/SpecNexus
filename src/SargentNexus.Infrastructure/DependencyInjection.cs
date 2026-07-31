@@ -45,8 +45,11 @@ public static class DependencyInjection
         services.AddScoped<IOrganizationUserAdministrationStore, OrganizationUserAdministrationStore>();
         services.AddScoped<IOrganizationUserAuditWriter, OrganizationUserAuditWriter>();
         services.AddScoped<IOrganizationUserAdministrationService, OrganizationUserAdministrationService>();
+        services.AddScoped<ISelfRegistrationStore, SelfRegistrationStore>();
+        services.AddScoped<ISelfRegistrationService, SelfRegistrationService>();
         services.AddScoped<IWorkflowDataAccess, WorkflowDataAccess>();
         services.AddScoped<IWorkflowAuditWriter, WorkflowAuditWriter>();
+        services.AddScoped<INotificationWriter, NotificationWriter>();
         services.AddScoped<IWorkflowManagementService, WorkflowManagementService>();
 
         return services;

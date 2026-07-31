@@ -5,12 +5,13 @@
 - Canonical Sources:
 	- `SPEC/10-requirements.md`
 	- `SPEC/20-feature-ideas-and-engagement.md`
+	- `SPEC/20-feature-client-ui-revisions.md`
 	- `SPEC/30-Contracts.md`
 	- `SPEC/40-test-strategy.md`
-- Last Canonical Sync Date: 2026-07-30
+- Last Canonical Sync Date: 2026-07-31
 
 ## Summary
-Implement ideas, tags, mentions, comments, and upvotes within organization-scoped collaboration rules.
+Implement ideas, tags, mentions, comments, and upvotes within organization-scoped collaboration rules. Includes a user-facing My Ideas list page.
 
 ## Requirements
 - Ideas require title and description.
@@ -26,3 +27,5 @@ Implement ideas, tags, mentions, comments, and upvotes within organization-scope
 - Completed ideas remain collaborative.
 - In Development only, seeded demo ideas include description-based sample spec content and example comments.
 - Idea lifecycle actions are audited.
+- A My Ideas page (`/ideas`) lists ideas created by or assigned to the current user. A filter control offers All (default), Created by me, and Assigned to me. List columns: Title, Created By, Assigned To, Status, Created Date.
+- Clicking Details on an idea row navigates to `/ideas/{id}/edit` (dedicated route); that page has a Back button returning to `/ideas`.

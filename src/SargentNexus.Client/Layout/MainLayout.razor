@@ -1,46 +1,74 @@
 ﻿@inherits LayoutComponentBase
-<div class="page">
-    <div class="sidebar">
-        <NavMenu />
+@inject IAuthSessionService AuthSessionService
+@inject NavigationManager NavigationManager
+
+<div class="app-header">
+    <span class="navbar-brand text-white fw-bold">SargentNexus</span>
+    <div class="d-flex align-items-center gap-2">
+        @if (AuthSessionService.IsAuthenticated)
+        {
+            @if (AuthSessionService.RequiresPasswordChange)
+            {
+                <a href="/change-password" class="text-warning small fw-semibold">Password update required</a>
+            }
+            <button class="btn-icon" title="Settings" @onclick='() => NavigationManager.NavigateTo("/settings")'>
+                <i class="bi bi-gear-fill"></i>
+            </button>
+            <button class="btn-icon" title="Sign out" @onclick="HandleLogoutAsync">
+                <i class="bi bi-box-arrow-right"></i>
+            </button>
+            <span class="username">@DisplayName</span>
+        }
+        else
+        {
+            <a href="/login" class="text-white">Sign in</a>
+        }
     </div>
-
-    <main>
-        <div class="top-row px-4">
-            @if (AuthSessionService.IsAuthenticated)
-            {
-                <span>@DisplayName</span>
-                @if (AuthSessionService.RequiresPasswordChange)
-                {
-                    <span class="text-danger fw-semibold">Password update required</span>
-                }
-            }
-            else
-            {
-                <a href="/login">Sign in</a>
-            }
-        </div>
-
-        <article class="content px-4">
-            @Body
-        </article>
-    </main>
 </div>
 
+@if (AuthSessionService.IsAuthenticated)
+{
+    <nav class="navbar navbar-expand navbar-dark" style="background-color: rgb(52, 58, 64);">
+        <div class="container-fluid">
+            <ul class="navbar-nav">
+                <li class="nav-item">
+                    <NavLink class="nav-link" href="/" Match="NavLinkMatch.All">Home</NavLink>
+                </li>
+                <li class="nav-item">
+                    <NavLink class="nav-link" href="/workflow">Workflow</NavLink>
+                </li>
+                <li class="nav-item">
+                    <NavLink class="nav-link" href="/ideas">Ideas</NavLink>
+                </li>
+            </ul>
+        </div>
+    </nav>
+}
+
+<main>
+    <article class="content px-4">
+        @Body
+    </article>
+</main>
+
 @code {
-    [Inject]
-    private IAuthSessionService AuthSessionService { get; set; } = null!;
-
-    protected override void OnInitialized()
-    {
-        AuthSessionService.StateChanged += HandleAuthStateChanged;
-    }
-
     private string DisplayName =>
         AuthSessionService.User is null
             ? "Authenticated user"
             : string.IsNullOrWhiteSpace($"{AuthSessionService.User.FirstName} {AuthSessionService.User.LastName}".Trim())
                 ? AuthSessionService.User.Email
                 : $"{AuthSessionService.User.FirstName} {AuthSessionService.User.LastName}".Trim();
+
+    protected override void OnInitialized()
+    {
+        AuthSessionService.StateChanged += HandleAuthStateChanged;
+    }
+
+    private async Task HandleLogoutAsync()
+    {
+        await AuthSessionService.LogoutAsync();
+        NavigationManager.NavigateTo("/login");
+    }
 
     private void HandleAuthStateChanged()
     {

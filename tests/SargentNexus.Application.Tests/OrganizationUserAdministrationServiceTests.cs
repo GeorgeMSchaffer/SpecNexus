@@ -468,6 +468,12 @@ public sealed class OrganizationUserAdministrationServiceTests
             return Task.FromResult(organization);
         }
 
+        public Task<Organization?> FindOrganizationByInviteCodeAsync(string normalizedCode, CancellationToken cancellationToken)
+        {
+            var organization = _organizations.Values.SingleOrDefault(item => item.InviteCode == normalizedCode);
+            return Task.FromResult(organization);
+        }
+
         public Task<User?> FindUserByEmailAsync(string normalizedEmail, CancellationToken cancellationToken)
         {
             var user = _users.Values.SingleOrDefault(item => item.Email == normalizedEmail);
@@ -509,6 +515,7 @@ public sealed class OrganizationUserAdministrationServiceTests
                     City = item.City,
                     State = item.State,
                     Phone = item.Phone,
+                    InviteCode = item.InviteCode,
                     IsArchived = item.IsArchived
                 }).ToArray(),
                 Page = page,

@@ -16,3 +16,4 @@
 - [ ] I006 Implement comment create, edit, delete, and chronological retrieval.
 - [ ] I007 Implement upvote toggle and ownership rules.
 - [ ] I008 Emit audit events for idea lifecycle actions.
+- [ ] I009 Build My Ideas page: combined list of created-by/assigned-to ideas with All/Created/Assigned filter and inline edit form (list-to-form swap on Details).

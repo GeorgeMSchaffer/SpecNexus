@@ -43,6 +43,8 @@ SargentNexus is a collaboration and project management tool for submitting, trac
 | Manage statuses | ✓ | ✓ | | |
 | View boards and ideas | ✓ | ✓ | ✓ | ✓ |
 | Create/edit ideas | ✓ | ✓ | ✓ | |
+| Delete ideas (soft) | ✓ | ✓ | | |
+| Bulk CSV import ideas | ✓ | ✓ | | |
 | Update idea status | ✓ | ✓ | ✓* | |
 | Comment on ideas | ✓ | ✓ | ✓ | ✓ |
 | Upvote ideas | ✓ | ✓ | ✓ | ✓ |
