@@ -8,174 +8,56 @@
 
 <AuthGate>
     <div class="container py-4">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <div>
-                <h1 class="h3 mb-1">Workflow</h1>
-                <p class="text-muted mb-0">Browse ideas for your organization board.</p>
-            </div>
-            <div class="d-flex gap-2">
-                <button class="btn btn-outline-secondary" @onclick="OpenCreateBoardDialog">Create board</button>
-                <button class="btn btn-primary" @onclick="OpenCreateDialog">Create idea</button>
-            </div>
-        </div>
+        <h1 class="h3 mb-3">Workflow</h1>
 
         @if (_loading)
         {
-            <div class="alert alert-info">Loading workflow data…</div>
+            <div class="d-flex align-items-center gap-2">
+                <div class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></div>
+                <span>Loading…</span>
+            </div>
         }
         else if (_errorMessage is not null)
         {
             <div class="alert alert-danger">@_errorMessage</div>
         }
+        else if (_boards.Count == 0)
+        {
+            <p class="text-muted">No boards have been created for your organization yet.</p>
+        }
         else
         {
-            <div class="row g-3">
-                <div class="col-md-4">
-                    <div class="card h-100">
-                        <div class="card-body">
-                            <h2 class="h6">Boards</h2>
-                            @if (_boards.Count == 0)
-                            {
-                                <p class="text-muted mb-0">No boards available.</p>
-                            }
-                            else
-                            {
-                                <ul class="list-group list-group-flush">
-                                    @foreach (var board in _boards)
-                                    {
-                                        <button type="button" class="list-group-item list-group-item-action @GetBoardActiveCss(board.BoardId)" @onclick="() => SelectBoard(board)">
-                                            @board.Name
-                                        </button>
-                                    }
-                                </ul>
-                            }
-                        </div>
-                    </div>
-                </div>
-
-                <div class="col-md-8">
-                    <div class="card h-100">
-                        <div class="card-body">
-                            <div class="d-flex justify-content-between align-items-center mb-3">
-                                <h2 class="h6 mb-0">Ideas</h2>
-                                @if (_selectedBoard is not null)
-                                {
-                                    <span class="badge text-bg-light">@_selectedBoard.Name</span>
-                                }
-                            </div>
-
-                            @if (_ideas.Count == 0)
-                            {
-                                <p class="text-muted mb-0">No ideas yet for this board.</p>
-                            }
-                            else
-                            {
-                                <div class="list-group">
-                                    @foreach (var idea in _ideas)
-                                    {
-                                        <button type="button" class="list-group-item list-group-item-action" @onclick="() => ViewIdea(idea.IdeaId)">
-                                            <div class="d-flex justify-content-between align-items-start gap-3">
-                                                <div>
-                                                    <div class="fw-semibold">@idea.Title</div>
-                                                    <div class="text-muted small">Priority: @idea.Priority • Status: @idea.StatusName</div>
-                                                </div>
-                                                <span class="badge text-bg-primary">@idea.UpvoteCount upvotes</span>
-                                            </div>
-                                        </button>
-                                    }
-                                </div>
-                            }
-                        </div>
-                    </div>
-                </div>
-            </div>
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Board Type</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var board in _boards)
+                    {
+                        <tr>
+                            <td>@board.Name</td>
+                            <td>@(board.AllowUserStatusUpdate ? "User-managed" : "Admin-managed")</td>
+                            <td>
+                                <button class="btn btn-sm btn-primary" @onclick="() => OpenBoard(board.BoardId)">Open</button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
         }
     </div>
 </AuthGate>
 
-@if (_showCreateBoardDialog)
-{
-    <div class="modal d-block" tabindex="-1" style="background: rgba(0,0,0,.2);">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h3 class="modal-title h5">Create board</h3>
-                    <button type="button" class="btn-close" @onclick="CloseCreateBoardDialog"></button>
-                </div>
-                <div class="modal-body">
-                    <EditForm Model="_createBoardModel" OnValidSubmit="HandleCreateBoardAsync">
-                        <DataAnnotationsValidator />
-                        <div class="mb-3">
-                            <label class="form-label">Board name</label>
-                            <InputText class="form-control" name="boardName" @bind-Value="_createBoardModel.Name" />
-                            <ValidationMessage For="() => _createBoardModel.Name" />
-                        </div>
-                        <button class="btn btn-primary" type="submit" disabled="@_isSubmitting">Save board</button>
-                    </EditForm>
-                </div>
-            </div>
-        </div>
-    </div>
-}
-
-@if (_showCreateDialog)
-{
-    <div class="modal d-block" tabindex="-1" style="background: rgba(0,0,0,.2);">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h3 class="modal-title h5">Create idea</h3>
-                    <button type="button" class="btn-close" @onclick="CloseCreateDialog"></button>
-                </div>
-                <div class="modal-body">
-                    <EditForm Model="_createModel" OnValidSubmit="HandleCreateAsync">
-                        <DataAnnotationsValidator />
-                        <div class="mb-3">
-                            <label class="form-label">Title</label>
-                            <InputText class="form-control" name="title" @bind-Value="_createModel.Title" />
-                            <ValidationMessage For="() => _createModel.Title" />
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Description</label>
-                            <InputTextArea class="form-control" name="description" rows="4" @bind-Value="_createModel.Description" />
-                            <ValidationMessage For="() => _createModel.Description" />
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Priority</label>
-                            <InputSelect class="form-select" @bind-Value="_createModel.Priority">
-                                <option value="Low">Low</option>
-                                <option value="Medium">Medium</option>
-                                <option value="High">High</option>
-                                <option value="Critical">Critical</option>
-                            </InputSelect>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Due date</label>
-                            <InputDate class="form-control" @bind-Value="_createModel.DueDate" />
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Tags</label>
-                            <InputText class="form-control" @bind-Value="_createModel.TagText" placeholder="comma separated tags" />
-                        </div>
-                        <button class="btn btn-primary" type="submit" disabled="@_isSubmitting">@(_isSubmitting ? "Creating..." : "Create")</button>
-                    </EditForm>
-                </div>
-            </div>
-        </div>
-    </div>
-}
-
 @code {
     private readonly List<BoardSummaryDto> _boards = new();
-    private readonly List<IdeaListItemDto> _ideas = new();
     private bool _loading = true;
-    private bool _showCreateBoardDialog;
-    private bool _showCreateDialog;
-    private bool _isSubmitting;
     private string? _errorMessage;
-    private BoardSummaryDto? _selectedBoard;
-    private CreateBoardFormModel _createBoardModel = new();
-    private CreateIdeaFormModel _createModel = new();
+
+    private void OpenBoard(Guid boardId) => NavigationManager.NavigateTo($"/workflow/{boardId}");
 
     protected override async Task OnInitializedAsync()
     {
@@ -205,17 +87,6 @@
             var boards = await WorkflowApiClient.ListBoardsAsync(AuthSessionService.AccessToken!, organizationId.Value, CancellationToken.None);
             _boards.Clear();
             _boards.AddRange(boards);
-
-            if (_boards.Count > 0)
-            {
-                _selectedBoard ??= _boards[0];
-                await LoadIdeasAsync();
-            }
-            else
-            {
-                _selectedBoard = null;
-                _ideas.Clear();
-            }
         }
         catch (Exception ex)
         {
@@ -225,155 +96,5 @@
         {
             _loading = false;
         }
-    }
-
-    private async Task LoadIdeasAsync()
-    {
-        if (_selectedBoard is null)
-        {
-            _ideas.Clear();
-            return;
-        }
-
-        var result = await WorkflowApiClient.ListIdeasAsync(AuthSessionService.AccessToken!, _selectedBoard.BoardId, CancellationToken.None);
-        _ideas.Clear();
-        _ideas.AddRange(result.Items);
-    }
-
-    private void SelectBoard(BoardSummaryDto board)
-    {
-        _selectedBoard = board;
-        _ = InvokeAsync(LoadIdeasAsync);
-    }
-
-    private string GetBoardActiveCss(Guid boardId)
-    {
-        return boardId == _selectedBoard?.BoardId ? "active" : string.Empty;
-    }
-
-    private void OpenCreateBoardDialog()
-    {
-        _showCreateBoardDialog = true;
-    }
-
-    private void CloseCreateBoardDialog()
-    {
-        _showCreateBoardDialog = false;
-    }
-
-    private void OpenCreateDialog()
-    {
-        _showCreateDialog = true;
-    }
-
-    private void CloseCreateDialog()
-    {
-        _showCreateDialog = false;
-    }
-
-    private async Task HandleCreateBoardAsync()
-    {
-        _isSubmitting = true;
-        try
-        {
-            var organizationId = AuthSessionService.User!.OrganizationId!.Value;
-            var statuses = await WorkflowApiClient.ListStatusesAsync(AuthSessionService.AccessToken!, organizationId, CancellationToken.None);
-            var statusIds = statuses.Select(item => item.StatusId).Take(Math.Min(2, statuses.Count)).ToArray();
-            if (statusIds.Length < 2)
-            {
-                _errorMessage = "The selected organization does not yet have enough swimlanes to create a board.";
-                return;
-            }
-
-            var result = await WorkflowApiClient.CreateBoardAsync(
-                AuthSessionService.AccessToken!,
-                organizationId,
-                new CreateBoardRequestDto
-                {
-                    Name = _createBoardModel.Name.Trim(),
-                    StatusIds = statusIds,
-                    AllowUserStatusUpdate = false
-                },
-                CancellationToken.None);
-
-            _createBoardModel = new CreateBoardFormModel();
-            _showCreateBoardDialog = false;
-            _boards.Clear();
-            _boards.Add(result);
-            _selectedBoard = result;
-            await LoadIdeasAsync();
-        }
-        catch (Exception ex)
-        {
-            _errorMessage = ErrorMessageService.GetDisplayMessage(null, null, ex);
-        }
-        finally
-        {
-            _isSubmitting = false;
-        }
-    }
-
-    private async Task HandleCreateAsync()
-    {
-        if (_selectedBoard is null)
-        {
-            return;
-        }
-
-        _isSubmitting = true;
-        try
-        {
-            var request = new IdeaWriteRequestDto
-            {
-                Title = _createModel.Title.Trim(),
-                Description = _createModel.Description.Trim(),
-                Priority = _createModel.Priority,
-                DueDate = _createModel.DueDate,
-                TagNames = _createModel.TagText.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries),
-                MentionEmails = Array.Empty<string>()
-            };
-
-            await WorkflowApiClient.CreateIdeaAsync(AuthSessionService.AccessToken!, _selectedBoard.BoardId, request, CancellationToken.None);
-            _createModel = new CreateIdeaFormModel();
-            _showCreateDialog = false;
-            await LoadIdeasAsync();
-        }
-        catch (Exception ex)
-        {
-            _errorMessage = ErrorMessageService.GetDisplayMessage(null, null, ex);
-        }
-        finally
-        {
-            _isSubmitting = false;
-        }
-    }
-
-    private void ViewIdea(Guid ideaId)
-    {
-        NavigationManager.NavigateTo($"/ideas/{ideaId}");
-    }
-
-    private sealed class CreateBoardFormModel
-    {
-        [System.ComponentModel.DataAnnotations.Required]
-        [System.ComponentModel.DataAnnotations.StringLength(150)]
-        public string Name { get; set; } = string.Empty;
-    }
-
-    private sealed class CreateIdeaFormModel
-    {
-        [System.ComponentModel.DataAnnotations.Required]
-        [System.ComponentModel.DataAnnotations.StringLength(150)]
-        public string Title { get; set; } = string.Empty;
-
-        [System.ComponentModel.DataAnnotations.Required]
-        [System.ComponentModel.DataAnnotations.StringLength(4000)]
-        public string Description { get; set; } = string.Empty;
-
-        public string Priority { get; set; } = "Medium";
-
-        public DateOnly? DueDate { get; set; }
-
-        public string TagText { get; set; } = string.Empty;
     }
 }

@@ -4,7 +4,7 @@
 Track implementation work that Copilot-driven implementation agents should complete, what is currently active, and what has already been finished.
 
 ## Current Status
-- Current implementation slice: Epic A (Invite Codes + Self-Registration) — backend complete; client pending.
+- Current implementation slice: Epic B (Notification Events T037–T039) + Epic C Client UI Revisions
 - Current owner: main session
 - Current state: In Progress
 - Last updated: 2026-07-31
@@ -30,15 +30,23 @@ Track implementation work that Copilot-driven implementation agents should compl
 - O007 Add `InviteCode` and `InviteCodeGeneratedAtUtc` to `Organization` entity + EF migration.
 - O008 Add `RegenerateInviteCodeAsync` endpoint (`POST /api/v1/organizations/{id}/invite-code/regenerate`).
 - O009 Add self-registration endpoint (`POST /api/v1/auth/register`), `SelfRegistrationService`, and invite code generation on org create.
+- O009-client Add invite code column to org list, Regenerate button in org form, `/register` self-registration page, and login page link.
+- C1 Fix errant `else {` on ChangePassword.razor; delete Weather.razor and Counter.razor.
+- C2 Rewrite MainLayout.razor with dark header `rgb(33,37,41)`, gear icon (→ `/settings`), sign-out icon, white username, horizontal nav (Home/Workflow/Ideas). NavMenu.razor removed.
+- C5 Simplify Workflow.razor to boards-only list (Name, Board Type, Open).
+- Domain-additions Add `Board.IsArchived` (bool) and `Status.Color/SortOrder/IsDefault` to domain + EF config + seed. Migration `AddBoardIsArchived` generated.
 
 ## In Progress
-- Epic A client: invite code column + Regenerate button in `AdminOrganizations.razor`; new `/register` page; self-registration link on login.
+- Cleanup commit: delete NavMenu.razor, add header CSS to app.css, build+test, commit C1/C2/C5 + domain additions.
 
 ## Ready Next
-- T049 Implement contract tests for schema and problem-details error behavior.
-- T050 Verify seed behavior, organization bootstrap, audit generation, and deferred-scope boundaries end-to-end.
-- Epic B: Notification events (T037–T039).
-- Epic C: Client UI revisions (C1–C7 per `SPEC/20-feature-client-ui-revisions.md`).
+- T037–T039 Epic B: Notification events (`INotificationWriter`, `NotificationWriter`, wire into `WorkflowManagementService`).
+- C3 Settings rename: Admin→Settings, route update, My Profile + change-password section.
+- C4 Admin-style list/form pattern (depends on C3).
+- C6 My Ideas page at `/ideas` (depends on C3/C4).
+- C7 Uniform search + pagination (depends on C4).
+- T049 Contract tests (after Epic B + C).
+- T050 End-to-end seed verification (after T049).
 
 ## Progress Notes
 - T001 completed: created `SargentNexus.sln`, `global.json`, and the five core projects under `src/`.

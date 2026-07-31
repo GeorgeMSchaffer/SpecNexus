@@ -76,6 +76,9 @@ public sealed class SargentNexusDbContext : DbContext
             entity.ToTable("statuses");
             entity.HasKey(item => item.Id);
             entity.Property(item => item.Name).HasMaxLength(100).IsRequired();
+            entity.Property(item => item.Color).HasMaxLength(20);
+            entity.Property(item => item.SortOrder).HasDefaultValue(0);
+            entity.Property(item => item.IsDefault).HasDefaultValue(false);
             entity.HasIndex(item => new { item.OrganizationId, item.Name }).IsUnique();
             entity.HasOne(item => item.Organization)
                 .WithMany(item => item.Statuses)
@@ -89,6 +92,7 @@ public sealed class SargentNexusDbContext : DbContext
             entity.HasKey(item => item.Id);
             entity.Property(item => item.Name).HasMaxLength(150).IsRequired();
             entity.Property(item => item.AllowUserStatusUpdate).HasDefaultValue(false);
+            entity.Property(item => item.IsArchived).HasDefaultValue(false);
             entity.HasOne(item => item.Organization)
                 .WithMany(item => item.Boards)
                 .HasForeignKey(item => item.OrganizationId)

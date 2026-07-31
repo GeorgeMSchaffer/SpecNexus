@@ -465,8 +465,9 @@ internal sealed class AuthSeeder : IAuthSeeder
 
         var results = new List<Status>(DefaultStatusNames.Length);
 
-        foreach (var statusName in DefaultStatusNames)
+        for (var i = 0; i < DefaultStatusNames.Length; i++)
         {
+            var statusName = DefaultStatusNames[i];
             var status = existingStatuses.SingleOrDefault(item => item.Name == statusName);
 
             if (status is null)
@@ -476,7 +477,10 @@ internal sealed class AuthSeeder : IAuthSeeder
                     Id = Guid.NewGuid(),
                     OrganizationId = organization.Id,
                     Name = statusName,
-                    IsDeleted = false
+                    IsDeleted = false,
+                    SortOrder = i,
+                    IsDefault = i == 0,
+                    Color = null
                 };
 
                 _dbContext.Statuses.Add(status);
@@ -511,7 +515,8 @@ internal sealed class AuthSeeder : IAuthSeeder
         {
             Id = Guid.NewGuid(),
             OrganizationId = organization.Id,
-            Name = boardName
+            Name = boardName,
+            IsArchived = false
         };
 
         _dbContext.Boards.Add(board);
