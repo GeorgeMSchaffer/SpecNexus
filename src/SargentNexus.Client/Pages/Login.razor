@@ -77,6 +77,11 @@
             _errorTitle = ex.Title;
             _errorDetail = ErrorMessageService.GetDisplayMessage(ex.Title, ex.Detail, ex);
         }
+        catch (Exception ex)
+        {
+            _errorTitle = "Login failed";
+            _errorDetail = ErrorMessageService.GetDisplayMessage("Login failed", ex.Message, ex);
+        }
         finally
         {
             _isSubmitting = false;

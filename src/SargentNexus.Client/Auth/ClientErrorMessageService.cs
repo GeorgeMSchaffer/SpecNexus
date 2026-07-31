@@ -12,6 +12,7 @@ public interface IClientErrorMessageService
 public sealed class ClientErrorMessageService : IClientErrorMessageService
 {
     private const string GenericErrorMessage = "An unexpected error occurred. Please try again.";
+    private const string DevelopmentErrorPrefix = "An unhandled error has occurred";
 
     private readonly IWebAssemblyHostEnvironment _environment;
 
@@ -30,6 +31,7 @@ public sealed class ClientErrorMessageService : IClientErrorMessageService
         }
 
         var parts = new List<string>();
+        parts.Add(DevelopmentErrorPrefix);
 
         if (!string.IsNullOrWhiteSpace(title))
         {

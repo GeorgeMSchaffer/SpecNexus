@@ -22,10 +22,80 @@
     </div>
 
     <div id="blazor-error-ui">
-        An unhandled error has occurred.
+        <span id="blazor-error-ui-message">An unhandled error has occurred.</span>
         <a href="" class="reload">Reload</a>
+        <a id="blazor-error-ui-details-link" href="#" style="display:none; margin-left: 0.5rem;">details</a>
         <a class="dismiss">🗙</a>
     </div>
+    <script>
+        window.__blazorErrorHandler = {
+            showError: function (message, details) {
+                const messageElement = document.getElementById('blazor-error-ui-message');
+                const detailsLink = document.getElementById('blazor-error-ui-details-link');
+                if (messageElement) {
+                    messageElement.textContent = message;
+                }
+
+                if (detailsLink) {
+                    if (details && details.trim()) {
+                        detailsLink.style.display = 'inline';
+                        detailsLink.textContent = 'details';
+                        detailsLink.onclick = function (event) {
+                            event.preventDefault();
+                            const dialog = document.createElement('div');
+                            dialog.style.position = 'fixed';
+                            dialog.style.top = '0';
+                            dialog.style.left = '0';
+                            dialog.style.right = '0';
+                            dialog.style.bottom = '0';
+                            dialog.style.background = 'rgba(0, 0, 0, 0.6)';
+                            dialog.style.display = 'flex';
+                            dialog.style.alignItems = 'center';
+                            dialog.style.justifyContent = 'center';
+                            dialog.style.zIndex = '99999';
+                            dialog.style.padding = '1rem';
+
+                            const panel = document.createElement('div');
+                            panel.style.background = '#fff';
+                            panel.style.color = '#111';
+                            panel.style.maxWidth = '640px';
+                            panel.style.maxHeight = '80vh';
+                            panel.style.width = '100%';
+                            panel.style.borderRadius = '0.5rem';
+                            panel.style.padding = '1rem';
+                            panel.style.boxShadow = '0 10px 30px rgba(0,0,0,0.3)';
+                            panel.style.overflow = 'auto';
+
+                            const title = document.createElement('h3');
+                            title.textContent = 'Exception details';
+                            title.style.marginTop = '0';
+
+                            const body = document.createElement('pre');
+                            body.textContent = details;
+                            body.style.whiteSpace = 'pre-wrap';
+                            body.style.wordBreak = 'break-word';
+                            body.style.fontSize = '0.9rem';
+
+                            const closeButton = document.createElement('button');
+                            closeButton.textContent = 'Close';
+                            closeButton.style.marginTop = '1rem';
+                            closeButton.onclick = function () {
+                                dialog.remove();
+                            };
+
+                            panel.appendChild(title);
+                            panel.appendChild(body);
+                            panel.appendChild(closeButton);
+                            dialog.appendChild(panel);
+                            document.body.appendChild(dialog);
+                        };
+                    } else {
+                        detailsLink.style.display = 'none';
+                    }
+                }
+            }
+        };
+    </script>
     <script src="_framework/blazor.webassembly.js"></script>
 </body>
 

@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using SargentNexus.Application.Administration;
 using SargentNexus.Application.Auth;
 using SargentNexus.Application.Workflow;
@@ -13,10 +14,22 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddInfrastructure(
         this IServiceCollection services,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        IHostEnvironment? hostEnvironment = null)
     {
+        var isDevelopment = hostEnvironment?.IsDevelopment() ?? false;
+        var useInMemoryDatabase = configuration.GetValue<bool>("Database:UseInMemoryDatabase");
+
         services.AddDbContext<SargentNexusDbContext>(options =>
-            options.UseSqlServer(configuration.GetConnectionString("DefaultConnection")));
+        {
+            if (useInMemoryDatabase || isDevelopment)
+            {
+                options.UseInMemoryDatabase("SargentNexus");
+                return;
+            }
+
+            options.UseSqlServer(configuration.GetConnectionString("DefaultConnection"));
+        });
         services.AddSingleton(TimeProvider.System);
         services.AddSingleton<InMemoryAccessTokenStore>();
         services.AddScoped<IAuthUserLookup, AuthUserLookup>();
