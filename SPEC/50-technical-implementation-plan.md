@@ -369,6 +369,7 @@ Validation gate:
 - `board_id` uniqueidentifier primary key
 - `organization_id` uniqueidentifier foreign key
 - `name` nvarchar(150)
+- `allow_user_status_update` bit — controls whether the User role can move ideas on this board
 - `created_at_utc` datetime2
 - `updated_at_utc` datetime2
 
@@ -382,9 +383,13 @@ Validation gate:
 - `organization_id` uniqueidentifier foreign key
 - `board_id` uniqueidentifier foreign key
 - `author_user_id` uniqueidentifier foreign key
+- `assignee_user_id` uniqueidentifier nullable foreign key
+- `status_id` uniqueidentifier foreign key
 - `title` nvarchar(150)
 - `description` nvarchar(4000)
-- `status_id` uniqueidentifier foreign key
+- `priority` nvarchar(20) — `Low`, `Medium`, `High`, or `Critical`
+- `due_date` date nullable
+- `is_deleted` bit — soft-delete; deleted ideas are excluded from board views and list queries
 - `created_at_utc` datetime2
 - `updated_at_utc` datetime2
 

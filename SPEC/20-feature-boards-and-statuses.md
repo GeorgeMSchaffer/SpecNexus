@@ -14,7 +14,8 @@ Organizations can manage idea boards using configurable workflow swimlanes.
    - Complete
 4. The default statuses are provisioned automatically when a new organization is created.
 5. Status deletion is soft-delete only so existing board and idea references remain valid.
-6. Historical or detail views that reference a soft-deleted status must continue to show the prior status name with an archived or deleted label.
+6. A status that is currently referenced as a swimlane on any active board cannot be soft-deleted; the delete must be rejected with an appropriate error until the swimlane reference is removed.
+7. Historical or detail views that reference a soft-deleted status must continue to show the prior status name with an archived or deleted label.
 
 ## Board Rules
 1. A board is a collection of ideas organized by swimlanes.
@@ -29,11 +30,12 @@ Organizations can manage idea boards using configurable workflow swimlanes.
 7. Board views must provide guided empty states with a primary action and short explanatory text when no ideas exist.
 8. In Development, each seeded demo organization includes one example board with at least one idea in each default swimlane.
 
-## Approval Workflow Decisions
-The following workflow decisions apply to board and status transitions that may participate in approval flows:
+## Approval Workflow Decisions (Post-MVP — Deferred)
+The following decisions apply to a future post-MVP approval workflow for board status transitions. **None of these behaviors are implemented in MVP.**
 
+When implemented:
 - A board may expose an approval-required state transition only when the target status is configured as reviewable by the organization.
-- Only Org Admins and the idea author can initiate or resolve approval actions for an idea.
+- Only Org Admins, Site Admin, and the idea author can initiate or resolve approval actions for an idea.
 - Approval actions are logged as audit events and remain visible in the idea history.
 - A status transition that is rejected or expired must not silently drop the original state; the previous state is restored and the reason is retained.
 
@@ -41,6 +43,7 @@ The following workflow decisions apply to board and status transitions that may 
 - [ ] Organization-scoped statuses can be created and maintained
 - [ ] A new organization receives the default status set automatically
 - [ ] Deleting a status performs a soft delete so existing references remain valid
+- [ ] A status referenced as a swimlane on any active board cannot be soft-deleted; the delete is rejected with an error
 - [ ] Historical or detail views show soft-deleted status names with an archived or deleted label
 - [ ] A board cannot be created with fewer than 2 swimlanes
 - [ ] A new organization receives one default board

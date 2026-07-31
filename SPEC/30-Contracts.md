@@ -41,6 +41,11 @@ Defines the system contracts that implementations must follow.
 ## Update Conventions
 - MVP update operations use last-write-wins behavior unless a feature-specific contract defines a stronger rule.
 
+## Authorization Invariant
+- Every idea, board, status, comment, and org-scoped resource operation must verify that the resource belongs to the caller's organization (`resource.organization_id == caller.organization_id`).
+- Site Admin is exempt from this check and can act on resources in any organization.
+- Violations must return `403 Forbidden`, not `404 Not Found`, to avoid leaking resource existence to cross-org callers (except where resource non-existence is unambiguous).
+
 ## Validation Ownership
 - The API contract validates request shape, required fields, and basic field constraints.
 - The Application and Domain layers enforce business rules, authorization rules, and cross-entity invariants.
@@ -475,11 +480,13 @@ Behavior rules:
 - caller must be Site Admin or Org Admin scoped to the board's organization
 - the entire file is validated before any ideas are created; partial imports are not allowed
 - maximum 500 data rows per upload; files exceeding this limit are rejected with `400`
+- two or more rows in the same file sharing the same `Title` (case-insensitive) are validation errors reported against the second and subsequent duplicate row numbers
 - rows whose `Title` (case-insensitive) matches an existing idea on the target board are silently skipped
 - `AssignedTo` values are resolved by email within the same organization; unresolved values are validation errors
 - `Status` values must match an active swimlane name on the target board; unresolved values are validation errors; omitted `Status` defaults to the leftmost swimlane
 - new `Tags` values are auto-created using standard organization tag normalization rules
-- on success, one bulk-import audit event is emitted plus one individual idea-creation audit event per created idea
+- the creation phase runs in a single database transaction; a persistence failure rolls back all created ideas
+- on success, one bulk-import audit event is emitted (including when `importedCount` is 0) plus one individual idea-creation audit event per created idea
 
 Success response `200`:
 - `importedCount` integer — number of ideas created
@@ -506,7 +513,7 @@ Request body:
 - `priority` required string: `Low`, `Medium`, `High`, or `Critical`
 - `dueDate` optional date string (`YYYY-MM-DD`)
 - `assigneeUserId` optional GUID string
-- `statusId` optional GUID string, defaults to the left-most swimlane when omitted
+- `statusId` optional GUID string, defaults to the left-most swimlane when omitted; if provided must correspond to an active swimlane on this board
 - `tagNames` optional string array
 - `mentionEmails` optional string array
 
@@ -546,13 +553,35 @@ Request body:
 - `priority` required string: `Low`, `Medium`, `High`, or `Critical`
 - `dueDate` optional date string (`YYYY-MM-DD`)
 - `assigneeUserId` optional GUID string
-- `tagNames` optional string array
-- `mentionEmails` optional string array
+- `tagNames` optional string array — **full replacement**: omitting this field or sending an empty array clears all tags from the idea
+- `mentionEmails` optional string array — **full replacement**: omitting this field or sending an empty array clears all mentions from the idea
 
 UI behavior contract:
 - board cards remain compact and show only `title`, `priority`, `assigneeDisplayName`, and upvote state.
 - selecting the card title opens a detail overlay for full idea editing in context.
 - full idea editing in the overlay supports all editable idea fields and collaboration fields.
+
+Error responses:
+- `400` request body is malformed or violates field constraints
+- `401` caller is not authenticated
+- `403` caller is authenticated but not allowed to edit this idea
+- `404` idea does not exist or is outside caller scope
+
+### `DELETE /api/v1/ideas/{ideaId}`
+Purpose: Soft-delete an idea.
+
+Behavior rules:
+- soft-delete only; the idea record is retained but excluded from board views and list queries
+- all associated comments, tags, mentions, and upvotes are retained for audit purposes
+- a deletion audit event is generated
+
+Success response:
+- `204 No Content`
+
+Error responses:
+- `401` caller is not authenticated
+- `403` caller is authenticated but not allowed to delete this idea (only Site Admin and Org Admin may delete)
+- `404` idea does not exist or is outside caller scope
 
 ### `POST /api/v1/ideas/{ideaId}/status`
 Purpose: Move an idea to another board status.

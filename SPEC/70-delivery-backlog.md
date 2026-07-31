@@ -118,6 +118,7 @@ Suggested sequencing by team:
 
 Tasks:
 - implement organization-scoped status create, edit, list, and soft-delete flows
+- block soft-delete of a status that is currently referenced as a swimlane on any active board
 - seed the default status set on organization creation
 - implement board create, edit, list, and detail flows
 - enforce minimum two swimlanes per board
@@ -143,6 +144,8 @@ Suggested sequencing by team:
 
 Tasks:
 - implement idea create, edit, detail, list, and status update flows
+- implement idea soft-delete for Site Admin and Org Admin; soft-deleted ideas excluded from board views and list queries
+- implement bulk CSV import: whole-file validation, 500-row limit, in-file duplicate detection, board-duplicate skipping, transactional creation, dual audit events
 - enforce title and description constraints
 - default new idea status to the left-most board swimlane when not supplied
 - implement tag autocomplete after 2 characters
