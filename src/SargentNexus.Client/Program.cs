@@ -9,9 +9,7 @@ var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
 builder.RootComponents.Add<HeadOutlet>("head::after");
 
-builder.Configuration.AddJsonStream(new MemoryStream(System.Text.Encoding.UTF8.GetBytes("{\"ApiBaseUrl\":\"http://127.0.0.1:5027\"}")));
-
-var apiBaseUrl = builder.Configuration["ApiBaseUrl"] ?? builder.HostEnvironment.BaseAddress;
+var apiBaseUrl = builder.Configuration["ApiBaseUrl"];
 var resolvedBaseAddress = Uri.TryCreate(apiBaseUrl, UriKind.Absolute, out var parsedBaseAddress)
     ? parsedBaseAddress
     : new Uri(builder.HostEnvironment.BaseAddress);

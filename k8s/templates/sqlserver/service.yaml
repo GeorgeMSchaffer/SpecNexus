@@ -1,0 +1,15 @@
+{{- if .Values.sqlserver.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: sargent-nexus-sqlserver
+  namespace: {{ .Values.namespace.name }}
+spec:
+  type: ClusterIP
+  selector:
+    app: sargent-nexus-sqlserver
+  ports:
+    - name: tds
+      port: {{ .Values.sqlserver.service.port }}
+      targetPort: {{ .Values.sqlserver.service.targetPort }}
+{{- end }}

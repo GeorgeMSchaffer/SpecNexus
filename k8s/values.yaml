@@ -1,0 +1,89 @@
+namespace:
+  create: true
+  name: sargent-nexus
+
+api:
+  replicaCount: 2
+  image:
+    repository: ghcr.io/georgemschaffer/specnexus-api
+    tag: latest
+    pullPolicy: Always
+  service:
+    port: 80
+    targetPort: 8080
+  config:
+    aspNetCoreEnvironment: Development
+    aspNetCoreUrls: http://+:8080
+    swaggerEnabled: "true"
+  probes:
+    path: /api/v1/health
+    livenessInitialDelaySeconds: 30
+    readinessInitialDelaySeconds: 10
+  resources:
+    requests:
+      cpu: 250m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+client:
+  replicaCount: 2
+  image:
+    repository: ghcr.io/georgemschaffer/specnexus-client
+    tag: latest
+    pullPolicy: Always
+  service:
+    port: 80
+    targetPort: 80
+  config:
+    apiBaseUrl: /
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 250m
+      memory: 256Mi
+
+sqlserver:
+  enabled: true
+  image:
+    repository: mcr.microsoft.com/mssql/server
+    tag: 2022-latest
+    pullPolicy: Always
+  service:
+    port: 1433
+    targetPort: 1433
+  persistence:
+    size: 20Gi
+    storageClassName: ""
+    accessModes:
+      - ReadWriteOnce
+  secretName: sqlserver-secret
+  secretKeys:
+    saPassword: sa-password
+    connectionString: connection-string
+  config:
+    acceptEula: "Y"
+    mssqlPid: Developer
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      cpu: "1"
+      memory: 2Gi
+  probes:
+    livenessInitialDelaySeconds: 45
+    readinessInitialDelaySeconds: 20
+
+ingress:
+  enabled: true
+  className: nginx
+  host: sargentnexus.localdev.me
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: 16m
+
+networkPolicy:
+  enabled: true

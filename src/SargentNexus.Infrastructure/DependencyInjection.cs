@@ -18,7 +18,7 @@ public static class DependencyInjection
         IHostEnvironment? hostEnvironment = null)
     {
         var isDevelopment = hostEnvironment?.IsDevelopment() ?? false;
-        var useInMemoryDatabase = configuration.GetValue<bool>("Database:UseInMemoryDatabase");
+        var useInMemoryDatabase = bool.TryParse(configuration["Database:UseInMemoryDatabase"], out var parsedValue) && parsedValue;
 
         services.AddDbContext<SargentNexusDbContext>(options =>
         {

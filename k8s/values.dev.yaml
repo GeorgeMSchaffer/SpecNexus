@@ -1,0 +1,16 @@
+api:
+  image:
+    pullPolicy: Always
+  config:
+    aspNetCoreEnvironment: Development
+    swaggerEnabled: "true"
+
+client:
+  image:
+    pullPolicy: Always
+
+sqlserver:
+  image:
+    pullPolicy: Always
+  config:
+    mssqlPid: Developer

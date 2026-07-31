@@ -11,6 +11,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddProblemDetails();
+builder.Services.AddHealthChecks();
 builder.Services.AddCors(options =>
 {
 	options.AddDefaultPolicy(policy =>
@@ -147,6 +148,7 @@ app.Use(async (context, next) =>
 app.UseCors();
 app.UseAuthorization();
 
+app.MapHealthChecks("/api/v1/health");
 app.MapControllers();
 
 app.Run();
