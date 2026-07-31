@@ -1,0 +1,170 @@
+@page "/settings/profile"
+@inject IAuthSessionService AuthSessionService
+@inject IClientErrorMessageService ErrorMessageService
+@inject NavigationManager NavigationManager
+
+<PageTitle>My Profile — Settings</PageTitle>
+
+<AuthGate>
+    <div class="container py-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h1 class="h3 mb-0">My Profile</h1>
+            <NavLink class="btn btn-sm btn-outline-secondary" href="/settings">← Settings</NavLink>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-body">
+                <h2 class="h5 mb-3">Account information</h2>
+                @if (AuthSessionService.User is { } user)
+                {
+                    <dl class="row mb-0">
+                        <dt class="col-sm-3">Name</dt>
+                        <dd class="col-sm-9">@user.FirstName @user.LastName</dd>
+                        <dt class="col-sm-3">Email</dt>
+                        <dd class="col-sm-9">@user.Email</dd>
+                        <dt class="col-sm-3">Role</dt>
+                        <dd class="col-sm-9">@user.Role</dd>
+                    </dl>
+                }
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-body">
+                <h2 class="h5 mb-3">Change Password</h2>
+
+                @if (_passwordChanged)
+                {
+                    <div class="alert alert-success" role="status">
+                        Password changed successfully.
+                    </div>
+                }
+                else
+                {
+                    <EditForm Model="_model" OnValidSubmit="HandleSubmitAsync">
+                        <DataAnnotationsValidator />
+
+                        <div class="mb-3">
+                            <label class="form-label" for="profileCurrentPassword">Current password</label>
+                            <InputText id="profileCurrentPassword" type="password" class="form-control" @bind-Value="_model.CurrentPassword" />
+                            <ValidationMessage For="() => _model.CurrentPassword" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label" for="profileNewPassword">New password</label>
+                            <InputText id="profileNewPassword" type="password" class="form-control" @bind-Value="_model.NewPassword" />
+                            <ValidationMessage For="() => _model.NewPassword" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label" for="profileConfirmNewPassword">Confirm new password</label>
+                            <InputText id="profileConfirmNewPassword" type="password" class="form-control" @bind-Value="_model.ConfirmNewPassword" />
+                            <ValidationMessage For="() => _model.ConfirmNewPassword" />
+                        </div>
+
+                        @if (_passwordPolicyErrors.Count > 0)
+                        {
+                            <div class="alert alert-danger" role="alert">
+                                <strong>Password requirements were not met:</strong>
+                                <ul class="mb-0">
+                                    @foreach (var error in _passwordPolicyErrors)
+                                    {
+                                        <li>@error</li>
+                                    }
+                                </ul>
+                            </div>
+                        }
+
+                        @if (!string.IsNullOrWhiteSpace(_errorTitle))
+                        {
+                            <div class="alert alert-danger" role="alert">
+                                <strong>@_errorTitle</strong>
+                                @if (!string.IsNullOrWhiteSpace(_errorDetail))
+                                {
+                                    <div>@_errorDetail</div>
+                                }
+                            </div>
+                        }
+
+                        <button class="btn btn-primary" type="submit" disabled="@_isSubmitting">
+                            @(_isSubmitting ? "Updating..." : "Change password")
+                        </button>
+                    </EditForm>
+                }
+            </div>
+        </div>
+    </div>
+</AuthGate>
+
+@code {
+    private readonly ChangePasswordFormModel _model = new();
+    private readonly List<string> _passwordPolicyErrors = new();
+    private bool _isSubmitting;
+    private bool _passwordChanged;
+    private string? _errorTitle;
+    private string? _errorDetail;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await AuthSessionService.InitializeAsync();
+    }
+
+    private async Task HandleSubmitAsync()
+    {
+        _isSubmitting = true;
+        _errorTitle = null;
+        _errorDetail = null;
+        _passwordPolicyErrors.Clear();
+
+        if (!string.Equals(_model.NewPassword, _model.ConfirmNewPassword, StringComparison.Ordinal))
+        {
+            _errorTitle = "Password confirmation mismatch.";
+            _errorDetail = "The new password and confirmation must match.";
+            _isSubmitting = false;
+            return;
+        }
+
+        try
+        {
+            await AuthSessionService.ChangePasswordAsync(_model.CurrentPassword, _model.NewPassword);
+            _passwordChanged = true;
+            _model.CurrentPassword = string.Empty;
+            _model.NewPassword = string.Empty;
+            _model.ConfirmNewPassword = string.Empty;
+        }
+        catch (AuthValidationException ex)
+        {
+            if (ex.Errors.TryGetValue("NewPassword", out var errors))
+            {
+                _passwordPolicyErrors.AddRange(errors);
+            }
+            else
+            {
+                _errorTitle = ex.Title;
+                _errorDetail = ErrorMessageService.GetDisplayMessage(ex.Title, ex.Detail, ex);
+            }
+        }
+        catch (AuthApiException ex)
+        {
+            _errorTitle = ex.Title;
+            _errorDetail = ErrorMessageService.GetDisplayMessage(ex.Title, ex.Detail, ex);
+        }
+        finally
+        {
+            _isSubmitting = false;
+        }
+    }
+
+    private sealed class ChangePasswordFormModel
+    {
+        [System.ComponentModel.DataAnnotations.Required]
+        public string CurrentPassword { get; set; } = string.Empty;
+
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.MinLength(8)]
+        public string NewPassword { get; set; } = string.Empty;
+
+        [System.ComponentModel.DataAnnotations.Required]
+        public string ConfirmNewPassword { get; set; } = string.Empty;
+    }
+}

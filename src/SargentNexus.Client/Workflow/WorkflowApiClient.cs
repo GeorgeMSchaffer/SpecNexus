@@ -141,4 +141,88 @@ public sealed class WorkflowApiClient
         using var response = await _httpClient.SendAsync(requestMessage, cancellationToken);
         response.EnsureSuccessStatusCode();
     }
+
+    public async Task<BoardSummaryDto> UpdateBoardAsync(string accessToken, Guid boardId, UpdateBoardRequestDto request, CancellationToken cancellationToken)
+    {
+        using var requestMessage = new HttpRequestMessage(HttpMethod.Put, $"api/v1/boards/{boardId}")
+        {
+            Content = JsonContent.Create(request)
+        };
+        requestMessage.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+
+        using var response = await _httpClient.SendAsync(requestMessage, cancellationToken);
+        response.EnsureSuccessStatusCode();
+
+        return await response.Content.ReadFromJsonAsync<BoardSummaryDto>(cancellationToken: cancellationToken)
+            ?? throw new InvalidOperationException("The API did not return a board payload.");
+    }
+
+    public async Task<StatusSummaryDto> CreateStatusAsync(string accessToken, Guid organizationId, CreateStatusRequestDto request, CancellationToken cancellationToken)
+    {
+        using var requestMessage = new HttpRequestMessage(HttpMethod.Post, $"api/v1/organizations/{organizationId}/statuses")
+        {
+            Content = JsonContent.Create(request)
+        };
+        requestMessage.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+
+        using var response = await _httpClient.SendAsync(requestMessage, cancellationToken);
+        response.EnsureSuccessStatusCode();
+
+        return await response.Content.ReadFromJsonAsync<StatusSummaryDto>(cancellationToken: cancellationToken)
+            ?? throw new InvalidOperationException("The API did not return a status payload.");
+    }
+
+    public async Task<StatusSummaryDto> UpdateStatusAsync(string accessToken, Guid statusId, UpdateStatusRequestDto request, CancellationToken cancellationToken)
+    {
+        using var requestMessage = new HttpRequestMessage(HttpMethod.Put, $"api/v1/statuses/{statusId}")
+        {
+            Content = JsonContent.Create(request)
+        };
+        requestMessage.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+
+        using var response = await _httpClient.SendAsync(requestMessage, cancellationToken);
+        response.EnsureSuccessStatusCode();
+
+        return await response.Content.ReadFromJsonAsync<StatusSummaryDto>(cancellationToken: cancellationToken)
+            ?? throw new InvalidOperationException("The API did not return a status payload.");
+    }
+
+    public async Task<PagedResultDto<IdeaListItemDto>> ListIdeasPagedAsync(
+        string accessToken,
+        Guid boardId,
+        int page,
+        int pageSize,
+        string? search,
+        CancellationToken cancellationToken)
+    {
+        var query = new List<string> { $"page={page}", $"pageSize={pageSize}" };
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            query.Add($"search={Uri.EscapeDataString(search.Trim())}");
+        }
+
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"api/v1/boards/{boardId}/ideas?{string.Join("&", query)}");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+
+        using var response = await _httpClient.SendAsync(request, cancellationToken);
+        response.EnsureSuccessStatusCode();
+
+        return await response.Content.ReadFromJsonAsync<PagedResultDto<IdeaListItemDto>>(cancellationToken: cancellationToken)
+            ?? new PagedResultDto<IdeaListItemDto>();
+    }
+
+    public async Task<IReadOnlyList<IdeaListItemDto>> ListAllIdeasForOrgAsync(string accessToken, Guid organizationId, CancellationToken cancellationToken)
+    {
+        var boards = await ListBoardsAsync(accessToken, organizationId, cancellationToken);
+        var allIdeas = new List<IdeaListItemDto>();
+
+        foreach (var board in boards)
+        {
+            var result = await ListIdeasAsync(accessToken, board.BoardId, cancellationToken);
+            allIdeas.AddRange(result.Items);
+        }
+
+        return allIdeas;
+    }
 }

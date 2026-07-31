@@ -88,3 +88,78 @@ public sealed class OrganizationDetailDto
 
     public bool IsArchived { get; set; }
 }
+
+public sealed class UserListItemDto
+{
+    public Guid UserId { get; set; }
+
+    public Guid? OrganizationId { get; set; }
+
+    public string FirstName { get; set; } = string.Empty;
+
+    public string LastName { get; set; } = string.Empty;
+
+    public string Email { get; set; } = string.Empty;
+
+    public string Role { get; set; } = string.Empty;
+
+    public string Status { get; set; } = string.Empty;
+}
+
+public sealed class UserDetailDto
+{
+    public Guid UserId { get; set; }
+
+    public Guid? OrganizationId { get; set; }
+
+    public string FirstName { get; set; } = string.Empty;
+
+    public string LastName { get; set; } = string.Empty;
+
+    public string Email { get; set; } = string.Empty;
+
+    public string Role { get; set; } = string.Empty;
+
+    public string Status { get; set; } = string.Empty;
+}
+
+public sealed class UserCreateRequestDto
+{
+    public string FirstName { get; set; } = string.Empty;
+
+    public string LastName { get; set; } = string.Empty;
+
+    public string Email { get; set; } = string.Empty;
+
+    public string Role { get; set; } = string.Empty;
+
+    public string InitialPassword { get; set; } = string.Empty;
+
+    public string? Status { get; set; }
+}
+
+public sealed class UserCreateResponseDto
+{
+    public Guid UserId { get; set; }
+
+    public Guid OrganizationId { get; set; }
+
+    public string Email { get; set; } = string.Empty;
+
+    public string Role { get; set; } = string.Empty;
+
+    public string Status { get; set; } = string.Empty;
+}
+
+public sealed class UserUpdateRequestDto
+{
+    public string FirstName { get; set; } = string.Empty;
+
+    public string LastName { get; set; } = string.Empty;
+
+    public string Email { get; set; } = string.Empty;
+
+    public string Role { get; set; } = string.Empty;
+
+    public string Status { get; set; } = string.Empty;
+}

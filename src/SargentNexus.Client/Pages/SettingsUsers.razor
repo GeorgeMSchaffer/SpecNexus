@@ -1,0 +1,390 @@
+@page "/settings/users"
+@inject IAuthSessionService AuthSessionService
+@inject IClientErrorMessageService ErrorMessageService
+@inject AdministrationApiClient AdministrationApiClient
+
+<PageTitle>Users — Settings</PageTitle>
+
+<AuthGate>
+    <div class="container py-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div>
+                <h1 class="h3 mb-1">Users</h1>
+                <p class="text-muted mb-0">Manage organization users and roles.</p>
+            </div>
+            <div class="d-flex gap-2">
+                <NavLink class="btn btn-sm btn-outline-secondary" href="/settings">← Settings</NavLink>
+                @if (_view == PageView.List && CanManageUsers)
+                {
+                    <button class="btn btn-primary" @onclick="StartCreate">Create user</button>
+                }
+            </div>
+        </div>
+
+        @if (!CanManageUsers)
+        {
+            <div class="alert alert-warning" role="alert">You do not have permission to manage users.</div>
+        }
+        else if (_view == PageView.Form)
+        {
+            <div class="card mb-3">
+                <div class="card-body">
+                    <h2 class="h5">@(_editTarget is not null ? "Edit user" : "Create user")</h2>
+
+                    @if (!string.IsNullOrWhiteSpace(_errorMessage))
+                    {
+                        <div class="alert alert-danger" role="alert">@_errorMessage</div>
+                    }
+
+                    <EditForm Model="_form" OnValidSubmit="SaveAsync">
+                        <DataAnnotationsValidator />
+
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">First name <span class="text-danger">*</span></label>
+                                <InputText class="form-control" @bind-Value="_form.FirstName" />
+                                <ValidationMessage For="() => _form.FirstName" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Last name <span class="text-danger">*</span></label>
+                                <InputText class="form-control" @bind-Value="_form.LastName" />
+                                <ValidationMessage For="() => _form.LastName" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Email <span class="text-danger">*</span></label>
+                                <InputText type="email" class="form-control" @bind-Value="_form.Email" />
+                                <ValidationMessage For="() => _form.Email" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Role <span class="text-danger">*</span></label>
+                                <InputSelect class="form-select" @bind-Value="_form.Role">
+                                    <option value="">— Select role —</option>
+                                    <option value="OrgAdmin">Org Admin</option>
+                                    <option value="User">User</option>
+                                    <option value="ReadOnly">Read Only</option>
+                                </InputSelect>
+                                <ValidationMessage For="() => _form.Role" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Status <span class="text-danger">*</span></label>
+                                <InputSelect class="form-select" @bind-Value="_form.Status">
+                                    <option value="Active">Active</option>
+                                    <option value="Inactive">Inactive</option>
+                                </InputSelect>
+                                <ValidationMessage For="() => _form.Status" />
+                            </div>
+                            @if (_editTarget is null)
+                            {
+                                <div class="col-md-6">
+                                    <label class="form-label">Initial password <span class="text-danger">*</span></label>
+                                    <InputText type="password" class="form-control" @bind-Value="_form.InitialPassword" />
+                                    <ValidationMessage For="() => _form.InitialPassword" />
+                                </div>
+                            }
+                        </div>
+
+                        <div class="mt-3 d-flex gap-2">
+                            <button class="btn btn-primary" type="submit" disabled="@_isSubmitting">@(_isSubmitting ? "Saving..." : "Save")</button>
+                            <button class="btn btn-outline-secondary" type="button" @onclick="CancelForm">Cancel</button>
+                        </div>
+                    </EditForm>
+                </div>
+            </div>
+        }
+        else
+        {
+            @if (!string.IsNullOrWhiteSpace(_errorMessage))
+            {
+                <div class="alert alert-danger" role="alert">@_errorMessage</div>
+            }
+
+            <SearchPaginationBar @bind-SearchText="_search"
+                                 @bind-PageSize="_pageSize"
+                                 OnSearch="HandleSearchAsync" />
+
+            @if (_isLoading)
+            {
+                <div class="alert alert-info">Loading users...</div>
+            }
+            else if (_users.Count == 0)
+            {
+                <div class="alert alert-secondary">No users found.</div>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-striped align-middle">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Role</th>
+                                <th>Status</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var item in _users)
+                            {
+                                <tr>
+                                    <td>@item.FirstName @item.LastName</td>
+                                    <td>@item.Email</td>
+                                    <td>@item.Role</td>
+                                    <td>
+                                        @if (string.Equals(item.Status, "Active", StringComparison.OrdinalIgnoreCase))
+                                        {
+                                            <span class="badge text-bg-success">Active</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge text-bg-secondary">@item.Status</span>
+                                        }
+                                    </td>
+                                    <td class="text-end">
+                                        <button class="btn btn-sm btn-outline-primary" @onclick="() => StartEditAsync(item.UserId)">Edit</button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="d-flex justify-content-between align-items-center mt-2">
+                    <span class="text-muted small">
+                        Showing @((_page - 1) * _pageSize + 1)–@Math.Min(_page * _pageSize, _totalCount) of @_totalCount
+                    </span>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-sm btn-outline-secondary" @onclick="PrevPage" disabled="@(_page <= 1)">← Prev</button>
+                        <span class="align-self-center small">Page @_page</span>
+                        <button class="btn btn-sm btn-outline-secondary" @onclick="NextPage" disabled="@(_page * _pageSize >= _totalCount)">Next →</button>
+                    </div>
+                </div>
+            }
+        }
+    </div>
+</AuthGate>
+
+@code {
+    private enum PageView { List, Form }
+
+    private readonly List<UserListItemDto> _users = new();
+    private PageView _view = PageView.List;
+    private UserDetailDto? _editTarget;
+    private UserFormModel _form = new();
+    private string _search = string.Empty;
+    private bool _isLoading;
+    private bool _isSubmitting;
+    private string? _errorMessage;
+    private int _page = 1;
+    private int _pageSize = 25;
+    private int _totalCount;
+
+    private bool IsSiteAdmin => string.Equals(AuthSessionService.User?.Role, "SiteAdmin", StringComparison.OrdinalIgnoreCase);
+    private bool IsOrgAdmin => string.Equals(AuthSessionService.User?.Role, "OrgAdmin", StringComparison.OrdinalIgnoreCase);
+    private bool CanManageUsers => IsSiteAdmin || IsOrgAdmin;
+
+    private Guid? CurrentOrgId => AuthSessionService.User?.OrganizationId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadUsersAsync();
+    }
+
+    private async Task HandleSearchAsync()
+    {
+        _page = 1;
+        await LoadUsersAsync();
+    }
+
+    private async Task PrevPage()
+    {
+        if (_page > 1)
+        {
+            _page--;
+            await LoadUsersAsync();
+        }
+    }
+
+    private async Task NextPage()
+    {
+        if (_page * _pageSize < _totalCount)
+        {
+            _page++;
+            await LoadUsersAsync();
+        }
+    }
+
+    private async Task LoadUsersAsync()
+    {
+        if (!CanManageUsers || string.IsNullOrWhiteSpace(AuthSessionService.AccessToken) || !CurrentOrgId.HasValue)
+        {
+            return;
+        }
+
+        _isLoading = true;
+        _errorMessage = null;
+
+        try
+        {
+            _users.Clear();
+
+            var result = await AdministrationApiClient.ListUsersAsync(
+                AuthSessionService.AccessToken!,
+                CurrentOrgId.Value,
+                page: _page,
+                pageSize: _pageSize,
+                search: _search,
+                CancellationToken.None);
+
+            _users.AddRange(result.Items);
+            _totalCount = result.TotalCount;
+        }
+        catch (AuthApiException ex)
+        {
+            _errorMessage = ErrorMessageService.GetDisplayMessage(ex.Title, ex.Detail, ex);
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = ErrorMessageService.GetDisplayMessage(null, null, ex);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void StartCreate()
+    {
+        _editTarget = null;
+        _form = new UserFormModel { Status = "Active" };
+        _view = PageView.Form;
+    }
+
+    private async Task StartEditAsync(Guid userId)
+    {
+        if (string.IsNullOrWhiteSpace(AuthSessionService.AccessToken))
+        {
+            return;
+        }
+
+        _errorMessage = null;
+
+        try
+        {
+            var detail = await AdministrationApiClient.GetUserAsync(AuthSessionService.AccessToken!, userId, CancellationToken.None);
+            _editTarget = detail;
+            _form = new UserFormModel
+            {
+                FirstName = detail.FirstName,
+                LastName = detail.LastName,
+                Email = detail.Email,
+                Role = detail.Role,
+                Status = detail.Status
+            };
+            _view = PageView.Form;
+        }
+        catch (AuthApiException ex)
+        {
+            _errorMessage = ErrorMessageService.GetDisplayMessage(ex.Title, ex.Detail, ex);
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = ErrorMessageService.GetDisplayMessage(null, null, ex);
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        if (string.IsNullOrWhiteSpace(AuthSessionService.AccessToken))
+        {
+            return;
+        }
+
+        _isSubmitting = true;
+        _errorMessage = null;
+
+        try
+        {
+            if (_editTarget is not null)
+            {
+                await AdministrationApiClient.UpdateUserAsync(
+                    AuthSessionService.AccessToken!,
+                    _editTarget.UserId,
+                    new UserUpdateRequestDto
+                    {
+                        FirstName = _form.FirstName.Trim(),
+                        LastName = _form.LastName.Trim(),
+                        Email = _form.Email.Trim(),
+                        Role = _form.Role,
+                        Status = _form.Status
+                    },
+                    CancellationToken.None);
+            }
+            else if (CurrentOrgId.HasValue)
+            {
+                await AdministrationApiClient.CreateUserAsync(
+                    AuthSessionService.AccessToken!,
+                    CurrentOrgId.Value,
+                    new UserCreateRequestDto
+                    {
+                        FirstName = _form.FirstName.Trim(),
+                        LastName = _form.LastName.Trim(),
+                        Email = _form.Email.Trim(),
+                        Role = _form.Role,
+                        InitialPassword = _form.InitialPassword,
+                        Status = _form.Status
+                    },
+                    CancellationToken.None);
+            }
+
+            _view = PageView.List;
+            _editTarget = null;
+            await LoadUsersAsync();
+        }
+        catch (AuthValidationException ex)
+        {
+            _errorMessage = ErrorMessageService.GetDisplayMessage(ex.Title, ex.Detail, ex);
+        }
+        catch (AuthApiException ex)
+        {
+            _errorMessage = ErrorMessageService.GetDisplayMessage(ex.Title, ex.Detail, ex);
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = ErrorMessageService.GetDisplayMessage(null, null, ex);
+        }
+        finally
+        {
+            _isSubmitting = false;
+        }
+    }
+
+    private void CancelForm()
+    {
+        _view = PageView.List;
+        _editTarget = null;
+    }
+
+    private sealed class UserFormModel
+    {
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.MaxLength(100)]
+        public string FirstName { get; set; } = string.Empty;
+
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.MaxLength(100)]
+        public string LastName { get; set; } = string.Empty;
+
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.EmailAddress]
+        public string Email { get; set; } = string.Empty;
+
+        [System.ComponentModel.DataAnnotations.Required]
+        public string Role { get; set; } = string.Empty;
+
+        [System.ComponentModel.DataAnnotations.Required]
+        public string Status { get; set; } = "Active";
+
+        public string InitialPassword { get; set; } = string.Empty;
+    }
+}

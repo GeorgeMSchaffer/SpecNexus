@@ -18,36 +18,31 @@
         @if (AuthSessionService.IsAuthenticated)
         {
             <div class="nav-item px-3">
-                <NavLink class="nav-link" href="counter">
-                    <span class="bi bi-plus-square-fill-nav-menu" aria-hidden="true"></span> Counter
-                </NavLink>
-            </div>
-            <div class="nav-item px-3">
                 <NavLink class="nav-link" href="workflow">
                     <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Workflow
                 </NavLink>
             </div>
-            @if (CanAccessAdmin)
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="ideas">
+                    <span class="bi bi-lightbulb-fill-nav-menu" aria-hidden="true"></span> Ideas
+                </NavLink>
+            </div>
+            @if (CanAccessSettings)
             {
                 <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="admin">
-                        <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Admin
+                    <NavLink class="nav-link" href="settings">
+                        <span class="bi bi-gear-fill-nav-menu" aria-hidden="true"></span> Settings
                     </NavLink>
                 </div>
             }
             <div class="nav-item px-3">
-                <NavLink class="nav-link" href="weather">
-                    <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Weather
-                </NavLink>
-            </div>
-            <div class="nav-item px-3">
                 <NavLink class="nav-link" href="change-password">
-                    <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Change Password
+                    <span class="bi bi-key-fill-nav-menu" aria-hidden="true"></span> Change Password
                 </NavLink>
             </div>
             <div class="nav-item px-3">
                 <button type="button" class="nav-link btn btn-link" @onclick="HandleLogoutAsync">
-                    <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Sign Out
+                    <span class="bi bi-box-arrow-right-nav-menu" aria-hidden="true"></span> Sign Out
                 </button>
             </div>
         }
@@ -55,7 +50,7 @@
         {
             <div class="nav-item px-3">
                 <NavLink class="nav-link" href="login">
-                    <span class="bi bi-plus-square-fill-nav-menu" aria-hidden="true"></span> Sign In
+                    <span class="bi bi-person-fill-nav-menu" aria-hidden="true"></span> Sign In
                 </NavLink>
             </div>
         }
@@ -73,7 +68,7 @@
 
     private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
 
-    private bool CanAccessAdmin =>
+    private bool CanAccessSettings =>
         string.Equals(AuthSessionService.User?.Role, "SiteAdmin", StringComparison.OrdinalIgnoreCase)
         || string.Equals(AuthSessionService.User?.Role, "OrgAdmin", StringComparison.OrdinalIgnoreCase);
 
