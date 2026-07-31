@@ -71,6 +71,49 @@ Users can create, discuss, organize, and support ideas within their organization
 4, Upvotes are counted per Idea and displayed next to the upvote icon.
 5. Only the user who cast an upvote can remove it.
 
+## CSV Import
+
+### Rules
+1. Only Site Admin and Org Admin can upload ideas via CSV to a board.
+2. The CSV file must use UTF-8 encoding with a header row.
+3. Supported columns:
+
+   | Column       | Required | Constraints                                                                |
+   |--------------|----------|----------------------------------------------------------------------------|
+   | `Title`      | Yes      | max 150 characters                                                         |
+   | `Description`| Yes      | max 4000 characters                                                        |
+   | `Priority`   | Yes      | must be `Low`, `Medium`, `High`, or `Critical`                             |
+   | `DueDate`    | No       | ISO-8601 date format (`YYYY-MM-DD`); omit or leave blank to skip           |
+   | `Status`     | No       | must match a swimlane name on the target board; defaults to leftmost lane  |
+   | `AssignedTo` | No       | email address of a user in the same organization                           |
+   | `Tags`       | No       | pipe-delimited (`\|`) list of tag values; max 100 characters per tag       |
+
+4. Validation runs against the entire file before any ideas are created. If any row fails validation, the entire upload is rejected and all errors are returned. No partial imports occur.
+5. A single upload is limited to 500 data rows. Files exceeding this limit are rejected.
+6. If a row's `Title` (case-insensitive) already exists as an idea on the target board, that row is silently skipped without error.
+7. An unresolved `AssignedTo` email (not a user in the same organization) is a validation error.
+8. An unrecognized `Status` value (not a swimlane on the target board) is a validation error.
+9. New `Tags` values that do not yet exist in the organization are created automatically using the same normalization rules as manual tag creation (trimmed, case-insensitive deduplication).
+10. A successful import generates one bulk-import audit event for the upload action, plus one individual audit event per idea created (same event type as manual idea creation).
+
+### Acceptance Criteria
+- [ ] Only Site Admin and Org Admin can access the CSV upload action for a board
+- [ ] CSV files exceeding 500 data rows are rejected before processing
+- [ ] Validation covers all rows before any ideas are created
+- [ ] A file with any invalid row is rejected entirely and all errors are reported
+- [ ] `Title`, `Description`, and `Priority` are required per row; missing or blank values are validation errors
+- [ ] `Title` is validated to max 150 characters per row
+- [ ] `Description` is validated to max 4000 characters per row
+- [ ] `Priority` must be one of `Low`, `Medium`, `High`, or `Critical`; unrecognized values are validation errors
+- [ ] `DueDate` must be a valid `YYYY-MM-DD` date when provided; invalid formats are validation errors
+- [ ] `Status` must match a swimlane name on the target board when provided; unrecognized values are validation errors
+- [ ] Ideas with no `Status` value default to the leftmost swimlane of the target board
+- [ ] `AssignedTo` must resolve to an active user in the same organization by email; unresolved values are validation errors
+- [ ] `Tags` values are pipe-delimited; new tag values are auto-created using existing normalization rules
+- [ ] Rows whose `Title` (case-insensitive) already exists on the target board are silently skipped
+- [ ] A bulk-import audit event is generated for the upload action
+- [ ] One individual audit event is generated per idea created, matching the manual idea-creation audit event type
+
 ## Approval Workflow Decisions
 The following implementation decisions were clarified for any future approval or review workflow around ideas:
 

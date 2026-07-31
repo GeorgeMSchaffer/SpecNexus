@@ -24,6 +24,7 @@ Organizations can manage idea boards using configurable workflow swimlanes.
 5. Site Admin and Org Admin can:
    - select statuses used by a board
    - reorder swimlanes by drag-and-drop
+   - bulk-import ideas from a CSV file
 6. Swimlane order changes are saved immediately when the drag-and-drop action completes.
 7. Board views must provide guided empty states with a primary action and short explanatory text when no ideas exist.
 8. In Development, each seeded demo organization includes one example board with at least one idea in each default swimlane.
@@ -48,3 +49,4 @@ The following workflow decisions apply to board and status transitions that may 
 - [ ] Board screens provide guided empty states with a primary action and short explanatory text when no ideas exist
 - [ ] Development startup seed includes one example board per demo organization
 - [ ] Each seeded example board includes ideas across every default swimlane
+- [ ] Site Admin and Org Admin can bulk-import ideas from a CSV file

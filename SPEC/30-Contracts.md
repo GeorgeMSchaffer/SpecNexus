@@ -464,6 +464,39 @@ Success response `200` paged item shape:
 - `authorUserId`
 - `createdAtUtc`
 
+### `POST /api/v1/boards/{boardId}/ideas/import`
+Purpose: Bulk-import ideas onto a board from a CSV file.
+
+Request body:
+- `multipart/form-data`
+- field `file` required — CSV file, UTF-8 encoded, with header row
+
+Behavior rules:
+- caller must be Site Admin or Org Admin scoped to the board's organization
+- the entire file is validated before any ideas are created; partial imports are not allowed
+- maximum 500 data rows per upload; files exceeding this limit are rejected with `400`
+- rows whose `Title` (case-insensitive) matches an existing idea on the target board are silently skipped
+- `AssignedTo` values are resolved by email within the same organization; unresolved values are validation errors
+- `Status` values must match an active swimlane name on the target board; unresolved values are validation errors; omitted `Status` defaults to the leftmost swimlane
+- new `Tags` values are auto-created using standard organization tag normalization rules
+- on success, one bulk-import audit event is emitted plus one individual idea-creation audit event per created idea
+
+Success response `200`:
+- `importedCount` integer — number of ideas created
+- `skippedCount` integer — number of rows skipped due to duplicate title
+- `errors` empty array
+
+Error response `400` (validation failure):
+- standard problem-details envelope
+- `errors` object keyed by row number (1-based, excluding header), each value an array of validation message strings
+- example: `{ "errors": { "3": ["Priority must be one of: Low, Medium, High, Critical."], "7": ["AssignedTo must be a valid email."] } }`
+
+Error responses:
+- `400` file is missing, exceeds 500 rows, has a malformed header, or contains validation errors in any row
+- `401` caller is not authenticated
+- `403` caller is authenticated but not allowed to import ideas onto this board
+- `404` board does not exist or is outside caller scope
+
 ### `POST /api/v1/boards/{boardId}/ideas`
 Purpose: Create a new idea on a board.
 
