@@ -16,6 +16,7 @@ Organizations can extend the `Idea` entity with custom fields (User-Defined Fiel
 | Field ordering | Admin-configurable display order; drag-and-drop reorder |
 | Visibility / access | All org users see and fill UDF fields on idea forms; only Admins can manage field definitions |
 | Templates integration | UDF design must be forward-compatible with a future idea-template feature |
+| CSV export / import | UDF values are included as columns in CSV export and CSV import |
 | Filtering / search | UDF values are filterable and full-text searchable in the ideas list |
 | History / audit | UDF value changes are tracked in the audit log |
 | New-field migration | Existing ideas receive `null`/empty value for new fields; no backfill |
@@ -570,6 +571,14 @@ To ensure UDFs integrate cleanly with a future idea-template feature:
 - [ ] Text and Url types use contains matching; Number and Date types use range matching; Boolean/Dropdown/MultiSelect use equality / any-of matching
 - [ ] The global `search` parameter on the ideas list also scans Text and Url UDF values
 - [ ] Unknown or invalid `fieldDefinitionId` keys in `fieldFilters` are silently ignored
+
+### CSV Export / Import
+- [ ] CSV export of ideas includes one column per active UDF field (column header = field name)
+- [ ] Soft-deleted field definitions are excluded from export column headers but their values are omitted (not orphaned data exposed)
+- [ ] CSV import accepts UDF columns matched by field name (case-insensitive); unrecognized column headers are ignored
+- [ ] Import applies the same type validation as the API write contract for each UDF value
+- [ ] Import treats missing or empty UDF columns as null; required-field violations are reported per-row in the import error summary
+- [ ] CSV column order for UDF fields follows `DisplayOrder`
 
 ---
 
