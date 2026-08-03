@@ -80,6 +80,7 @@
                                 <tr>
                                     <th>Name</th>
                                     <th>Type</th>
+                                    <th>Status</th>
                                     <th></th>
                                 </tr>
                             </thead>
@@ -89,6 +90,16 @@
                                     <tr>
                                         <td>@board.Name</td>
                                         <td>@(board.AllowUserStatusUpdate ? "User-managed" : "Admin-managed")</td>
+                                        <td>
+                                            @if (board.IsArchived)
+                                            {
+                                                <span class="badge text-bg-secondary">Archived</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge text-bg-success">Active</span>
+                                            }
+                                        </td>
                                         <td class="text-end">
                                             <button class="btn btn-sm btn-outline-primary" @onclick="() => StartEditBoard(board)">Edit</button>
                                         </td>
@@ -112,10 +123,25 @@
                         <EditForm Model="_statusForm" OnValidSubmit="SaveStatusAsync">
                             <DataAnnotationsValidator />
                             <div class="row g-3">
-                                <div class="col-md-8">
+                                <div class="col-md-6">
                                     <label class="form-label">Status name <span class="text-danger">*</span></label>
                                     <InputText class="form-control" @bind-Value="_statusForm.Name" />
                                     <ValidationMessage For="() => _statusForm.Name" />
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Color <span class="text-muted small">(hex, e.g. #3b82f6)</span></label>
+                                    <InputText class="form-control" @bind-Value="_statusForm.Color" placeholder="#3b82f6" />
+                                    <ValidationMessage For="() => _statusForm.Color" />
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Sort Order</label>
+                                    <InputNumber class="form-control" @bind-Value="_statusForm.SortOrder" />
+                                </div>
+                                <div class="col-md-12">
+                                    <div class="form-check">
+                                        <InputCheckbox class="form-check-input" id="statusIsDefault" @bind-Value="_statusForm.IsDefault" />
+                                        <label class="form-check-label" for="statusIsDefault">Default status (assigned to new ideas)</label>
+                                    </div>
                                 </div>
                             </div>
                             <div class="mt-3 d-flex gap-2">
@@ -147,25 +173,32 @@
                             <thead>
                                 <tr>
                                     <th>Name</th>
-                                    <th>State</th>
+                                    <th>Color</th>
+                                    <th>Sort Order</th>
+                                    <th>Is Default</th>
                                     <th></th>
                                 </tr>
                             </thead>
                             <tbody>
-                                @foreach (var status in _statuses)
+                                @foreach (var status in _statuses.OrderBy(s => s.SortOrder).ThenBy(s => s.Name))
                                 {
                                     <tr>
-                                        <td>@status.Name</td>
                                         <td>
+                                            @status.Name
                                             @if (status.IsDeleted)
                                             {
-                                                <span class="badge text-bg-secondary">Deleted</span>
-                                            }
-                                            else
-                                            {
-                                                <span class="badge text-bg-success">Active</span>
+                                                <span class="badge text-bg-secondary ms-1">Deleted</span>
                                             }
                                         </td>
+                                        <td>
+                                            @if (!string.IsNullOrWhiteSpace(status.Color))
+                                            {
+                                                <span class="d-inline-block rounded" style="width:18px;height:18px;background:@status.Color;vertical-align:middle;border:1px solid #ccc"></span>
+                                                <span class="ms-1 small">@status.Color</span>
+                                            }
+                                        </td>
+                                        <td>@status.SortOrder</td>
+                                        <td>@(status.IsDefault ? "✓" : "")</td>
                                         <td class="text-end">
                                             @if (!status.IsDeleted)
                                             {
@@ -357,7 +390,13 @@
     private void StartEditStatus(StatusSummaryDto status)
     {
         _statusEditTarget = status;
-        _statusForm = new StatusFormModel { Name = status.Name };
+        _statusForm = new StatusFormModel
+        {
+            Name = status.Name,
+            Color = status.Color,
+            SortOrder = status.SortOrder,
+            IsDefault = status.IsDefault
+        };
         _statusView = FormView.Form;
     }
 
@@ -378,7 +417,13 @@
                 await WorkflowApiClient.UpdateStatusAsync(
                     AuthSessionService.AccessToken!,
                     _statusEditTarget.StatusId,
-                    new UpdateStatusRequestDto { Name = _statusForm.Name.Trim() },
+                    new UpdateStatusRequestDto
+                    {
+                        Name = _statusForm.Name.Trim(),
+                        Color = string.IsNullOrWhiteSpace(_statusForm.Color) ? null : _statusForm.Color.Trim(),
+                        SortOrder = _statusForm.SortOrder,
+                        IsDefault = _statusForm.IsDefault
+                    },
                     CancellationToken.None);
             }
             else if (CurrentOrgId.HasValue)
@@ -386,7 +431,13 @@
                 await WorkflowApiClient.CreateStatusAsync(
                     AuthSessionService.AccessToken!,
                     CurrentOrgId.Value,
-                    new CreateStatusRequestDto { Name = _statusForm.Name.Trim() },
+                    new CreateStatusRequestDto
+                    {
+                        Name = _statusForm.Name.Trim(),
+                        Color = string.IsNullOrWhiteSpace(_statusForm.Color) ? null : _statusForm.Color.Trim(),
+                        SortOrder = _statusForm.SortOrder,
+                        IsDefault = _statusForm.IsDefault
+                    },
                     CancellationToken.None);
             }
 
@@ -418,5 +469,12 @@
         [System.ComponentModel.DataAnnotations.Required]
         [System.ComponentModel.DataAnnotations.StringLength(100)]
         public string Name { get; set; } = string.Empty;
+
+        [System.ComponentModel.DataAnnotations.StringLength(20)]
+        public string? Color { get; set; }
+
+        public int SortOrder { get; set; }
+
+        public bool IsDefault { get; set; }
     }
 }

@@ -10,6 +10,8 @@ public sealed class BoardSummaryDto
 
     public bool AllowUserStatusUpdate { get; set; }
 
+    public bool IsArchived { get; set; }
+
     public IReadOnlyList<SwimlaneDto> Swimlanes { get; set; } = Array.Empty<SwimlaneDto>();
 }
 
@@ -33,6 +35,12 @@ public sealed class StatusSummaryDto
     public string Name { get; set; } = string.Empty;
 
     public bool IsDeleted { get; set; }
+
+    public string? Color { get; set; }
+
+    public int SortOrder { get; set; }
+
+    public bool IsDefault { get; set; }
 }
 
 public sealed class PagedResultDto<T>
@@ -176,9 +184,21 @@ public sealed class UpdateBoardRequestDto
 public sealed class CreateStatusRequestDto
 {
     public string Name { get; set; } = string.Empty;
+
+    public string? Color { get; set; }
+
+    public int SortOrder { get; set; }
+
+    public bool IsDefault { get; set; }
 }
 
 public sealed class UpdateStatusRequestDto
 {
     public string Name { get; set; } = string.Empty;
+
+    public string? Color { get; set; }
+
+    public int SortOrder { get; set; }
+
+    public bool IsDefault { get; set; }
 }

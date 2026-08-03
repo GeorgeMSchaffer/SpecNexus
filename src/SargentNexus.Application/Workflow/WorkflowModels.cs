@@ -20,6 +20,12 @@ public sealed class StatusSummaryModel
     public string Name { get; init; } = string.Empty;
 
     public bool IsDeleted { get; init; }
+
+    public string? Color { get; init; }
+
+    public int SortOrder { get; init; }
+
+    public bool IsDefault { get; init; }
 }
 
 public sealed class CreateStatusRequestModel
@@ -27,6 +33,13 @@ public sealed class CreateStatusRequestModel
     [Required]
     [StringLength(100)]
     public string Name { get; set; } = string.Empty;
+
+    [StringLength(20)]
+    public string? Color { get; set; }
+
+    public int SortOrder { get; set; }
+
+    public bool IsDefault { get; set; }
 }
 
 public sealed class UpdateStatusRequestModel
@@ -34,6 +47,13 @@ public sealed class UpdateStatusRequestModel
     [Required]
     [StringLength(100)]
     public string Name { get; set; } = string.Empty;
+
+    [StringLength(20)]
+    public string? Color { get; set; }
+
+    public int SortOrder { get; set; }
+
+    public bool IsDefault { get; set; }
 }
 
 public sealed class SwimlaneModel
@@ -56,6 +76,8 @@ public sealed class BoardSummaryModel
     public string Name { get; init; } = string.Empty;
 
     public bool AllowUserStatusUpdate { get; init; }
+
+    public bool IsArchived { get; init; }
 
     public IReadOnlyList<SwimlaneModel> Swimlanes { get; init; } = Array.Empty<SwimlaneModel>();
 }

@@ -338,6 +338,9 @@ public sealed class WorkflowManagementService : IWorkflowManagementService
 
             existing.IsDeleted = false;
             existing.Name = name;
+            existing.Color = string.IsNullOrWhiteSpace(request.Color) ? null : request.Color.Trim();
+            existing.SortOrder = request.SortOrder;
+            existing.IsDefault = request.IsDefault;
             await _dataAccess.SaveChangesAsync(cancellationToken);
             await _auditWriter.WriteStatusCreatedAsync(actor.UserId, existing, cancellationToken);
 
@@ -349,7 +352,10 @@ public sealed class WorkflowManagementService : IWorkflowManagementService
             Id = Guid.NewGuid(),
             OrganizationId = organizationId,
             Name = name,
-            IsDeleted = false
+            IsDeleted = false,
+            Color = string.IsNullOrWhiteSpace(request.Color) ? null : request.Color.Trim(),
+            SortOrder = request.SortOrder,
+            IsDefault = request.IsDefault
         };
 
         _dataAccess.AddStatus(status);
@@ -400,6 +406,9 @@ public sealed class WorkflowManagementService : IWorkflowManagementService
 
         var previousName = status.Name;
         status.Name = name;
+        status.Color = string.IsNullOrWhiteSpace(request.Color) ? null : request.Color.Trim();
+        status.SortOrder = request.SortOrder;
+        status.IsDefault = request.IsDefault;
 
         await _dataAccess.SaveChangesAsync(cancellationToken);
         await _auditWriter.WriteStatusUpdatedAsync(actor.UserId, status, previousName, cancellationToken);
@@ -462,6 +471,7 @@ public sealed class WorkflowManagementService : IWorkflowManagementService
                 OrganizationId = board.OrganizationId,
                 Name = board.Name,
                 AllowUserStatusUpdate = board.AllowUserStatusUpdate,
+                IsArchived = board.IsArchived,
                 Swimlanes = swimlanes
                     .OrderBy(item => item.Order)
                     .Select(ToSwimlaneModel)
@@ -1711,7 +1721,10 @@ public sealed class WorkflowManagementService : IWorkflowManagementService
             StatusId = status.Id,
             OrganizationId = status.OrganizationId,
             Name = status.Name,
-            IsDeleted = status.IsDeleted
+            IsDeleted = status.IsDeleted,
+            Color = status.Color,
+            SortOrder = status.SortOrder,
+            IsDefault = status.IsDefault
         };
     }
 
