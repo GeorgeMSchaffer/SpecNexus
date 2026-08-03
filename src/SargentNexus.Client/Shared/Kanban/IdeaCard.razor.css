@@ -1,29 +1,30 @@
 .idea-card {
     display: flex;
     flex-direction: column;
-    gap: 0.55rem;
-    padding: 0.9rem 0.95rem;
+    gap: 0.5rem;
+    padding: 0.72rem 0.8rem;
     background: #ffffff;
-    border: 1px solid #d3deea;
-    border-radius: 0.8rem;
-    box-shadow: 0 0.2rem 0.75rem rgba(15, 23, 42, 0.06);
+    border: 1px solid var(--sn-line);
+    border-left: 3px solid transparent;
+    border-radius: 0.42rem;
+    box-shadow: var(--sn-shadow);
 }
 
 .idea-card__title-button {
     padding: 0;
-    color: #1d4ed8;
+    color: var(--sn-accent);
     text-align: left;
     background: transparent;
     border: 0;
-    font-size: 0.92rem;
-    font-weight: 700;
+    font-size: 0.84rem;
+    font-weight: 600;
     line-height: 1.35;
 }
 
 .idea-card__title-button:hover,
 .idea-card__title-button:focus-visible {
-    color: #1e3a8a;
-    text-decoration: underline;
+    color: var(--sn-accent-strong);
+    text-decoration: none;
     outline: none;
 }
 
@@ -37,18 +38,18 @@
 .idea-card__label,
 .idea-card__assignee-name,
 .idea-card__value {
-    font-size: 0.78rem;
-    color: #334155;
+    font-size: 0.73rem;
+    color: var(--sn-ink-soft);
 }
 
 .idea-card__label {
-    color: #64748b;
+    color: var(--sn-ink-muted);
 }
 
 .idea-card__value--priority {
     font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.04em;
+    letter-spacing: 0.05em;
 }
 
 .idea-card__value--upvotes {
@@ -64,15 +65,15 @@
 }
 
 .idea-card__avatar {
-    width: 1.55rem;
-    height: 1.55rem;
+    width: 1.45rem;
+    height: 1.45rem;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     border-radius: 999px;
-    background: #e2e8f0;
-    color: #0f172a;
-    font-size: 0.68rem;
+    background: #1e3a8a;
+    color: #ffffff;
+    font-size: 0.62rem;
     font-weight: 700;
     text-transform: uppercase;
     flex-shrink: 0;
@@ -111,4 +112,3 @@
     opacity: 0.55;
     border-style: dashed;
 }
-

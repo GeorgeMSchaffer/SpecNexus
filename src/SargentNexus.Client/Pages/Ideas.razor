@@ -10,7 +10,7 @@
 <PageTitle>Ideas</PageTitle>
 
 <AuthGate>
-    <div class="container-fluid py-4 ideas-page">
+    <div class="container-fluid py-4 sn-page ideas-page">
         <div class="ideas-page__header">
             <div>
                 <h1 class="h3 mb-1">Ideas</h1>
@@ -75,6 +75,7 @@
                     <button class="@GetFilterButtonClass(IdeaFilter.CreatedByMe)" @onclick="() => SetFilter(IdeaFilter.CreatedByMe)">Created by me</button>
                     <button class="@GetFilterButtonClass(IdeaFilter.AssignedToMe)" @onclick="() => SetFilter(IdeaFilter.AssignedToMe)">Assigned to me</button>
                 </div>
+                <span class="ideas-page__result-count">@FilteredIdeas.Count() ideas</span>
             </div>
 
             <div class="ideas-page__board-shell">
