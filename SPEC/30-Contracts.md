@@ -34,17 +34,10 @@ Defines the system contracts that implementations must follow.
 - Organization, user, idea, and comment list endpoints support pagination in MVP.
 - Smaller configuration collections such as statuses, boards, and tags may return full result sets unless a feature-specific contract says otherwise.
 - Paginated collections support basic filtering plus one explicit sort field and sort direction.
-- `pageSize` defaults to 25; supported values are 25, 50, 100, and 250.
-- `search` filters across the fields displayed as list columns for that entity in the client UI (organizations: title, description, invite code, status).
 - Archived organizations are hidden from list results by default unless explicitly filtered with `isArchived=true` or an equivalent include-archived flag.
 
 ## Update Conventions
 - MVP update operations use last-write-wins behavior unless a feature-specific contract defines a stronger rule.
-
-## Authorization Invariant
-- Every idea, board, status, comment, and org-scoped resource operation must verify that the resource belongs to the caller's organization (`resource.organization_id == caller.organization_id`).
-- Site Admin is exempt from this check and can act on resources in any organization.
-- Violations must return `403 Forbidden`, not `404 Not Found`, to avoid leaking resource existence to cross-org callers (except where resource non-existence is unambiguous).
 
 ## Validation Ownership
 - The API contract validates request shape, required fields, and basic field constraints.
@@ -175,7 +168,9 @@ Query parameters:
 
 Success response `200` paged item shape:
 - `organizationId`
-- `companyName`
+- `title`
+- `description`
+- `inviteCode`
 - `city`
 - `state`
 - `phone`
@@ -190,20 +185,25 @@ Error responses:
 - `403` caller is authenticated but not allowed to list organizations
 
 ### `POST /api/v1/organizations`
-Purpose: Create an organization and provision default statuses plus one default board.
+Purpose: Create an organization, generate its invite code, and provision default statuses plus one default board.
 
 Request body:
-- `companyName` required string
-- `address` required string
-- `city` required string
-- `state` required string
-- `zip` required string
-- `phone` required string
-- `primaryContactFirstName` required string
-- `primaryContactLastName` required string
+- `title` required string
+- `description` required string
+- `logoUrl` optional string
+
+Optional profile fields:
+- `address` optional string
+- `city` optional string
+- `state` optional string
+- `zip` optional string
+- `phone` optional string
+- `primaryContactFirstName` optional string
+- `primaryContactLastName` optional string
 
 Success response `201`:
 - `organizationId`
+- `inviteCode`
 - `defaultBoardId`
 - `defaultStatusCount`
 
@@ -216,6 +216,7 @@ Error responses:
 Purpose: Return organization detail.
 
 Response fields also include:
+- `inviteCode`
 - `logoUrl` nullable string
 - `logoThumbnailUrl` nullable string
 - `logoHeightPx` nullable integer, max rendered value `150`
@@ -264,6 +265,17 @@ Error responses:
 - `403` caller is authenticated but not allowed to update this organization
 - `404` organization does not exist or is outside caller scope
 
+### `POST /api/v1/organizations/{organizationId}/invite-code/regenerate`
+Purpose: Regenerate the organization invite code, invalidating the previous code.
+
+Success response `200`:
+- `inviteCode`
+
+Error responses:
+- `401` caller is not authenticated
+- `403` caller is authenticated but not allowed to administer this organization
+- `404` organization does not exist or is outside caller scope
+
 ### `POST /api/v1/organizations/{organizationId}/archive`
 Purpose: Archive an organization without hard deletion.
 
@@ -276,6 +288,33 @@ Error responses:
 - `404` organization does not exist or is outside caller scope
 
 ## User Contracts
+
+### `POST /api/v1/auth/register`
+Purpose: Self-register a new user account using an organization invite code. Anonymous endpoint.
+
+Request body:
+- `inviteCode` required string
+- `firstName` required string
+- `lastName` required string
+- `email` required string
+- `password` required string, must satisfy the authentication complexity policy
+
+Behavior rules:
+- the invite code determines the organization the user is associated with
+- the created user receives role `User` and status `Active`
+- registration against an archived organization is rejected as an invalid invite code
+
+Success response `201`:
+- `userId`
+- `organizationId`
+- `email`
+- `role`
+- `status`
+
+Error responses:
+- `400` request body is malformed or violates field constraints
+- `400` invite code is missing or invalid; response prompts the user to provide a correct invite code
+- `409` email is already in use
 
 ### `GET /api/v1/organizations/{organizationId}/users`
 Purpose: List users within an organization with pagination.
@@ -327,53 +366,31 @@ Error responses:
 - `403` caller is authenticated but not allowed to create users in this organization
 - `404` organization does not exist or is outside caller scope
 
-### `GET /api/v1/organizations/{organizationId}/users/import-template`
-Purpose: Download the canonical CSV template for organization user import.
-
-Success response `200`:
-- content type `text/csv; charset=utf-8`
-- attachment filename `user-import-template.csv`
-- exact header row `firstName,lastName,email,role,status,initialPassword`
-- one example data row using an allowed non-Site-Admin role and status
-
-Error responses:
-- `401` caller is not authenticated
-- `403` caller is authenticated but not allowed to manage users in this organization
-- `404` organization does not exist or is outside caller scope
-
 ### `POST /api/v1/organizations/{organizationId}/users/import`
-Purpose: Validate and atomically import organization users from CSV.
+Purpose: Bulk-create users in an organization from an uploaded CSV file. Site Admin may import into any organization; Org Admin only into their own.
 
 Request body:
 - `multipart/form-data`
 - field `csvFile` required
-- UTF-8 CSV, maximum 5 MB
-- exact header row `firstName,lastName,email,role,status,initialPassword`
-- maximum 1,000 non-blank data rows
 
-Row rules:
-- `firstName`, `lastName`, `email`, `role`, and `initialPassword` are required
-- `status` is optional and defaults to `Active`
-- `role` must be `Org Admin`, `User`, or `Read Only`; CSV import cannot create a Site Admin
-- `status` must be `Active` or `Inactive`
-- names, email, role, and status use the shared trimming and field-validation rules
-- `initialPassword` is not trimmed and must satisfy the authentication complexity policy
-- email must be unique globally and within the uploaded file
-- blank rows are ignored; at least one data row is required
+CSV columns:
+- `firstName` required
+- `lastName` required
+- `email` required
+- `role` optional, defaults to `User`
+- no invite code column; every created user is associated with the organization in the route
 
 Behavior rules:
-- validate the complete file before creating any users
-- if any row fails validation, create no users
-- validation errors use keys in the form `rows[<one-based-row-number>].<fieldName>`
-- do not include plaintext passwords or CSV file contents in responses, logs, or audit events
-- successful imports generate the required user-administration audit events
+- each created user receives a system-generated temporary password and must change it on first login
+- rows with invalid data or duplicate emails are rejected individually without failing the whole import
 
-Success response `201`:
-- `organizationId`
+Success response `200`:
 - `createdCount`
+- `rejectedCount`
+- `rows` per-row outcome list with `rowNumber`, `email`, `outcome`, `error` nullable, and `temporaryPassword` for created rows
 
 Error responses:
-- `400` file is missing, malformed, empty, exceeds limits, has invalid headers, or contains one or more invalid rows
+- `400` file is missing, malformed, or not a valid CSV
 - `401` caller is not authenticated
 - `403` caller is authenticated but not allowed to create users in this organization
 - `404` organization does not exist or is outside caller scope
@@ -520,41 +537,6 @@ Success response `200` paged item shape:
 - `authorUserId`
 - `createdAtUtc`
 
-### `POST /api/v1/boards/{boardId}/ideas/import`
-Purpose: Bulk-import ideas onto a board from a CSV file.
-
-Request body:
-- `multipart/form-data`
-- field `file` required — CSV file, UTF-8 encoded, with header row
-
-Behavior rules:
-- caller must be Site Admin or Org Admin scoped to the board's organization
-- the entire file is validated before any ideas are created; partial imports are not allowed
-- maximum 500 data rows per upload; files exceeding this limit are rejected with `400`
-- two or more rows in the same file sharing the same `Title` (case-insensitive) are validation errors reported against the second and subsequent duplicate row numbers
-- rows whose `Title` (case-insensitive) matches an existing idea on the target board are silently skipped
-- `AssignedTo` values are resolved by email within the same organization; unresolved values are validation errors
-- `Status` values are **name strings** matched case-insensitively against the organization's configured statuses; a value that does not match any org status is a validation error; omitted `Status` defaults to the leftmost swimlane on the target board
-- new `Tags` values are auto-created using standard organization tag normalization rules
-- the creation phase runs in a single database transaction; a persistence failure rolls back all created ideas
-- on success, one bulk-import audit event is emitted (including when `importedCount` is 0) plus one individual idea-creation audit event per created idea
-
-Success response `200`:
-- `importedCount` integer — number of ideas created
-- `skippedCount` integer — number of rows skipped due to duplicate title
-- `errors` empty array
-
-Error response `400` (validation failure):
-- standard problem-details envelope
-- `errors` object keyed by row number (1-based, excluding header), each value an array of validation message strings
-- example: `{ "errors": { "3": ["Priority must be one of: Low, Medium, High, Critical."], "7": ["AssignedTo must be a valid email."] } }`
-
-Error responses:
-- `400` file is missing, exceeds 500 rows, has a malformed header, or contains validation errors in any row
-- `401` caller is not authenticated
-- `403` caller is authenticated but not allowed to import ideas onto this board
-- `404` board does not exist or is outside caller scope
-
 ### `POST /api/v1/boards/{boardId}/ideas`
 Purpose: Create a new idea on a board.
 
@@ -564,7 +546,7 @@ Request body:
 - `priority` required string: `Low`, `Medium`, `High`, or `Critical`
 - `dueDate` optional date string (`YYYY-MM-DD`)
 - `assigneeUserId` optional GUID string
-- `statusId` optional GUID string, defaults to the left-most swimlane when omitted; if provided must correspond to an active swimlane on this board
+- `statusId` optional GUID string, defaults to the left-most swimlane when omitted
 - `tagNames` optional string array
 - `mentionEmails` optional string array
 
@@ -604,35 +586,13 @@ Request body:
 - `priority` required string: `Low`, `Medium`, `High`, or `Critical`
 - `dueDate` optional date string (`YYYY-MM-DD`)
 - `assigneeUserId` optional GUID string
-- `tagNames` optional string array — **full replacement**: omitting this field or sending an empty array clears all tags from the idea
-- `mentionEmails` optional string array — **full replacement**: omitting this field or sending an empty array clears all mentions from the idea
+- `tagNames` optional string array
+- `mentionEmails` optional string array
 
 UI behavior contract:
 - board cards remain compact and show only `title`, `priority`, `assigneeDisplayName`, and upvote state.
 - selecting the card title opens a detail overlay for full idea editing in context.
 - full idea editing in the overlay supports all editable idea fields and collaboration fields.
-
-Error responses:
-- `400` request body is malformed or violates field constraints
-- `401` caller is not authenticated
-- `403` caller is authenticated but not allowed to edit this idea
-- `404` idea does not exist or is outside caller scope
-
-### `DELETE /api/v1/ideas/{ideaId}`
-Purpose: Soft-delete an idea.
-
-Behavior rules:
-- soft-delete only; the idea record is retained but excluded from board views and list queries
-- all associated comments, tags, mentions, and upvotes are retained for audit purposes
-- a deletion audit event is generated
-
-Success response:
-- `204 No Content`
-
-Error responses:
-- `401` caller is not authenticated
-- `403` caller is authenticated but not allowed to delete this idea (only Site Admin and Org Admin may delete)
-- `404` idea does not exist or is outside caller scope
 
 ### `POST /api/v1/ideas/{ideaId}/status`
 Purpose: Move an idea to another board status.
