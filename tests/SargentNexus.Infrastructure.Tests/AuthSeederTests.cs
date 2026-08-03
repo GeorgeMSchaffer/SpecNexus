@@ -267,6 +267,54 @@ public sealed class AuthSeederTests
     }
 
     [Fact]
+    public async Task SeedDevelopmentDemoEnvironmentAsync_FirstRun_EachOrganizationHasNonEmptyInviteCode()
+    {
+        await using var dbContext = CreateDbContext();
+        var hasher = CreateInternal<IPasswordHasher>("SargentNexus.Infrastructure.Pbkdf2PasswordHasher");
+        var seeder = CreateSeeder(dbContext, hasher);
+
+        await seeder.SeedDevelopmentDemoEnvironmentAsync(CancellationToken.None);
+
+        var organizations = await dbContext.Organizations.ToListAsync();
+        Assert.Equal(3, organizations.Count);
+        Assert.All(organizations, org =>
+        {
+            Assert.False(string.IsNullOrWhiteSpace(org.InviteCode), $"Organization '{org.CompanyName}' has an empty invite code.");
+            Assert.NotEqual(default, org.InviteCodeGeneratedAtUtc);
+        });
+    }
+
+    [Fact]
+    public async Task SeedDevelopmentDemoEnvironmentAsync_FirstRun_InviteCodesAreUniqueAcrossOrganizations()
+    {
+        await using var dbContext = CreateDbContext();
+        var hasher = CreateInternal<IPasswordHasher>("SargentNexus.Infrastructure.Pbkdf2PasswordHasher");
+        var seeder = CreateSeeder(dbContext, hasher);
+
+        await seeder.SeedDevelopmentDemoEnvironmentAsync(CancellationToken.None);
+
+        var inviteCodes = await dbContext.Organizations
+            .Select(org => org.InviteCode)
+            .ToListAsync();
+
+        Assert.Equal(inviteCodes.Count, inviteCodes.Distinct().Count());
+    }
+
+    [Fact]
+    public async Task SeedSiteAdminAsync_WithInMemoryProvider_CreatesOrganizationWithNonEmptyInviteCode()
+    {
+        await using var dbContext = CreateDbContext();
+        var hasher = CreateInternal<IPasswordHasher>("SargentNexus.Infrastructure.Pbkdf2PasswordHasher");
+        var seeder = CreateSeeder(dbContext, hasher);
+
+        await seeder.SeedSiteAdminAsync(CancellationToken.None);
+
+        var organization = await dbContext.Organizations.SingleAsync();
+        Assert.False(string.IsNullOrWhiteSpace(organization.InviteCode), "Seeded Site Admin organization must have a non-empty invite code.");
+        Assert.NotEqual(default, organization.InviteCodeGeneratedAtUtc);
+    }
+
+    [Fact]
     public void DbModel_CommentAuthorForeignKey_UsesRestrictDeleteBehavior()
     {
         using var dbContext = CreateDbContext();
