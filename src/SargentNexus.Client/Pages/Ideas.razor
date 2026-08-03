@@ -35,7 +35,7 @@
                                  @bind-PageSize="_pageSize"
                                  OnSearch="HandleSearchAsync" />
 
-            @if (TotalFilteredCount == 0)
+            @if (_totalCount == 0)
             {
                 <div class="alert alert-secondary">No ideas found.</div>
             }
@@ -54,7 +54,7 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach (var idea in PagedIdeas)
+                            @foreach (var idea in _ideas)
                             {
                                 var ideaId = idea.IdeaId;
                                 <tr>
@@ -74,12 +74,12 @@
 
                 <div class="d-flex justify-content-between align-items-center mt-2">
                     <span class="text-muted small">
-                        Showing @((_page - 1) * _pageSize + 1)–@Math.Min(_page * _pageSize, TotalFilteredCount) of @TotalFilteredCount
+                        Showing @((_page - 1) * _pageSize + 1)–@Math.Min(_page * _pageSize, _totalCount) of @_totalCount
                     </span>
                     <div class="d-flex gap-2">
                         <button class="btn btn-sm btn-outline-secondary" @onclick="PrevPage" disabled="@(_page <= 1)">← Prev</button>
                         <span class="align-self-center small">Page @_page</span>
-                        <button class="btn btn-sm btn-outline-secondary" @onclick="NextPage" disabled="@(_page * _pageSize >= TotalFilteredCount)">Next →</button>
+                        <button class="btn btn-sm btn-outline-secondary" @onclick="NextPage" disabled="@(_page * _pageSize >= _totalCount)">Next →</button>
                     </div>
                 </div>
             }
@@ -90,48 +90,21 @@
 @code {
     private enum IdeaFilter { All, CreatedByMe, AssignedToMe }
 
-    private IReadOnlyList<IdeaListItemDto> _allIdeas = Array.Empty<IdeaListItemDto>();
+    private IReadOnlyList<IdeaListItemDto> _ideas = Array.Empty<IdeaListItemDto>();
     private IdeaFilter _filter = IdeaFilter.All;
     private string _search = string.Empty;
     private bool _loading = true;
     private string? _errorMessage;
     private int _page = 1;
     private int _pageSize = 25;
+    private int _totalCount;
 
-    private Guid? CurrentUserId => AuthSessionService.User?.UserId;
-
-    private List<IdeaListItemDto> FilteredIdeas
+    private string FilterApiValue => _filter switch
     {
-        get
-        {
-            var userId = CurrentUserId;
-            IEnumerable<IdeaListItemDto> ideas = _allIdeas;
-
-            if (_filter == IdeaFilter.CreatedByMe && userId.HasValue)
-            {
-                ideas = ideas.Where(i => i.AuthorUserId == userId.Value);
-            }
-            else if (_filter == IdeaFilter.AssignedToMe && userId.HasValue)
-            {
-                ideas = ideas.Where(i => i.AssigneeUserId == userId.Value);
-            }
-
-            if (!string.IsNullOrWhiteSpace(_search))
-            {
-                var term = _search.Trim().ToLowerInvariant();
-                ideas = ideas.Where(i =>
-                    i.Title.ToLowerInvariant().Contains(term) ||
-                    i.StatusName.ToLowerInvariant().Contains(term));
-            }
-
-            return ideas.ToList();
-        }
-    }
-
-    private int TotalFilteredCount => FilteredIdeas.Count;
-
-    private List<IdeaListItemDto> PagedIdeas =>
-        FilteredIdeas.Skip((_page - 1) * _pageSize).Take(_pageSize).ToList();
+        IdeaFilter.CreatedByMe => "createdByMe",
+        IdeaFilter.AssignedToMe => "assignedToMe",
+        _ => "all"
+    };
 
     private string FilterBtnClass(IdeaFilter f) =>
         _filter == f ? "btn btn-primary btn-sm" : "btn btn-outline-secondary btn-sm";
@@ -155,10 +128,17 @@
                 return;
             }
 
-            _allIdeas = await WorkflowApiClient.ListAllIdeasForOrgAsync(
+            var result = await WorkflowApiClient.ListMyIdeasAsync(
                 AuthSessionService.AccessToken!,
                 orgId.Value,
+                _page,
+                _pageSize,
+                _search,
+                FilterApiValue,
                 CancellationToken.None);
+
+            _ideas = result.Items;
+            _totalCount = result.TotalCount;
         }
         catch (Exception ex)
         {
@@ -172,26 +152,34 @@
 
     private void ViewIdea(Guid ideaId) => NavigationManager.NavigateTo($"/ideas/{ideaId}/edit");
 
-    private void SetFilter(IdeaFilter filter)
+    private async Task SetFilter(IdeaFilter filter)
     {
         _filter = filter;
         _page = 1;
+        await LoadAsync();
     }
 
-    private Task HandleSearchAsync()
+    private async Task HandleSearchAsync()
     {
         _page = 1;
-        StateHasChanged();
-        return Task.CompletedTask;
+        await LoadAsync();
     }
 
-    private void PrevPage()
+    private async Task PrevPage()
     {
-        if (_page > 1) _page--;
+        if (_page > 1)
+        {
+            _page--;
+            await LoadAsync();
+        }
     }
 
-    private void NextPage()
+    private async Task NextPage()
     {
-        if (_page * _pageSize < TotalFilteredCount) _page++;
+        if (_page * _pageSize < _totalCount)
+        {
+            _page++;
+            await LoadAsync();
+        }
     }
 }

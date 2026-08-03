@@ -53,6 +53,27 @@ public sealed class IdeasController : ApiControllerBase
         return ToProblem(result.FailureReason!.Value, result.Errors);
     }
 
+    [HttpGet("/api/v1/organizations/{organizationId:guid}/ideas")]
+    [ProducesResponseType(typeof(PagedResultModel<IdeaListItemModel>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ListMyIdeas(
+        Guid organizationId,
+        [FromQuery] OrgIdeaListQueryModel query,
+        CancellationToken cancellationToken)
+    {
+        var result = await _workflowService.ListMyIdeasAsync(GetWorkflowActorContext(), organizationId, query, cancellationToken);
+
+        if (result.Succeeded)
+        {
+            return Ok(result.Response);
+        }
+
+        return ToProblem(result.FailureReason!.Value, result.Errors);
+    }
+
+
     [HttpPost("/api/v1/boards/{boardId:guid}/ideas")]
     [ProducesResponseType(typeof(IdeaDetailModel), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]

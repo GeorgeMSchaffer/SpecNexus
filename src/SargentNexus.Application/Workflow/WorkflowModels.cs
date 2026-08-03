@@ -159,6 +159,28 @@ public sealed class IdeaListQueryModel
     public string? SortDirection { get; set; }
 }
 
+/// <summary>Filter values for the org-scoped My Ideas query.</summary>
+public static class OrgIdeaFilter
+{
+    public const string All = "all";
+    public const string CreatedByMe = "createdByMe";
+    public const string AssignedToMe = "assignedToMe";
+}
+
+public sealed class OrgIdeaListQueryModel
+{
+    [Range(1, int.MaxValue)]
+    public int Page { get; set; } = 1;
+
+    [Range(1, 250)]
+    public int PageSize { get; set; } = 25;
+
+    public string? Search { get; set; }
+
+    /// <summary>"all", "createdByMe", or "assignedToMe"</summary>
+    public string? Filter { get; set; }
+}
+
 public sealed class CommentListQueryModel
 {
     [Range(1, int.MaxValue)]

@@ -135,6 +135,12 @@ public interface IWorkflowManagementService
         Guid organizationId,
         TagAutocompleteQueryModel query,
         CancellationToken cancellationToken);
+
+    Task<WorkflowResult<PagedResultModel<IdeaListItemModel>>> ListMyIdeasAsync(
+        WorkflowActorContext actor,
+        Guid organizationId,
+        OrgIdeaListQueryModel query,
+        CancellationToken cancellationToken);
 }
 
 public interface IWorkflowDataAccess
@@ -160,6 +166,15 @@ public interface IWorkflowDataAccess
     Task<Idea?> FindIdeaByIdAsync(Guid ideaId, CancellationToken cancellationToken);
 
     Task<IReadOnlyList<Idea>> ListIdeasByBoardIdAsync(Guid boardId, CancellationToken cancellationToken);
+
+    Task<(IReadOnlyList<Idea> Items, int TotalCount)> ListIdeasByOrgAsync(
+        Guid organizationId,
+        Guid? authorUserId,
+        Guid? assigneeUserId,
+        string? search,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken);
 
     Task<Comment?> FindCommentByIdAsync(Guid commentId, CancellationToken cancellationToken);
 
@@ -1373,6 +1388,50 @@ public sealed class WorkflowManagementService : IWorkflowManagementService
             .ToArray();
 
         return WorkflowResult<IReadOnlyList<string>>.Success(suggestions);
+    }
+
+    public async Task<WorkflowResult<PagedResultModel<IdeaListItemModel>>> ListMyIdeasAsync(
+        WorkflowActorContext actor,
+        Guid organizationId,
+        OrgIdeaListQueryModel query,
+        CancellationToken cancellationToken)
+    {
+        var authorization = await AuthorizeAsync(actor, organizationId, ReadRoles, cancellationToken);
+
+        if (!authorization.Succeeded)
+        {
+            return WorkflowResult<PagedResultModel<IdeaListItemModel>>.Failure(authorization.FailureReason!.Value, authorization.Errors);
+        }
+
+        var filter = query.Filter?.Trim().ToLowerInvariant() ?? OrgIdeaFilter.All;
+        Guid? authorUserId = string.Equals(filter, OrgIdeaFilter.CreatedByMe, StringComparison.OrdinalIgnoreCase)
+            ? actor.UserId
+            : null;
+        Guid? assigneeUserId = string.Equals(filter, OrgIdeaFilter.AssignedToMe, StringComparison.OrdinalIgnoreCase)
+            ? actor.UserId
+            : null;
+
+        var pageSize = Math.Clamp(query.PageSize, 1, 250);
+        var page = Math.Max(1, query.Page);
+
+        var (items, totalCount) = await _dataAccess.ListIdeasByOrgAsync(
+            organizationId,
+            authorUserId,
+            assigneeUserId,
+            query.Search,
+            page,
+            pageSize,
+            cancellationToken);
+
+        var result = new PagedResultModel<IdeaListItemModel>
+        {
+            Page = page,
+            PageSize = pageSize,
+            TotalCount = totalCount,
+            Items = items.Select(ToIdeaListItem).ToArray()
+        };
+
+        return WorkflowResult<PagedResultModel<IdeaListItemModel>>.Success(result);
     }
 
     private static SwimlaneModel ToSwimlaneModel(BoardSwimlane swimlane)

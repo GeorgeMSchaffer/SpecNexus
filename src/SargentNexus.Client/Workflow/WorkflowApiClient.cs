@@ -212,6 +212,37 @@ public sealed class WorkflowApiClient
             ?? new PagedResultDto<IdeaListItemDto>();
     }
 
+    public async Task<PagedResultDto<IdeaListItemDto>> ListMyIdeasAsync(
+        string accessToken,
+        Guid organizationId,
+        int page,
+        int pageSize,
+        string? search,
+        string? filter,
+        CancellationToken cancellationToken)
+    {
+        var query = new List<string> { $"page={page}", $"pageSize={pageSize}" };
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            query.Add($"search={Uri.EscapeDataString(search.Trim())}");
+        }
+
+        if (!string.IsNullOrWhiteSpace(filter))
+        {
+            query.Add($"filter={Uri.EscapeDataString(filter)}");
+        }
+
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"api/v1/organizations/{organizationId}/ideas?{string.Join("&", query)}");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+
+        using var response = await _httpClient.SendAsync(request, cancellationToken);
+        response.EnsureSuccessStatusCode();
+
+        return await response.Content.ReadFromJsonAsync<PagedResultDto<IdeaListItemDto>>(cancellationToken: cancellationToken)
+            ?? new PagedResultDto<IdeaListItemDto>();
+    }
+
     public async Task<IReadOnlyList<IdeaListItemDto>> ListAllIdeasForOrgAsync(string accessToken, Guid organizationId, CancellationToken cancellationToken)
     {
         var boards = await ListBoardsAsync(accessToken, organizationId, cancellationToken);

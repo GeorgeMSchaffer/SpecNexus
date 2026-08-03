@@ -106,6 +106,47 @@ public sealed class WorkflowDataAccess : IWorkflowDataAccess
             .ToArrayAsync(cancellationToken);
     }
 
+    public async Task<(IReadOnlyList<Idea> Items, int TotalCount)> ListIdeasByOrgAsync(
+        Guid organizationId,
+        Guid? authorUserId,
+        Guid? assigneeUserId,
+        string? search,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken)
+    {
+        var query = _dbContext.Ideas
+            .Include(item => item.Status)
+            .Include(item => item.AuthorUser)
+            .Include(item => item.AssigneeUser)
+            .Include(item => item.Upvotes)
+            .Where(item => item.Board.OrganizationId == organizationId && !item.IsDeleted);
+
+        if (authorUserId.HasValue)
+        {
+            query = query.Where(item => item.AuthorUserId == authorUserId.Value);
+        }
+        else if (assigneeUserId.HasValue)
+        {
+            query = query.Where(item => item.AssigneeUserId == assigneeUserId.Value);
+        }
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var term = search.Trim();
+            query = query.Where(item => item.Title.Contains(term));
+        }
+
+        var totalCount = await query.CountAsync(cancellationToken);
+        var items = await query
+            .OrderByDescending(item => item.CreatedAtUtc)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToArrayAsync(cancellationToken);
+
+        return (items, totalCount);
+    }
+
     public Task<Comment?> FindCommentByIdAsync(Guid commentId, CancellationToken cancellationToken)
     {
         return _dbContext.Comments

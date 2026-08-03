@@ -795,5 +795,15 @@ public sealed class WorkflowControllersTests
                 ? Task.FromResult(WorkflowResult<IReadOnlyList<string>>.Failure(WorkflowFailureReason.Forbidden))
                 : ListTagSuggestionsAsyncHandler(actor, organizationId, query, cancellationToken);
         }
+
+        public Task<WorkflowResult<PagedResultModel<IdeaListItemModel>>> ListMyIdeasAsync(
+            WorkflowActorContext actor,
+            Guid organizationId,
+            OrgIdeaListQueryModel query,
+            CancellationToken cancellationToken)
+        {
+            LastActor = actor;
+            return Task.FromResult(WorkflowResult<PagedResultModel<IdeaListItemModel>>.Failure(WorkflowFailureReason.Forbidden));
+        }
     }
 }

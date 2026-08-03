@@ -125,7 +125,7 @@
                                 @foreach (var idea in laneIdeas)
                                 {
                                     var ideaId = idea.IdeaId;
-                                    <div class="board-card card mb-2 shadow-sm" @onclick="() => OpenIdea(ideaId)" style="cursor:pointer">
+                                    <div class="board-card card mb-2 shadow-sm" @onclick="() => OpenIdeaOverlay(ideaId)" style="cursor:pointer">
                                         <div class="card-body py-2 px-3">
                                             <div class="fw-semibold small mb-1 text-truncate" title="@idea.Title">@idea.Title</div>
                                             <div class="d-flex gap-2 align-items-center">
@@ -156,6 +156,122 @@
             }
         }
     </div>
+
+    @* Idea detail overlay *@
+    @if (_overlayIdeaId.HasValue)
+    {
+        <div class="idea-overlay-backdrop" @onclick="CloseOverlay"></div>
+        <div class="idea-overlay-panel" @onclick:stopPropagation="true">
+            <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
+                <h2 class="h5 mb-0">Idea Details</h2>
+                <div class="d-flex gap-2">
+                    @if (_overlayIdea is not null)
+                    {
+                        <a class="btn btn-outline-secondary btn-sm"
+                           href="/ideas/@_overlayIdea.IdeaId/edit"
+                           title="Open full edit page">Open ↗</a>
+                    }
+                    <button class="btn btn-outline-secondary btn-sm" @onclick="CloseOverlay">✕</button>
+                </div>
+            </div>
+
+            @if (_overlayLoading)
+            {
+                <div class="d-flex align-items-center gap-2 text-muted py-3">
+                    <div class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></div>
+                    <span>Loading…</span>
+                </div>
+            }
+            else if (_overlayError is not null)
+            {
+                <div class="alert alert-danger py-2">@_overlayError</div>
+            }
+            else if (_overlayIdea is not null)
+            {
+                <h3 class="h5 mb-1">@_overlayIdea.Title</h3>
+                <div class="text-muted small mb-3">
+                    Priority: @_overlayIdea.Priority
+                    @if (_overlayIdea.DueDate is not null)
+                    {
+                        <span> · Due: @_overlayIdea.DueDate.Value.ToString("d")</span>
+                    }
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Status</label>
+                    <select class="form-select form-select-sm" value="@_overlaySelectedStatusId"
+                            @onchange="OverlayHandleStatusChangeAsync" disabled="@_overlaySubmitting">
+                        @foreach (var swimlane in _swimlanes)
+                        {
+                            <option value="@swimlane.StatusId">@swimlane.StatusName</option>
+                        }
+                    </select>
+                </div>
+
+                @if (!string.IsNullOrWhiteSpace(_overlayIdea.Description))
+                {
+                    <div class="mb-3">
+                        <div class="fw-semibold mb-1">Description</div>
+                        <p class="mb-0">@_overlayIdea.Description</p>
+                    </div>
+                }
+
+                <div class="d-flex align-items-center gap-3 mb-3">
+                    <span class="badge text-bg-primary">▲ @_overlayIdea.UpvoteCount</span>
+                    <button class="btn btn-outline-primary btn-sm"
+                            @onclick="OverlayToggleUpvoteAsync"
+                            disabled="@_overlaySubmitting">
+                        @(_overlayHasUpvoted ? "Remove upvote" : "Upvote")
+                    </button>
+                </div>
+
+                @if (_overlayIdea.TagNames.Count > 0)
+                {
+                    <div class="mb-3">
+                        <div class="fw-semibold mb-1">Tags</div>
+                        <div class="d-flex flex-wrap gap-1">
+                            @foreach (var tag in _overlayIdea.TagNames)
+                            {
+                                <span class="badge text-bg-light">@tag</span>
+                            }
+                        </div>
+                    </div>
+                }
+
+                <hr />
+                <h4 class="h6 mb-2">Comments</h4>
+                @if (_overlayIdea.Comments.Count == 0)
+                {
+                    <p class="text-muted small mb-2">No comments yet.</p>
+                }
+                else
+                {
+                    <div class="list-group mb-3">
+                        @foreach (var comment in _overlayIdea.Comments)
+                        {
+                            <div class="list-group-item py-2 px-3">
+                                <div class="small text-muted">@comment.CreatedAtUtc.ToLocalTime().ToString("g")</div>
+                                <div>@comment.Body</div>
+                            </div>
+                        }
+                    </div>
+                }
+
+                <EditForm Model="_overlayComment" OnValidSubmit="OverlayAddCommentAsync">
+                    <DataAnnotationsValidator />
+                    <div class="mb-2">
+                        <InputTextArea class="form-control form-control-sm" rows="2"
+                                       placeholder="Add a comment…"
+                                       @bind-Value="_overlayComment.Body" />
+                        <ValidationMessage For="() => _overlayComment.Body" />
+                    </div>
+                    <button class="btn btn-primary btn-sm" type="submit" disabled="@_overlaySubmitting">
+                        @(_overlaySubmitting ? "Posting…" : "Post")
+                    </button>
+                </EditForm>
+            }
+        </div>
+    }
 </AuthGate>
 
 @code {
@@ -172,6 +288,17 @@
     private string? _errorMessage;
     private string? _createError;
     private CreateIdeaFormModel _createForm = new();
+
+    // Overlay state
+    private Guid? _overlayIdeaId;
+    private IdeaDetailDto? _overlayIdea;
+    private bool _overlayLoading;
+    private bool _overlaySubmitting;
+    private string? _overlayError;
+    private Guid _overlaySelectedStatusId;
+    private bool _overlayHasUpvoted;
+    private bool _boardNeedsRefresh;
+    private OverlayCommentModel _overlayComment = new();
 
     private bool CanCreateIdea
     {
@@ -231,8 +358,122 @@
     private List<IdeaListItemDto> IdeasForSwimlane(Guid statusId) =>
         _ideasResult.Items.Where(i => i.StatusId == statusId).ToList();
 
-    private void OpenIdea(Guid ideaId) =>
-        NavigationManager.NavigateTo($"/ideas/{ideaId}/edit");
+    private async Task OpenIdeaOverlay(Guid ideaId)
+    {
+        _overlayIdeaId = ideaId;
+        _overlayIdea = null;
+        _overlayLoading = true;
+        _overlayError = null;
+        _overlayComment = new OverlayCommentModel();
+        _boardNeedsRefresh = false;
+
+        try
+        {
+            _overlayIdea = await WorkflowApiClient.GetIdeaDetailAsync(AuthSessionService.AccessToken!, ideaId, CancellationToken.None);
+            _overlaySelectedStatusId = _overlayIdea.StatusId;
+            _overlayHasUpvoted = false;
+        }
+        catch (Exception ex)
+        {
+            _overlayError = ErrorMessageService.GetDisplayMessage(null, null, ex);
+        }
+        finally
+        {
+            _overlayLoading = false;
+        }
+    }
+
+    private async Task CloseOverlay()
+    {
+        _overlayIdeaId = null;
+        _overlayIdea = null;
+
+        if (_boardNeedsRefresh)
+        {
+            await LoadAsync();
+        }
+    }
+
+    private async Task OverlayHandleStatusChangeAsync(ChangeEventArgs args)
+    {
+        if (_overlayIdea is null || !Guid.TryParse(args.Value?.ToString(), out var statusId))
+        {
+            return;
+        }
+
+        _overlaySubmitting = true;
+        try
+        {
+            await WorkflowApiClient.MoveIdeaStatusAsync(AuthSessionService.AccessToken!, _overlayIdea.IdeaId, statusId, CancellationToken.None);
+            _overlaySelectedStatusId = statusId;
+            _overlayIdea.StatusId = statusId;
+            _overlayIdea.StatusName = _swimlanes.FirstOrDefault(x => x.StatusId == statusId)?.StatusName ?? _overlayIdea.StatusName;
+            _boardNeedsRefresh = true;
+        }
+        catch (Exception ex)
+        {
+            _overlayError = ErrorMessageService.GetDisplayMessage(null, null, ex);
+        }
+        finally
+        {
+            _overlaySubmitting = false;
+        }
+    }
+
+    private async Task OverlayToggleUpvoteAsync()
+    {
+        if (_overlayIdea is null)
+        {
+            return;
+        }
+
+        _overlaySubmitting = true;
+        try
+        {
+            var result = await WorkflowApiClient.ToggleUpvoteAsync(AuthSessionService.AccessToken!, _overlayIdea.IdeaId, CancellationToken.None);
+            _overlayHasUpvoted = result.HasUpvoted;
+            _overlayIdea.UpvoteCount = result.UpvoteCount;
+            _boardNeedsRefresh = true;
+        }
+        catch (Exception ex)
+        {
+            _overlayError = ErrorMessageService.GetDisplayMessage(null, null, ex);
+        }
+        finally
+        {
+            _overlaySubmitting = false;
+        }
+    }
+
+    private async Task OverlayAddCommentAsync()
+    {
+        if (_overlayIdea is null)
+        {
+            return;
+        }
+
+        _overlaySubmitting = true;
+        try
+        {
+            await WorkflowApiClient.CreateCommentAsync(
+                AuthSessionService.AccessToken!,
+                _overlayIdea.IdeaId,
+                new CommentWriteRequestDto { Body = _overlayComment.Body.Trim() },
+                CancellationToken.None);
+
+            _overlayComment = new OverlayCommentModel();
+            // Reload overlay data to show new comment
+            _overlayIdea = await WorkflowApiClient.GetIdeaDetailAsync(AuthSessionService.AccessToken!, _overlayIdea.IdeaId, CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            _overlayError = ErrorMessageService.GetDisplayMessage(null, null, ex);
+        }
+        finally
+        {
+            _overlaySubmitting = false;
+        }
+    }
 
     private void StartCreateIdea()
     {
@@ -306,5 +547,12 @@
         public string? Priority { get; set; }
 
         public string? DueDateString { get; set; }
+    }
+
+    private sealed class OverlayCommentModel
+    {
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.StringLength(2000)]
+        public string Body { get; set; } = string.Empty;
     }
 }

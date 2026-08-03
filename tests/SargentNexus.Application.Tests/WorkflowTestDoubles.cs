@@ -162,6 +162,31 @@ internal sealed class FakeWorkflowDataAccess : IWorkflowDataAccess
         return Task.FromResult<IReadOnlyList<Idea>>(_ideas.Values.Where(item => item.BoardId == boardId).ToArray());
     }
 
+    public Task<(IReadOnlyList<Idea> Items, int TotalCount)> ListIdeasByOrgAsync(
+        Guid organizationId,
+        Guid? authorUserId,
+        Guid? assigneeUserId,
+        string? search,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken)
+    {
+        var boards = _boards.Values.Where(b => b.OrganizationId == organizationId).Select(b => b.Id).ToHashSet();
+        IEnumerable<Idea> query = _ideas.Values.Where(item => boards.Contains(item.BoardId) && !item.IsDeleted);
+
+        if (authorUserId.HasValue)
+            query = query.Where(item => item.AuthorUserId == authorUserId.Value);
+        else if (assigneeUserId.HasValue)
+            query = query.Where(item => item.AssigneeUserId == assigneeUserId.Value);
+
+        if (!string.IsNullOrWhiteSpace(search))
+            query = query.Where(item => item.Title.Contains(search, StringComparison.OrdinalIgnoreCase));
+
+        var all = query.OrderByDescending(i => i.CreatedAtUtc).ToArray();
+        var items = all.Skip((page - 1) * pageSize).Take(pageSize).ToArray();
+        return Task.FromResult<(IReadOnlyList<Idea>, int)>((items, all.Length));
+    }
+
     public Task<Comment?> FindCommentByIdAsync(Guid commentId, CancellationToken cancellationToken)
     {
         _comments.TryGetValue(commentId, out var comment);
