@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
@@ -6,6 +7,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -16,6 +18,15 @@ namespace SargentNexus.API.Tests;
 
 public sealed class ApiIntegrationTests
 {
+    private static readonly string[] DefaultStatusNames =
+    {
+        "New / Pending",
+        "In Review",
+        "In Progress",
+        "Client Review",
+        "Complete"
+    };
+
     [Fact]
     public async Task Login_WithSeededSiteAdmin_ReturnsAccessTokenAndRequiresPasswordChange()
     {
@@ -150,6 +161,74 @@ public sealed class ApiIntegrationTests
     }
 
     [Fact]
+    public async Task DevelopmentStartup_SeedsExpectedDemoGraph()
+    {
+        await using var factory = new IntegrationApiFactory();
+        using var client = factory.CreateClient();
+
+        var demoLogin = await client.PostAsJsonAsync("/api/v1/auth/login", new
+        {
+            email = "demo.acme.user@sargentnexus.local",
+            password = "abc123!"
+        });
+
+        Assert.Equal(HttpStatusCode.OK, demoLogin.StatusCode);
+
+        using var loginPayload = await JsonDocument.ParseAsync(await demoLogin.Content.ReadAsStreamAsync());
+        Assert.True(loginPayload.RootElement.GetProperty("requiresPasswordChange").GetBoolean());
+
+        await using var scope = factory.Services.CreateAsyncScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<SargentNexusDbContext>();
+
+        Assert.Equal(4, await dbContext.Organizations.CountAsync());
+        Assert.Equal(10, await dbContext.Users.CountAsync());
+        Assert.Equal(3, await dbContext.Users.CountAsync(item => item.Role == UserRole.OrgAdmin));
+        Assert.Equal(3, await dbContext.Users.CountAsync(item => item.Role == UserRole.User));
+        Assert.Equal(3, await dbContext.Users.CountAsync(item => item.Role == UserRole.ReadOnly));
+        Assert.Equal(3, await dbContext.Boards.CountAsync());
+        Assert.Equal(15, await dbContext.Statuses.CountAsync());
+        Assert.Equal(15, await dbContext.BoardSwimlanes.CountAsync());
+        Assert.Equal(15, await dbContext.Ideas.CountAsync());
+        Assert.Equal(30, await dbContext.Comments.CountAsync());
+
+        var organizations = await dbContext.Organizations.OrderBy(item => item.CompanyName).ToListAsync();
+        var boards = await dbContext.Boards.ToListAsync();
+        var demoOrganizationIds = boards.Select(item => item.OrganizationId).ToHashSet();
+
+        Assert.Single(organizations.Where(item => !demoOrganizationIds.Contains(item.Id)));
+        Assert.Equal(3, demoOrganizationIds.Count);
+
+        foreach (var organization in organizations.Where(item => demoOrganizationIds.Contains(item.Id)))
+        {
+            Assert.False(string.IsNullOrWhiteSpace(organization.InviteCode));
+
+            var board = boards.Single(item => item.OrganizationId == organization.Id);
+            var statuses = await dbContext.Statuses
+                .Where(item => item.OrganizationId == organization.Id)
+                .OrderBy(item => item.Name)
+                .ToListAsync();
+            var swimlanes = await dbContext.BoardSwimlanes
+                .Where(item => item.BoardId == board.Id)
+                .OrderBy(item => item.Order)
+                .ToListAsync();
+            var ideas = await dbContext.Ideas
+                .Where(item => item.BoardId == board.Id)
+                .ToListAsync();
+            var ideaIds = ideas.Select(item => item.Id).ToList();
+            var comments = await dbContext.Comments
+                .Where(item => ideaIds.Contains(item.IdeaId))
+                .ToListAsync();
+
+            Assert.Equal(DefaultStatusNames.OrderBy(item => item).ToArray(), statuses.Select(item => item.Name).OrderBy(item => item).ToArray());
+            Assert.Equal(new[] { 0, 1, 2, 3, 4 }, swimlanes.Select(item => item.Order).ToArray());
+            Assert.Equal(DefaultStatusNames, swimlanes.Select(item => statuses.Single(status => status.Id == item.StatusId).Name).ToArray());
+            Assert.Equal(5, ideas.Count);
+            Assert.Equal(5, ideas.Select(item => item.StatusId).Distinct().Count());
+            Assert.Equal(10, comments.Count);
+        }
+    }
+
+    [Fact]
     public async Task ProductionStartup_SeedsSiteAdminOnly_AndSuppressesDemoEnvironment()
     {
         await using var factory = new IntegrationApiFactory("Production");
@@ -180,6 +259,35 @@ public sealed class ApiIntegrationTests
         Assert.Equal(0, await dbContext.Boards.CountAsync());
         Assert.Equal(0, await dbContext.Ideas.CountAsync());
         Assert.Equal(0, await dbContext.Comments.CountAsync());
+    }
+
+    [Fact]
+    public async Task DevelopmentStartup_RestartTwice_DoesNotDuplicateSeededGraph()
+    {
+        var sharedDatabaseName = $"SargentNexusApiIntegrationRestart_{Guid.NewGuid():N}";
+
+        await using (var firstFactory = new IntegrationApiFactory(databaseName: sharedDatabaseName))
+        {
+            using var firstClient = firstFactory.CreateClient();
+            var firstHealth = await firstClient.GetAsync("/api/v1/health");
+            Assert.Equal(HttpStatusCode.OK, firstHealth.StatusCode);
+        }
+
+        await using var secondFactory = new IntegrationApiFactory(databaseName: sharedDatabaseName);
+        using var secondClient = secondFactory.CreateClient();
+        var secondHealth = await secondClient.GetAsync("/api/v1/health");
+        Assert.Equal(HttpStatusCode.OK, secondHealth.StatusCode);
+
+        await using var scope = secondFactory.Services.CreateAsyncScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<SargentNexusDbContext>();
+
+        Assert.Equal(4, await dbContext.Organizations.CountAsync());
+        Assert.Equal(10, await dbContext.Users.CountAsync());
+        Assert.Equal(3, await dbContext.Boards.CountAsync());
+        Assert.Equal(15, await dbContext.Statuses.CountAsync());
+        Assert.Equal(15, await dbContext.BoardSwimlanes.CountAsync());
+        Assert.Equal(15, await dbContext.Ideas.CountAsync());
+        Assert.Equal(30, await dbContext.Comments.CountAsync());
     }
 
     [Fact]
@@ -233,6 +341,71 @@ public sealed class ApiIntegrationTests
     }
 
     [Fact]
+    public async Task Register_WithInviteCode_CreatesUserInProvisionedOrganization()
+    {
+        await using var factory = new IntegrationApiFactory();
+        using var client = factory.CreateClient();
+
+        var siteAdminToken = await LoginAndGetTokenAsync(client, "siteadmin@sargentnexus.local", "Abc123!Demo");
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", siteAdminToken);
+
+        var organizationResponse = await client.PostAsJsonAsync("/api/v1/organizations", new
+        {
+            companyName = "Fabrikam Labs",
+            address = "456 Launch Ave",
+            city = "Portland",
+            state = "OR",
+            zip = "97204",
+            phone = "503-555-0101",
+            primaryContactFirstName = "Casey",
+            primaryContactLastName = "North"
+        });
+
+        Assert.Equal(HttpStatusCode.Created, organizationResponse.StatusCode);
+
+        using var organizationPayload = await JsonDocument.ParseAsync(await organizationResponse.Content.ReadAsStreamAsync());
+        var organizationId = organizationPayload.RootElement.GetProperty("organizationId").GetGuid();
+        var inviteCode = organizationPayload.RootElement.GetProperty("inviteCode").GetString();
+        Assert.False(string.IsNullOrWhiteSpace(inviteCode));
+
+        client.DefaultRequestHeaders.Authorization = null;
+
+        var registrationResponse = await client.PostAsJsonAsync("/api/v1/auth/register", new
+        {
+            inviteCode,
+            firstName = "Taylor",
+            lastName = "Morgan",
+            email = "taylor.morgan@sargentnexus.local",
+            password = "Abc123!Join"
+        });
+
+        Assert.Equal(HttpStatusCode.Created, registrationResponse.StatusCode);
+
+        using var registrationPayload = await JsonDocument.ParseAsync(await registrationResponse.Content.ReadAsStreamAsync());
+        Assert.Equal(organizationId, registrationPayload.RootElement.GetProperty("organizationId").GetGuid());
+        Assert.Equal("taylor.morgan@sargentnexus.local", registrationPayload.RootElement.GetProperty("email").GetString());
+
+        var token = await LoginAndGetTokenAsync(client, "taylor.morgan@sargentnexus.local", "Abc123!Join");
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        var meResponse = await client.GetAsync("/api/v1/auth/me");
+        Assert.Equal(HttpStatusCode.OK, meResponse.StatusCode);
+
+        using var mePayload = await JsonDocument.ParseAsync(await meResponse.Content.ReadAsStreamAsync());
+        var me = mePayload.RootElement;
+        Assert.Equal(organizationId, me.GetProperty("organizationId").GetGuid());
+        Assert.Equal("User", me.GetProperty("role").GetString());
+
+        await using var scope = factory.Services.CreateAsyncScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<SargentNexusDbContext>();
+        var registeredUser = await dbContext.Users.SingleAsync(item => item.Email == "taylor.morgan@sargentnexus.local");
+
+        Assert.Equal(organizationId, registeredUser.OrganizationId);
+        Assert.Equal(UserRole.User, registeredUser.Role);
+        Assert.False(registeredUser.MustChangePassword);
+    }
+
+    [Fact]
     public async Task Login_SuccessAndFailure_PersistAuditEvents()
     {
         await using var factory = new IntegrationApiFactory();
@@ -276,11 +449,14 @@ public sealed class ApiIntegrationTests
 
     private sealed class IntegrationApiFactory : WebApplicationFactory<Program>
     {
-        private readonly string _dbName = $"SargentNexusApiIntegration_{Guid.NewGuid():N}";
+        private static readonly ConcurrentDictionary<string, InMemoryDatabaseRoot> SharedDatabaseRoots = new(StringComparer.Ordinal);
+
+        private readonly string _dbName;
         private readonly string _environmentName;
 
-        public IntegrationApiFactory(string environmentName = "Development")
+        public IntegrationApiFactory(string environmentName = "Development", string? databaseName = null)
         {
+            _dbName = databaseName ?? $"SargentNexusApiIntegration_{Guid.NewGuid():N}";
             _environmentName = environmentName;
         }
 
@@ -299,7 +475,8 @@ public sealed class ApiIntegrationTests
             {
                 services.RemoveAll<DbContextOptions<SargentNexusDbContext>>();
                 services.RemoveAll<SargentNexusDbContext>();
-                services.AddDbContext<SargentNexusDbContext>(options => options.UseInMemoryDatabase(_dbName));
+                var databaseRoot = SharedDatabaseRoots.GetOrAdd(_dbName, _ => new InMemoryDatabaseRoot());
+                services.AddDbContext<SargentNexusDbContext>(options => options.UseInMemoryDatabase(_dbName, databaseRoot));
             });
         }
     }

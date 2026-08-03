@@ -86,7 +86,7 @@ Track implementation work that Copilot-driven implementation agents should compl
 - T048 quality gate: API test suite passes with integration coverage included.
 - T049 completed: added targeted API integration tests for unauthorized and validation problem-details envelopes plus OpenAPI drift assertions covering 4xx `application/problem+json` schemas across auth, administration, workflow, and collaboration paths.
 - T049 contract sync: added missing self-registration route and schemas to the derived SPECKIT auth OpenAPI artifacts so merged OpenAPI matches the implemented `/api/v1/auth/register` endpoint.
-- T050 completed: added end-to-end API coverage for Production startup seeding boundaries, site-admin organization bootstrap defaults, persisted audit events for login outcomes and organization creation, and merged OpenAPI assertions that deferred OAuth/OIDC/SAML endpoints remain absent from the MVP surface.
+- T050 completed: added end-to-end API coverage for Development startup seed graph shape, repeated-startup idempotency against a shared database, invite-code bootstrap registration, Production startup seeding boundaries, persisted audit events for login outcomes and organization creation, and merged OpenAPI assertions that deferred OAuth/OIDC/SAML endpoints remain absent from the MVP surface.
 - Client slice progress: added Admin navigation entry for Site Admin/Org Admin plus new `/admin/organizations` client workflow for organization list/create/update/archive actions backed by the existing organization administration API.
 
 ## Backlog By Slice
