@@ -229,11 +229,12 @@ Tasks:
 - build `/ideas` page as a Kanban swimlane board
 - add board picker dropdown in page header; default to first board; persist selection in `localStorage` (key: `ideas-board-id`)
 - render one column per status on the selected board, ordered by `Status.SortOrder`; horizontal scroll on overflow
-- render idea cards showing title (2-line truncation), assignee, relative date, upvote count, and first 2 tags
-- clicking a card navigates to `/ideas/{ideaId}/edit`
-- add filter chips (All / Created by me / Assigned to me) and title search above the board; filtering is client-side
-- implement card drag-and-drop: optimistic column move, call `POST /api/v1/ideas/{ideaId}/status`, revert on failure with error toast
-- implement column reorder drag for SiteAdmin and OrgAdmin: optimistic reorder, call `PUT /api/v1/boards/{boardId}/statuses/{statusId}` per changed status, revert all on failure with error toast
+- render compact idea cards showing title (clickable), priority badge, assignee name, and upvote count
+- clicking a card title opens an in-context detail overlay (no page navigation); overlay fields: title, priority, due date, description, assignee, tags, mentions, comments; overlay actions: Cancel, Save Idea, Move in Board
+- add primary **New Idea** button in board header that opens overlay in create mode (hidden for ReadOnly users)
+- add filter chips (All / Created by me / Assigned to me) and search input (filters by title, tag, or assignee, client-side); filtering is combinable; empty columns remain visible with "No ideas" placeholder
+- implement card drag-and-drop: optimistic column move, idea status set to target swimlane's status, call `POST /api/v1/ideas/{ideaId}/status`, revert on failure with error toast
+- implement column reorder drag for SiteAdmin and OrgAdmin: optimistic reorder, saves immediately on drop, call `PUT /api/v1/boards/{boardId}/statuses/{statusId}` per changed status, revert all on failure with error toast
 - implement components in `src/SargentNexus.Client/Shared/Kanban/`: `IdeaKanbanBoard.razor`, `KanbanColumn.razor`, `IdeaCard.razor`
 
 **Uniform list conventions (all list pages):**
@@ -253,7 +254,7 @@ Exit criteria:
 - all bug fixes from SPEC/20-feature-client-ui-revisions.md verified as resolved
 - header, horizontal menu, gear icon, and Settings area match the approved layout spec
 - Workflow page shows only a board list; clicking opens the swimlane view
-- Ideas page Kanban board is functional: board picker, swimlane columns by status, card drag-to-move with rollback, filter chips and search, column reorder for admins
+- Ideas page Kanban board is functional: board picker, compact cards (title/priority/assignee/upvote), title-click opens in-context overlay, New Idea button, search by title/tag/assignee, filter chips, card drag-to-move with immediate status update and rollback, admin column reorder with immediate-save and rollback
 - all list pages have uniform search bar and server-side pagination with correct page sizes
 - no Admin-labeled routes, titles, or text remain
 

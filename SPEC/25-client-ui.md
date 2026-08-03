@@ -23,31 +23,34 @@ Replaces the previous flat-list design (All / Created by me / Assigned to me fil
 - Board selection is persisted in `localStorage` (key: `ideas-board-id`).
 - Changing the board reloads statuses and ideas.
 
+### Board Header
+The board header contains: board name (left), board picker dropdown, search input (placeholder: "Search title, tag, assignee"), and a primary **New Idea** button (right). The New Idea button opens the detail overlay in create mode, pre-populating the target status as the left-most column. The New Idea button is hidden for ReadOnly users.
+
 ### Swimlane Columns
 - One column per `Status` on the selected board, ordered by `Status.SortOrder` ascending.
 - Column header shows the status name, a colour dot (`Status.Color`), and idea count.
 - Columns scroll horizontally if they overflow the viewport.
 
 ### Idea Cards
-Each card shows: title (2-line truncation), assignee name/initials, created date (relative), upvote count, first 2 tags (+N more). Clicking a card navigates to `/ideas/{ideaId}/edit`.
+Cards are compact. Each card shows: title (clickable, 2-line truncation), priority badge, assignee name, and upvote count. Clicking the card title opens an in-context detail overlay — no page navigation. The overlay supports full editing: title, priority, due date (optional), description, assignee, tags, mentions, and comments. Overlay actions: **Cancel**, **Save Idea**, **Move in Board** (status picker without dragging).
 
 ### Filter Chips
 Filter chips appear above the board: **All**, **Created by me** (`AuthorUserId == currentUserId`), **Assigned to me** (`AssigneeUserId == currentUserId`). Filtering is client-side. Empty columns remain visible with a "No ideas" placeholder.
 
 ### Search
-Text input above the board filters cards by title (client-side, case-insensitive). Combinable with filter chips.
+Text input above the board filters cards by title, tag, or assignee (client-side, case-insensitive). Combinable with filter chips.
 
 ### Drag-and-Drop: Moving an Idea
 1. User drags a card to another column.
 2. Optimistic UI moves the card immediately.
-3. Calls `POST /api/v1/ideas/{ideaId}/status` with the target status ID.
+3. Calls `POST /api/v1/ideas/{ideaId}/status` with the target status ID. The idea's status is set to the target swimlane's `Status`.
 4. On failure: card reverts, error toast shown.
 5. Board `allowUserStatusUpdate` and role restrictions are enforced server-side (403 → revert + permission message).
 
 ### Drag-and-Drop: Reordering Columns
 1. SiteAdmin and OrgAdmin users can drag column headers to reorder columns.
 2. Optimistic reorder applied immediately.
-3. For each column whose `SortOrder` changed, calls `PUT /api/v1/boards/{boardId}/statuses/{statusId}` with the new `sortOrder`.
+3. For each column whose `SortOrder` changed, calls `PUT /api/v1/boards/{boardId}/statuses/{statusId}` with the new `sortOrder`. Reorder saves immediately on drop — no additional confirmation required.
 4. On failure: revert all columns, show error toast.
 5. User and ReadOnly roles see columns but cannot reorder them.
 
@@ -67,8 +70,10 @@ HTML5 drag-and-drop (desktop only). Touch/mobile drag is deferred; mobile view i
 - `/ideas` shows a Kanban board, not a list
 - Board picker defaults to first board; selection persists in `localStorage`
 - Columns reflect the selected board's statuses in `SortOrder` order
-- Filter chips and search work across all columns (client-side)
-- Card drag calls `MoveIdeaStatusAsync`; reverts on failure with toast
-- Column drag (SiteAdmin/OrgAdmin only) calls `UpdateStatusAsync` per affected status; reverts on failure
-- Clicking a card navigates to `/ideas/{ideaId}/edit`
+- Filter chips and title/tag/assignee search work across all columns (client-side)
+- Card drag calls `MoveIdeaStatusAsync`; idea status set to target swimlane's status; reverts on failure with toast
+- Column drag (SiteAdmin/OrgAdmin only) saves immediately on drop; calls `UpdateStatusAsync` per affected status; reverts on failure
+- Clicking a card title opens the in-context detail overlay; no page navigation occurs
+- Detail overlay provides Cancel, Save Idea, and Move in Board actions
+- New Idea button in board header opens overlay in create mode; hidden for ReadOnly users
 - Mobile/touch: scrollable view, no drag support

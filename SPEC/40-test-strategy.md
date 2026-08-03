@@ -55,6 +55,9 @@
 - SAML validation is executed in a post-OAuth phase test cycle.
 
 ## Client UI — /ideas Kanban Board
-- Card drag-and-drop: verify optimistic column move is applied immediately, `MoveIdeaStatusAsync` is called with the correct status ID, and the card reverts to its original column with an error toast on API failure.
-- Column reorder: verify SiteAdmin and OrgAdmin users can reorder columns and `UpdateStatusAsync` is called per affected status; verify User and ReadOnly users cannot trigger a reorder; verify all columns revert on failure with error toast.
-- Filter chips and search: verify All / Created by me / Assigned to me filter chips correctly hide non-matching cards client-side; verify title search is case-insensitive and combinable with filter chips; verify empty columns display the "No ideas" placeholder.
+- Card rendering: verify each card shows title, priority badge, assignee name, and upvote count; verify created-date and tag chips are absent from the compact card face.
+- Title-click overlay: verify clicking the card title opens the in-context detail overlay without page navigation; verify the overlay displays all fields (title, priority, due date, description, assignee, tags, mentions, comments) and provides Cancel, Save Idea, and Move in Board actions.
+- New Idea button: verify the New Idea button appears in the board header for all roles except ReadOnly; verify it opens the overlay in create mode with the left-most status pre-selected.
+- Card drag-and-drop: verify optimistic column move is applied immediately, `MoveIdeaStatusAsync` is called with the correct target status ID, the idea's status is set to the target swimlane's status, and the card reverts to its original column with an error toast on API failure.
+- Column reorder: verify SiteAdmin and OrgAdmin users can reorder columns and `UpdateStatusAsync` is called per affected status; verify reorder saves immediately on drop without a confirmation step; verify User and ReadOnly users cannot trigger a reorder; verify all columns revert on API failure with error toast.
+- Filter chips and search: verify All / Created by me / Assigned to me filter chips correctly hide non-matching cards client-side; verify search matches by title, tag, and assignee name (case-insensitive); verify search is combinable with filter chips; verify empty columns display the "No ideas" placeholder.
