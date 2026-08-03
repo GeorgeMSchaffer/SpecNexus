@@ -3,10 +3,6 @@
 @inject NavigationManager NavigationManager
 
 <div class="page">
-    <div class="sidebar">
-        <NavMenu />
-    </div>
-
     <main>
         <div class="app-header">
             <span class="navbar-brand text-white fw-bold">SargentNexus</span>
@@ -56,12 +52,6 @@
         </div>
     </nav>
 }
-
-<main>
-    <article class="content px-4">
-        @Body
-    </article>
-</main>
 
 @code {
     private string DisplayName =>
