@@ -10,6 +10,9 @@
     protected override async Task OnInitializedAsync()
     {
         await AuthSessionService.LogoutAsync();
-        NavigationManager.NavigateTo("/login");
+
+        // Full reload so no stale in-memory auth state (e.g. a concurrent
+        // InitializeAsync that read the token before it was cleared) survives.
+        NavigationManager.NavigateTo("/login", forceLoad: true);
     }
 }

@@ -168,6 +168,45 @@ public sealed class SmokeTests : IAsyncLifetime
         await Expect(async () => await _page!.Locator("text=Smoke idea").CountAsync());
     }
 
+    [Fact]
+    public async Task LogoutClearsAuthTokenFromLocalStorage()
+    {
+        var baseUrl = Environment.GetEnvironmentVariable("SARGENTNEXUS_BASE_URL") ?? "http://127.0.0.1:5237";
+        await _page!.GotoAsync(baseUrl + "/login", new PageGotoOptions { WaitUntil = WaitUntilState.NetworkIdle });
+
+        await _page.FillAsync("input#email", "demo.acme.user@sargentnexus.local");
+        await _page.FillAsync("input#password", "abc123!");
+        await _page.GetByRole(AriaRole.Button, new() { Name = "Sign in" }).ClickAsync();
+
+        await Expect(async () =>
+        {
+            var accessToken = await _page!.EvaluateAsync<string>("() => window.localStorage.getItem('sn.auth.accessToken') || ''");
+            return string.IsNullOrWhiteSpace(accessToken) ? 0 : 1;
+        });
+
+        await _page.GotoAsync(baseUrl + "/logout", new PageGotoOptions { WaitUntil = WaitUntilState.NetworkIdle });
+
+        try
+        {
+            await Expect(async () =>
+            {
+                var accessToken = await _page!.EvaluateAsync<string>("() => window.localStorage.getItem('sn.auth.accessToken') || ''");
+                var path = (await _page.EvaluateAsync("() => window.location.pathname")).ToString();
+                return string.IsNullOrWhiteSpace(accessToken) && string.Equals(path, "/login", StringComparison.OrdinalIgnoreCase) ? 1 : 0;
+            });
+        }
+        catch (TimeoutException)
+        {
+            var diag = await _page.EvaluateAsync("() => ({ path: window.location.pathname, localStorage: Object.fromEntries(Object.entries(window.localStorage)) })");
+            Console.WriteLine($"Post-logout state: {diag}");
+            Console.WriteLine(await _page.ContentAsync());
+            throw;
+        }
+
+        var remainingAuthKeys = await _page.EvaluateAsync<string[]>("() => Object.keys(window.localStorage).filter(k => k.startsWith('sn.auth.'))");
+        Assert.Empty(remainingAuthKeys);
+    }
+
     private async Task StartWebAppAsync()
     {
         var root = FindRepositoryRoot();
