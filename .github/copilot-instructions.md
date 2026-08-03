@@ -95,6 +95,69 @@ When proposing a new package:
 - Explain why it's needed
 - Wait for approval before running `dotnet add package`
 
+## Session and Branch Lifecycle
+
+Every session **must** merge its feature branch into `dev` before closing, in addition to opening a PR to `main`. The `dev` branch is the active integration branch where all feature work is combined for testing. Do not skip this step — leaving work only on the feature branch means the developer cannot test all features together.
+
+### Task completion checklist
+
+Complete these steps in order after verifying the build and tests pass on the feature branch:
+
+**1. Open a PR from the feature branch to `main`**
+
+```powershell
+gh pr create --base main --title "<title>" --body "<body>"
+```
+
+**2. Discover the `dev` worktree path**
+
+```powershell
+git worktree list | Select-String dev
+```
+
+This will show a line like:
+```
+C:/code/BIDataDictionary/copilot-worktrees/SargentNexus/<worktree-name>  <hash> [dev]
+```
+
+Use that path in the steps below. If no worktree for `dev` exists, check out `dev` in a temporary location:
+
+```powershell
+git worktree add C:/tmp/sn-dev dev
+```
+
+**3. Merge the feature branch into `dev` in the `dev` worktree**
+
+```powershell
+Set-Location "C:/code/BIDataDictionary/copilot-worktrees/SargentNexus/<dev-worktree-name>"
+git fetch origin
+git merge origin/<feature-branch> --no-ff -m "Merge <feature-branch> into dev"
+```
+
+**4. Resolve merge conflicts (if any)**
+
+- For **server-side code** (`src/SargentNexus.API`, `src/SargentNexus.Application`, `src/SargentNexus.Domain`, `src/SargentNexus.Infrastructure`, `tests/`) where `dev` has extended beyond the feature branch: prefer `dev`'s version (`--ours`).
+- For **SPEC files** (`SPEC/`) and **client-only files** (`src/SargentNexus.Client/`) that the feature branch owns: take the feature branch version (`--theirs`).
+- After resolving, stage and complete the merge:
+
+```powershell
+git add .
+git merge --continue
+```
+
+**5. Push `dev` to `origin/dev`**
+
+```powershell
+git push origin dev
+```
+
+**6. Report the commit hash** of the merge commit on `dev` in your completion message.
+
+> **Note:** If a `dev` worktree was created just for this merge (step 2 fallback), remove it after pushing:
+> ```powershell
+> git worktree remove C:/tmp/sn-dev
+> ```
+
 ## General Guidelines
 
 - Follow existing code style and patterns in the repo
