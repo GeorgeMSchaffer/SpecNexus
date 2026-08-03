@@ -1,4 +1,4 @@
-using System.Net.Http.Headers;
+﻿using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using SargentNexus.Client.Auth;
 
@@ -212,6 +212,46 @@ public sealed class WorkflowApiClient
             ?? new PagedResultDto<IdeaListItemDto>();
     }
 
+    public async Task ReorderSwimlanesAsync(string accessToken, Guid boardId, IReadOnlyList<Guid> orderedStatusIds, CancellationToken cancellationToken)
+    {
+        using var requestMessage = new HttpRequestMessage(HttpMethod.Post, $"api/v1/boards/{boardId}/swimlanes/reorder")
+        {
+            Content = JsonContent.Create(new ReorderSwimlanesRequestDto { OrderedStatusIds = orderedStatusIds })
+        };
+        requestMessage.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+
+        using var response = await _httpClient.SendAsync(requestMessage, cancellationToken);
+        response.EnsureSuccessStatusCode();
+    }
+
+
+    public async Task<IReadOnlyList<IdeaListItemDto>> ListAllIdeasForBoardAsync(string accessToken, Guid boardId, CancellationToken cancellationToken)
+    {
+        const int PageSize = 100;
+
+        var allIdeas = new List<IdeaListItemDto>();
+        var page = 1;
+
+        while (true)
+        {
+            var result = await ListIdeasPagedAsync(accessToken, boardId, page, PageSize, null, cancellationToken);
+            if (result.Items.Count == 0)
+            {
+                break;
+            }
+
+            allIdeas.AddRange(result.Items);
+
+            if (allIdeas.Count >= result.TotalCount || result.Items.Count < result.PageSize)
+            {
+                break;
+            }
+
+            page++;
+        }
+
+        return allIdeas;
+    }
     public async Task<IReadOnlyList<IdeaListItemDto>> ListAllIdeasForOrgAsync(string accessToken, Guid organizationId, CancellationToken cancellationToken)
     {
         var boards = await ListBoardsAsync(accessToken, organizationId, cancellationToken);

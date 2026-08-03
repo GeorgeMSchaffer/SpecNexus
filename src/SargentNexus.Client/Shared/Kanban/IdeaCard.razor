@@ -1,4 +1,9 @@
-<article class="idea-card">
+﻿<article class="idea-card @(_isDragging ? "idea-card--dragging" : string.Empty)"
+         draggable="true"
+         @ondragstart="HandleDragStart"
+         @ondragstart:stopPropagation
+         @ondragend="HandleDragEnd"
+         @ondragend:stopPropagation>
     <button type="button" class="idea-card__title-button" @onclick="HandleSelectedAsync">@Card.Title</button>
 
     <div class="idea-card__row">
@@ -18,21 +23,6 @@
         <span class="idea-card__label">Upvotes</span>
         <span class="idea-card__value idea-card__value--upvotes">^ @Card.UpvoteCount</span>
     </div>
-
-    @if (Card.TagNames.Count > 0)
-    {
-        <div class="idea-card__tags">
-            @foreach (var tag in Card.TagNames.Take(2))
-            {
-                <span class="idea-card__tag">@tag</span>
-            }
-
-            @if (Card.TagNames.Count > 2)
-            {
-                <span class="idea-card__tag idea-card__tag--more">+@(Card.TagNames.Count - 2)</span>
-            }
-        </div>
-    }
 </article>
 
 @code {
@@ -42,5 +32,25 @@
     [Parameter]
     public EventCallback<Guid> OnSelected { get; set; }
 
+    [Parameter]
+    public EventCallback<Guid> OnDragStart { get; set; }
+
+    [Parameter]
+    public EventCallback OnDragEnd { get; set; }
+
+    private bool _isDragging;
+
     private Task HandleSelectedAsync() => OnSelected.InvokeAsync(Card.IdeaId);
+
+    private async Task HandleDragStart()
+    {
+        _isDragging = true;
+        await OnDragStart.InvokeAsync(Card.IdeaId);
+    }
+
+    private async Task HandleDragEnd()
+    {
+        _isDragging = false;
+        await OnDragEnd.InvokeAsync();
+    }
 }

@@ -1,20 +1,16 @@
-@page "/ideas"
+﻿@page "/ideas"
 @inject IAuthSessionService AuthSessionService
 @inject IClientErrorMessageService ErrorMessageService
+@inject IJSRuntime JSRuntime
 @inject NavigationManager NavigationManager
 @inject WorkflowApiClient WorkflowApiClient
 
-<PageTitle>My Ideas</PageTitle>
+<PageTitle>Ideas</PageTitle>
 
 <AuthGate>
-    <div class="container py-4">
-        <div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="container-fluid py-4 ideas-page">
+        <div class="ideas-page__header">
             <div>
-<<<<<<< HEAD
-                <h1 class="h3 mb-1">My Ideas</h1>
-                <p class="text-muted mb-0">Ideas you created or are assigned to.</p>
-            </div>
-=======
                 <h1 class="h3 mb-1">Ideas</h1>
                 <p class="text-muted mb-0">Compact board overview for the selected workflow board.</p>
             </div>
@@ -42,80 +38,35 @@
                                @bind:event="oninput" />
                     </div>
 
-                    <button class="btn btn-primary" @onclick="OpenCreateDialog" disabled="@(_selectedBoard is null)">New Idea</button>
+                    @if (CanCreateIdeas)
+                    {
+                        <button class="btn btn-primary" @onclick="OpenCreateDialog" disabled="@(_selectedBoard is null)">New Idea</button>
+                    }
                 </div>
             }
->>>>>>> 7aedab1 (Refine ideas board to mockups)
         </div>
 
         @if (_loading)
         {
-            <div class="alert alert-info">Loading ideas…</div>
+            <div class="alert alert-info">Loading ideas board…</div>
         }
         else if (_errorMessage is not null)
         {
-            <div class="alert alert-danger">@_errorMessage</div>
+            <div class="alert alert-danger alert-dismissible d-flex align-items-start gap-2" role="alert">
+                <span>@_errorMessage</span>
+                <button type="button" class="btn-close ms-auto" @onclick="DismissError" aria-label="Close"></button>
+            </div>
+        }
+        else if (_boards.Count == 0)
+        {
+            <div class="alert alert-secondary">No boards are available for your organization yet.</div>
+        }
+        else if (_selectedBoard is null)
+        {
+            <div class="alert alert-secondary">Select a board to view its ideas.</div>
         }
         else
         {
-<<<<<<< HEAD
-            <div class="mb-3 d-flex gap-2">
-                <button class="@FilterBtnClass(IdeaFilter.All)" @onclick="() => SetFilter(IdeaFilter.All)">All</button>
-                <button class="@FilterBtnClass(IdeaFilter.CreatedByMe)" @onclick="() => SetFilter(IdeaFilter.CreatedByMe)">Created by me</button>
-                <button class="@FilterBtnClass(IdeaFilter.AssignedToMe)" @onclick="() => SetFilter(IdeaFilter.AssignedToMe)">Assigned to me</button>
-            </div>
-
-            <SearchPaginationBar @bind-SearchText="_search"
-                                 @bind-PageSize="_pageSize"
-                                 OnSearch="HandleSearchAsync" />
-
-            @if (TotalFilteredCount == 0)
-            {
-                <div class="alert alert-secondary">No ideas found.</div>
-            }
-            else
-            {
-                <div class="table-responsive">
-                    <table class="table table-striped align-middle">
-                        <thead>
-                            <tr>
-                                <th>Title</th>
-                                <th>Status</th>
-                                <th>Priority</th>
-                                <th>Created</th>
-                                <th></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var idea in PagedIdeas)
-                            {
-                                var ideaId = idea.IdeaId;
-                                <tr>
-                                    <td>@idea.Title</td>
-                                    <td>@idea.StatusName</td>
-                                    <td>@idea.Priority</td>
-                                    <td>@idea.CreatedAtUtc.ToLocalTime().ToString("d")</td>
-                                    <td class="text-end">
-                                        <button class="btn btn-sm btn-outline-primary" @onclick="() => ViewIdea(ideaId)">Details</button>
-                                    </td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
-                </div>
-
-                <div class="d-flex justify-content-between align-items-center mt-2">
-                    <span class="text-muted small">
-                        Showing @((_page - 1) * _pageSize + 1)–@Math.Min(_page * _pageSize, TotalFilteredCount) of @TotalFilteredCount
-                    </span>
-                    <div class="d-flex gap-2">
-                        <button class="btn btn-sm btn-outline-secondary" @onclick="PrevPage" disabled="@(_page <= 1)">← Prev</button>
-                        <span class="align-self-center small">Page @_page</span>
-                        <button class="btn btn-sm btn-outline-secondary" @onclick="NextPage" disabled="@(_page * _pageSize >= TotalFilteredCount)">Next →</button>
-                    </div>
-                </div>
-            }
-=======
             <div class="ideas-page__toolbar">
                 <div class="ideas-page__filters" role="group" aria-label="Idea filters">
                     <button class="@GetFilterButtonClass(IdeaFilter.All)" @onclick="() => SetFilter(IdeaFilter.All)">All</button>
@@ -131,10 +82,13 @@
                 }
                 else
                 {
-                    <IdeaKanbanBoard Columns="VisibleColumns" OnCardSelected="OpenIdeaPanelAsync" />
+                    <IdeaKanbanBoard Columns="VisibleColumns"
+                                     CanReorderColumns="CanReorderColumns"
+                                     OnCardSelected="OpenIdeaPanelAsync"
+                                     OnIdeaMoved="HandleIdeaMovedAsync"
+                                     OnColumnsReordered="HandleColumnsReorderedAsync" />
                 }
             </div>
->>>>>>> 7aedab1 (Refine ideas board to mockups)
         }
     </div>
 </AuthGate>
@@ -315,17 +269,8 @@
 }
 
 @code {
-    private enum IdeaFilter { All, CreatedByMe, AssignedToMe }
+    private const string BoardStorageKey = "ideas-board-id";
 
-<<<<<<< HEAD
-    private IReadOnlyList<IdeaListItemDto> _allIdeas = Array.Empty<IdeaListItemDto>();
-    private IdeaFilter _filter = IdeaFilter.All;
-    private string _search = string.Empty;
-    private bool _loading = true;
-    private string? _errorMessage;
-    private int _page = 1;
-    private int _pageSize = 25;
-=======
     private static readonly string[] StatusColorPalette =
     [
         "#0f6cbd",
@@ -360,50 +305,67 @@
     private BoardSummaryDto? _selectedBoard;
     private IdeaDetailDto? _selectedIdeaDetail;
     private CreateIdeaFormModel _createModel = new();
->>>>>>> 7aedab1 (Refine ideas board to mockups)
 
     private Guid? CurrentUserId => AuthSessionService.User?.UserId;
+    private string? CurrentUserRole => AuthSessionService.User?.Role;
+    private bool CanReorderColumns => CurrentUserRole is "SiteAdmin" or "OrgAdmin";
+    private bool CanCreateIdeas => !string.Equals(CurrentUserRole, "ReadOnly", StringComparison.OrdinalIgnoreCase);
 
-    private List<IdeaListItemDto> FilteredIdeas
+    private string SelectedBoardIdText => _selectedBoard?.BoardId.ToString() ?? string.Empty;
+
+    private IReadOnlyList<KanbanColumnModel> VisibleColumns
     {
         get
         {
+            if (_selectedBoard is null)
+            {
+                return Array.Empty<KanbanColumnModel>();
+            }
+
+            var cardsByStatus = FilteredIdeas
+                .GroupBy(card => card.StatusId)
+                .ToDictionary(group => group.Key, group => (IReadOnlyList<KanbanIdeaCardModel>)group.ToArray());
+
+            return _selectedBoard.Swimlanes
+                .OrderBy(swimlane => swimlane.Order)
+                .Select(swimlane => new KanbanColumnModel
+                {
+                    StatusId = swimlane.StatusId,
+                    StatusName = swimlane.StatusName,
+                    StatusColor = GetStatusColor(swimlane.StatusId),
+                    IsDeletedStatus = swimlane.IsDeletedStatus,
+                    Order = swimlane.Order,
+                    Cards = cardsByStatus.TryGetValue(swimlane.StatusId, out var cards) ? cards : Array.Empty<KanbanIdeaCardModel>()
+                })
+                .ToArray();
+        }
+    }
+
+    private IEnumerable<KanbanIdeaCardModel> FilteredIdeas
+    {
+        get
+        {
+            IEnumerable<KanbanIdeaCardModel> ideas = _ideas;
             var userId = CurrentUserId;
-            IEnumerable<IdeaListItemDto> ideas = _allIdeas;
 
             if (_filter == IdeaFilter.CreatedByMe && userId.HasValue)
             {
-                ideas = ideas.Where(i => i.AuthorUserId == userId.Value);
+                ideas = ideas.Where(idea => idea.AuthorUserId == userId.Value);
             }
             else if (_filter == IdeaFilter.AssignedToMe && userId.HasValue)
             {
-                ideas = ideas.Where(i => i.AssigneeUserId == userId.Value);
+                ideas = ideas.Where(idea => idea.AssigneeUserId == userId.Value);
             }
 
             if (!string.IsNullOrWhiteSpace(_search))
             {
-<<<<<<< HEAD
-                var term = _search.Trim().ToLowerInvariant();
-                ideas = ideas.Where(i =>
-                    i.Title.ToLowerInvariant().Contains(term) ||
-                    i.StatusName.ToLowerInvariant().Contains(term));
-=======
                 var term = _search.Trim();
                 ideas = ideas.Where(idea => MatchesSearch(idea, term));
->>>>>>> 7aedab1 (Refine ideas board to mockups)
             }
 
-            return ideas.ToList();
+            return ideas;
         }
     }
-
-    private int TotalFilteredCount => FilteredIdeas.Count;
-
-    private List<IdeaListItemDto> PagedIdeas =>
-        FilteredIdeas.Skip((_page - 1) * _pageSize).Take(_pageSize).ToList();
-
-    private string FilterBtnClass(IdeaFilter f) =>
-        _filter == f ? "btn btn-primary btn-sm" : "btn btn-outline-secondary btn-sm";
 
     protected override async Task OnInitializedAsync()
     {
@@ -417,17 +379,35 @@
 
         try
         {
-            var orgId = AuthSessionService.User?.OrganizationId;
-            if (!orgId.HasValue)
+            if (!AuthSessionService.IsAuthenticated)
+            {
+                NavigationManager.NavigateTo("/login");
+                return;
+            }
+
+            var organizationId = AuthSessionService.User?.OrganizationId;
+            if (organizationId is null || organizationId.Value == Guid.Empty)
             {
                 _errorMessage = "Your account is not associated with an organization.";
                 return;
             }
 
-            _allIdeas = await WorkflowApiClient.ListAllIdeasForOrgAsync(
-                AuthSessionService.AccessToken!,
-                orgId.Value,
-                CancellationToken.None);
+            var boards = await WorkflowApiClient.ListBoardsAsync(AuthSessionService.AccessToken!, organizationId.Value, CancellationToken.None);
+            _boards.Clear();
+            _boards.AddRange(boards);
+
+            _selectedBoard = await ResolveSelectedBoardAsync();
+
+            if (_selectedBoard is not null)
+            {
+                await PersistSelectedBoardAsync(_selectedBoard.BoardId);
+                await LoadBoardIdeasAsync();
+            }
+            else
+            {
+                _ideas = Array.Empty<KanbanIdeaCardModel>();
+                await ClearSelectedBoardAsync();
+            }
         }
         catch (Exception ex)
         {
@@ -439,9 +419,6 @@
         }
     }
 
-<<<<<<< HEAD
-    private void ViewIdea(Guid ideaId) => NavigationManager.NavigateTo($"/ideas/{ideaId}/edit");
-=======
     private async Task<BoardSummaryDto?> ResolveSelectedBoardAsync()
     {
         if (_boards.Count == 0)
@@ -532,21 +509,108 @@
         await PersistSelectedBoardAsync(boardId);
         await LoadBoardIdeasAsync();
     }
->>>>>>> 7aedab1 (Refine ideas board to mockups)
 
+    private async Task HandleIdeaMovedAsync((Guid ideaId, Guid targetStatusId) args)
+    {
+        var (ideaId, targetStatusId) = args;
+        var originalIdea = _ideas.FirstOrDefault(idea => idea.IdeaId == ideaId);
+        if (originalIdea is null || originalIdea.StatusId == targetStatusId)
+        {
+            return;
+        }
+
+        var targetColumn = VisibleColumns.FirstOrDefault(column => column.StatusId == targetStatusId);
+        if (targetColumn is null)
+        {
+            return;
+        }
+
+        var previousStatusId = originalIdea.StatusId;
+
+        _ideas = _ideas
+            .Select(idea => idea.IdeaId == ideaId
+                ? CopyIdea(idea, targetStatusId)
+                : idea)
+            .ToArray();
+
+        if (_selectedIdeaDetail?.IdeaId == ideaId)
+        {
+            _selectedIdeaDetail.StatusId = targetStatusId;
+            _selectedIdeaDetail.StatusName = targetColumn.StatusName;
+        }
+
+        try
+        {
+            await WorkflowApiClient.MoveIdeaStatusAsync(AuthSessionService.AccessToken!, ideaId, targetStatusId, CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            _ideas = _ideas
+                .Select(idea => idea.IdeaId == ideaId
+                    ? CopyIdea(idea, previousStatusId)
+                    : idea)
+                .ToArray();
+
+            if (_selectedIdeaDetail?.IdeaId == ideaId && _selectedBoard is not null)
+            {
+                var originalColumn = _selectedBoard.Swimlanes.FirstOrDefault(swimlane => swimlane.StatusId == previousStatusId);
+                _selectedIdeaDetail.StatusId = previousStatusId;
+                _selectedIdeaDetail.StatusName = originalColumn?.StatusName ?? _selectedIdeaDetail.StatusName;
+            }
+
+            _errorMessage = ErrorMessageService.GetDisplayMessage("Could not move idea.", null, ex);
+        }
+    }
+
+    private async Task HandleColumnsReorderedAsync(IReadOnlyList<KanbanColumnModel> newOrder)
+    {
+        if (_selectedBoard is null)
+        {
+            return;
+        }
+
+        var originalSwimlanes = _selectedBoard.Swimlanes.ToList();
+        var swimlaneLookup = originalSwimlanes.ToDictionary(swimlane => swimlane.StatusId);
+        var reorderedSwimlanes = newOrder
+            .Select((column, index) =>
+            {
+                var swimlane = swimlaneLookup[column.StatusId];
+                return new SwimlaneDto
+                {
+                    StatusId = swimlane.StatusId,
+                    StatusName = swimlane.StatusName,
+                    IsDeletedStatus = swimlane.IsDeletedStatus,
+                    Order = index + 1
+                };
+            })
+            .ToList();
+
+        _selectedBoard.Swimlanes = reorderedSwimlanes;
+
+        try
+        {
+            await WorkflowApiClient.ReorderSwimlanesAsync(
+                AuthSessionService.AccessToken!,
+                _selectedBoard.BoardId,
+                reorderedSwimlanes.Select(swimlane => swimlane.StatusId).ToArray(),
+                CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            _selectedBoard.Swimlanes = originalSwimlanes;
+            _errorMessage = ErrorMessageService.GetDisplayMessage("Could not reorder columns.", null, ex);
+        }
+    }
+
+    private void DismissError()
+    {
+        _errorMessage = null;
+    }
     private void SetFilter(IdeaFilter filter)
     {
         _filter = filter;
-        _page = 1;
     }
 
-<<<<<<< HEAD
-    private Task HandleSearchAsync()
-    {
-        _page = 1;
-        StateHasChanged();
-        return Task.CompletedTask;
-=======
     private void OpenCreateDialog()
     {
         _showCreateDialog = true;
@@ -639,17 +703,13 @@
         }
 
         NavigationManager.NavigateTo($"/ideas/{_selectedIdeaDetail.IdeaId}/edit");
->>>>>>> 7aedab1 (Refine ideas board to mockups)
     }
 
-    private void PrevPage()
+    private string GetFilterButtonClass(IdeaFilter filter)
     {
-        if (_page > 1) _page--;
+        return _filter == filter ? "btn btn-primary btn-sm" : "btn btn-outline-secondary btn-sm";
     }
 
-<<<<<<< HEAD
-    private void NextPage()
-=======
     private static bool MatchesSearch(KanbanIdeaCardModel idea, string term)
     {
         if (idea.Title.Contains(term, StringComparison.OrdinalIgnoreCase))
@@ -667,9 +727,108 @@
     }
 
     private static KanbanIdeaCardModel MapIdeaCard(IdeaListItemDto item, IdeaDetailDto? detail)
->>>>>>> 7aedab1 (Refine ideas board to mockups)
     {
-        if (_page * _pageSize < TotalFilteredCount) _page++;
+        return new KanbanIdeaCardModel
+        {
+            IdeaId = item.IdeaId,
+            StatusId = item.StatusId,
+            AuthorUserId = item.AuthorUserId,
+            AssigneeUserId = item.AssigneeUserId,
+            Title = item.Title,
+            Priority = item.Priority,
+            AssigneeDisplayName = item.AssigneeDisplayName,
+            AssigneeInitials = GetInitials(item.AssigneeDisplayName),
+            CreatedAtUtc = item.CreatedAtUtc,
+            CreatedAtDisplay = GetRelativeCreatedAt(item.CreatedAtUtc),
+            UpvoteCount = item.UpvoteCount,
+            TagNames = detail?.TagNames ?? Array.Empty<string>()
+        };
+    }
+
+    private static KanbanIdeaCardModel CopyIdea(KanbanIdeaCardModel idea, Guid statusId)
+    {
+        return new KanbanIdeaCardModel
+        {
+            IdeaId = idea.IdeaId,
+            StatusId = statusId,
+            AuthorUserId = idea.AuthorUserId,
+            AssigneeUserId = idea.AssigneeUserId,
+            Title = idea.Title,
+            Priority = idea.Priority,
+            AssigneeDisplayName = idea.AssigneeDisplayName,
+            AssigneeInitials = idea.AssigneeInitials,
+            CreatedAtUtc = idea.CreatedAtUtc,
+            CreatedAtDisplay = idea.CreatedAtDisplay,
+            UpvoteCount = idea.UpvoteCount,
+            TagNames = idea.TagNames
+        };
+    }
+    private static string GetInitials(string? displayName)
+    {
+        if (string.IsNullOrWhiteSpace(displayName))
+        {
+            return "UA";
+        }
+
+        var parts = displayName
+            .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Take(2)
+            .Select(part => char.ToUpperInvariant(part[0]))
+            .ToArray();
+
+        return parts.Length == 0 ? "UA" : new string(parts);
+    }
+
+    private static string GetRelativeCreatedAt(DateTime createdAtUtc)
+    {
+        var elapsed = DateTime.UtcNow - createdAtUtc;
+
+        if (elapsed < TimeSpan.FromMinutes(1))
+        {
+            return "Just now";
+        }
+
+        if (elapsed < TimeSpan.FromHours(1))
+        {
+            var minutes = Math.Max(1, (int)Math.Floor(elapsed.TotalMinutes));
+            return $"{minutes}m ago";
+        }
+
+        if (elapsed < TimeSpan.FromDays(1))
+        {
+            var hours = Math.Max(1, (int)Math.Floor(elapsed.TotalHours));
+            return $"{hours}h ago";
+        }
+
+        if (elapsed < TimeSpan.FromDays(7))
+        {
+            var days = Math.Max(1, (int)Math.Floor(elapsed.TotalDays));
+            return $"{days}d ago";
+        }
+
+        return createdAtUtc.ToLocalTime().ToString("d");
+    }
+
+    private static string GetStatusColor(Guid statusId)
+    {
+        var bytes = statusId.ToByteArray();
+        return StatusColorPalette[bytes[0] % StatusColorPalette.Length];
+    }
+
+    private async Task<Guid?> ReadStoredBoardIdAsync()
+    {
+        var boardIdText = await JSRuntime.InvokeAsync<string?>("localStorage.getItem", BoardStorageKey);
+        return Guid.TryParse(boardIdText, out var boardId) ? boardId : null;
+    }
+
+    private async Task PersistSelectedBoardAsync(Guid boardId)
+    {
+        await JSRuntime.InvokeVoidAsync("localStorage.setItem", BoardStorageKey, boardId.ToString());
+    }
+
+    private async Task ClearSelectedBoardAsync()
+    {
+        await JSRuntime.InvokeVoidAsync("localStorage.removeItem", BoardStorageKey);
     }
 
     private sealed class CreateIdeaFormModel
@@ -689,3 +848,8 @@
         public string TagText { get; set; } = string.Empty;
     }
 }
+
+
+
+
+

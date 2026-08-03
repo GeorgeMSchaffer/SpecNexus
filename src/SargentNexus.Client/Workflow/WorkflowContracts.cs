@@ -180,3 +180,8 @@ public sealed class UpdateStatusRequestDto
 {
     public string Name { get; set; } = string.Empty;
 }
+
+public sealed class ReorderSwimlanesRequestDto
+{
+    public IReadOnlyList<Guid> OrderedStatusIds { get; set; } = Array.Empty<Guid>();
+}

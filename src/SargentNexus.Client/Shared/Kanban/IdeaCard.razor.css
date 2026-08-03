@@ -106,3 +106,9 @@
     color: #334155;
     font-weight: 600;
 }
+
+.idea-card--dragging {
+    opacity: 0.55;
+    border-style: dashed;
+}
+

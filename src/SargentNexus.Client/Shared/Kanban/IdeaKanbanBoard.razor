@@ -1,0 +1,139 @@
+﻿<div class="kanban-board" role="list" aria-label="Ideas board">
+    @foreach (var item in _displayColumns.Select((column, index) => new { column, index }))
+    {
+        <KanbanColumn Column="item.column"
+                      CanReorderColumns="CanReorderColumns"
+                      IsDropTarget="IsDropTarget(item.column.StatusId, item.index)"
+                      IsColumnDragSource="_draggingColumnStatusId == item.column.StatusId"
+                      OnCardSelected="OnCardSelected"
+                      OnCardDragStart="HandleCardDragStart"
+                      OnCardDragEnd="HandleCardDragEnd"
+                      OnDragEnter="(() => HandleDragEnter(item.column.StatusId, item.index))"
+                      OnDrop="(() => HandleDrop(item.column.StatusId, item.index))"
+                      OnColumnDragStart="(() => HandleColumnDragStart(item.column.StatusId))"
+                      OnColumnDragEnd="HandleColumnDragEnd" />
+    }
+
+    @if (_displayColumns.Count == 0)
+    {
+        <div class="text-muted small">No columns — assign statuses to this board.</div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public IReadOnlyList<KanbanColumnModel> Columns { get; set; } = Array.Empty<KanbanColumnModel>();
+
+    [Parameter]
+    public bool CanReorderColumns { get; set; }
+
+    [Parameter]
+    public EventCallback<Guid> OnCardSelected { get; set; }
+
+    [Parameter]
+    public EventCallback<(Guid ideaId, Guid targetStatusId)> OnIdeaMoved { get; set; }
+
+    [Parameter]
+    public EventCallback<IReadOnlyList<KanbanColumnModel>> OnColumnsReordered { get; set; }
+
+    private List<KanbanColumnModel> _displayColumns = new();
+    private Guid? _draggingIdeaId;
+    private Guid? _draggingColumnStatusId;
+    private Guid? _dragOverStatusId;
+    private int _dragOverColumnIndex = -1;
+
+    protected override void OnParametersSet()
+    {
+        if (!_draggingColumnStatusId.HasValue)
+        {
+            _displayColumns = Columns.OrderBy(column => column.Order).ToList();
+        }
+    }
+
+    private bool IsDropTarget(Guid statusId, int index)
+    {
+        if (_draggingIdeaId.HasValue)
+        {
+            return _dragOverStatusId == statusId;
+        }
+
+        return _draggingColumnStatusId.HasValue &&
+               _dragOverColumnIndex == index &&
+               _draggingColumnStatusId.Value != statusId;
+    }
+
+    private void HandleCardDragStart(Guid ideaId)
+    {
+        _draggingIdeaId = ideaId;
+        _draggingColumnStatusId = null;
+    }
+
+    private void HandleCardDragEnd()
+    {
+        _draggingIdeaId = null;
+        _dragOverStatusId = null;
+    }
+
+    private void HandleColumnDragStart(Guid statusId)
+    {
+        _draggingColumnStatusId = statusId;
+        _draggingIdeaId = null;
+    }
+
+    private void HandleColumnDragEnd()
+    {
+        _draggingColumnStatusId = null;
+        _dragOverColumnIndex = -1;
+        _displayColumns = Columns.OrderBy(column => column.Order).ToList();
+    }
+
+    private void HandleDragEnter(Guid statusId, int index)
+    {
+        if (_draggingIdeaId.HasValue)
+        {
+            _dragOverStatusId = statusId;
+        }
+        else if (_draggingColumnStatusId.HasValue)
+        {
+            _dragOverColumnIndex = index;
+        }
+    }
+
+    private async Task HandleDrop(Guid targetStatusId, int targetIndex)
+    {
+        if (_draggingIdeaId.HasValue)
+        {
+            var ideaId = _draggingIdeaId.Value;
+            _draggingIdeaId = null;
+            _dragOverStatusId = null;
+            await OnIdeaMoved.InvokeAsync((ideaId, targetStatusId));
+            return;
+        }
+
+        if (_draggingColumnStatusId.HasValue)
+        {
+            var sourceStatusId = _draggingColumnStatusId.Value;
+            _draggingColumnStatusId = null;
+            _dragOverColumnIndex = -1;
+
+            var sourceIndex = _displayColumns.FindIndex(column => column.StatusId == sourceStatusId);
+            if (sourceIndex < 0 || sourceIndex == targetIndex)
+            {
+                return;
+            }
+
+            var updatedColumns = _displayColumns.ToList();
+            var movedColumn = updatedColumns[sourceIndex];
+            updatedColumns.RemoveAt(sourceIndex);
+            updatedColumns.Insert(targetIndex, movedColumn);
+
+            for (var index = 0; index < updatedColumns.Count; index++)
+            {
+                updatedColumns[index].Order = index + 1;
+            }
+
+            _displayColumns = updatedColumns;
+            await OnColumnsReordered.InvokeAsync(_displayColumns);
+        }
+    }
+}
