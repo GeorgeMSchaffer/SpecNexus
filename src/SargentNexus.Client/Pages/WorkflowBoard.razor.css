@@ -1,0 +1,35 @@
+.board-columns {
+    min-height: 400px;
+    align-items: flex-start;
+}
+
+.board-column {
+    width: 260px;
+    min-width: 220px;
+    background-color: #f8f9fa;
+    border-radius: 6px;
+    padding: 0.5rem 0.5rem 0.75rem;
+}
+
+.board-column-header {
+    border-bottom: 2px solid #dee2e6;
+    padding-bottom: 0.4rem;
+    margin-bottom: 0.5rem;
+}
+
+.board-card {
+    transition: box-shadow 0.15s ease;
+}
+
+.board-card:hover {
+    box-shadow: 0 2px 8px rgba(0,0,0,.15) !important;
+}
+
+.board-card-empty {
+    border-style: dashed !important;
+    background: transparent;
+}
+
+.extra-small {
+    font-size: 0.72rem;
+}

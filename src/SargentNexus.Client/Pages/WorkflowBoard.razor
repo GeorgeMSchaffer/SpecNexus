@@ -1,0 +1,310 @@
+@page "/workflow/{BoardId:guid}"
+@inject IAuthSessionService AuthSessionService
+@inject IClientErrorMessageService ErrorMessageService
+@inject NavigationManager NavigationManager
+@inject WorkflowApiClient WorkflowApiClient
+
+<PageTitle>@(_board?.Name ?? "Board")</PageTitle>
+
+<AuthGate>
+    <div class="container-fluid py-3">
+        <div class="d-flex align-items-center gap-3 mb-3 flex-wrap">
+            <NavLink class="btn btn-sm btn-outline-secondary" href="/workflow">← Boards</NavLink>
+
+            @if (_board is not null)
+            {
+                <div>
+                    <h1 class="h4 mb-0">@_board.Name</h1>
+                    <span class="text-muted small">@(_board.AllowUserStatusUpdate ? "User-managed" : "Admin-managed")</span>
+                </div>
+            }
+
+            <div class="ms-auto">
+                @if (CanCreateIdea)
+                {
+                    <button class="btn btn-primary btn-sm" @onclick="StartCreateIdea">+ New idea</button>
+                }
+            </div>
+        </div>
+
+        @if (_loading)
+        {
+            <div class="d-flex align-items-center gap-2 text-muted py-4">
+                <div class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></div>
+                <span>Loading board…</span>
+            </div>
+        }
+        else if (_errorMessage is not null)
+        {
+            <div class="alert alert-danger">@_errorMessage</div>
+        }
+        else if (_board is not null)
+        {
+            @if (_showCreateForm)
+            {
+                <div class="card mb-4" style="max-width:600px">
+                    <div class="card-body">
+                        <h2 class="h6 mb-3">New idea</h2>
+                        <EditForm Model="_createForm" OnValidSubmit="SaveNewIdeaAsync">
+                            <DataAnnotationsValidator />
+                            <div class="mb-3">
+                                <label class="form-label">Title <span class="text-danger">*</span></label>
+                                <InputText class="form-control" @bind-Value="_createForm.Title" />
+                                <ValidationMessage For="() => _createForm.Title" />
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Description</label>
+                                <InputTextArea class="form-control" rows="3" @bind-Value="_createForm.Description" />
+                            </div>
+                            <div class="row g-2 mb-3">
+                                <div class="col-sm-6">
+                                    <label class="form-label">Priority</label>
+                                    <InputSelect class="form-select" @bind-Value="_createForm.Priority">
+                                        <option value="">-- none --</option>
+                                        <option value="Low">Low</option>
+                                        <option value="Medium">Medium</option>
+                                        <option value="High">High</option>
+                                        <option value="Critical">Critical</option>
+                                    </InputSelect>
+                                </div>
+                                <div class="col-sm-6">
+                                    <label class="form-label">Due date</label>
+                                    <input type="date" class="form-control"
+                                           value="@_createForm.DueDateString"
+                                           @onchange="e => _createForm.DueDateString = e.Value?.ToString()" />
+                                </div>
+                            </div>
+                            @if (!string.IsNullOrWhiteSpace(_createError))
+                            {
+                                <div class="alert alert-danger py-2">@_createError</div>
+                            }
+                            <div class="d-flex gap-2">
+                                <button class="btn btn-primary" type="submit" disabled="@_isSubmitting">
+                                    @(_isSubmitting ? "Creating…" : "Create")
+                                </button>
+                                <button class="btn btn-outline-secondary" type="button" @onclick="CancelCreate">Cancel</button>
+                            </div>
+                        </EditForm>
+                    </div>
+                </div>
+            }
+
+            @if (_swimlanes.Count == 0)
+            {
+                <div class="alert alert-secondary">
+                    <strong>No swimlanes configured.</strong>
+                    An administrator can add statuses and configure this board in
+                    <a href="/settings/boards">Settings → Boards &amp; Statuses</a>.
+                </div>
+            }
+            else
+            {
+                <div class="board-columns d-flex gap-3 overflow-auto pb-3">
+                    @foreach (var swimlane in _swimlanes)
+                    {
+                        var laneIdeas = IdeasForSwimlane(swimlane.StatusId);
+                        <div class="board-column flex-shrink-0">
+                            <div class="board-column-header d-flex justify-content-between align-items-center mb-2 px-2">
+                                <span class="fw-semibold small text-uppercase text-muted">@swimlane.StatusName</span>
+                                <span class="badge text-bg-secondary rounded-pill">@laneIdeas.Count</span>
+                            </div>
+
+                            @if (laneIdeas.Count == 0)
+                            {
+                                <div class="board-card-empty text-muted small px-2 py-3 text-center rounded border border-dashed">
+                                    No ideas here yet.
+                                    @if (CanCreateIdea)
+                                    {
+                                        <br />
+                                        <button class="btn btn-link btn-sm p-0 mt-1" @onclick="StartCreateIdea">Add one</button>
+                                    }
+                                </div>
+                            }
+                            else
+                            {
+                                @foreach (var idea in laneIdeas)
+                                {
+                                    var ideaId = idea.IdeaId;
+                                    <div class="board-card card mb-2 shadow-sm" @onclick="() => OpenIdea(ideaId)" style="cursor:pointer">
+                                        <div class="card-body py-2 px-3">
+                                            <div class="fw-semibold small mb-1 text-truncate" title="@idea.Title">@idea.Title</div>
+                                            <div class="d-flex gap-2 align-items-center">
+                                                @if (!string.IsNullOrWhiteSpace(idea.Priority))
+                                                {
+                                                    <span class="badge @PriorityBadgeClass(idea.Priority) badge-sm">@idea.Priority</span>
+                                                }
+                                                @if (idea.DueDate is not null)
+                                                {
+                                                    <span class="text-muted extra-small">Due @idea.DueDate.Value.ToString("MMM d")</span>
+                                                }
+                                                @if (idea.UpvoteCount > 0)
+                                                {
+                                                    <span class="ms-auto text-muted extra-small">▲ @idea.UpvoteCount</span>
+                                                }
+                                            </div>
+                                            @if (!string.IsNullOrWhiteSpace(idea.AssigneeDisplayName))
+                                            {
+                                                <div class="text-muted extra-small mt-1">@idea.AssigneeDisplayName</div>
+                                            }
+                                        </div>
+                                    </div>
+                                }
+                            }
+                        </div>
+                    }
+                </div>
+            }
+        }
+    </div>
+</AuthGate>
+
+@code {
+    [Parameter]
+    public Guid BoardId { get; set; }
+
+    private BoardSummaryDto? _board;
+    private SargentNexus.Client.Workflow.PagedResultDto<IdeaListItemDto> _ideasResult = new();
+    private List<SwimlaneDto> _swimlanes = new();
+
+    private bool _loading = true;
+    private bool _isSubmitting;
+    private bool _showCreateForm;
+    private string? _errorMessage;
+    private string? _createError;
+    private CreateIdeaFormModel _createForm = new();
+
+    private bool CanCreateIdea
+    {
+        get
+        {
+            var role = AuthSessionService.User?.Role ?? string.Empty;
+            return string.Equals(role, "SiteAdmin", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(role, "OrgAdmin", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(role, "User", StringComparison.OrdinalIgnoreCase);
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_board is null || _board.BoardId != BoardId)
+        {
+            await LoadAsync();
+        }
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _errorMessage = null;
+
+        try
+        {
+            if (!AuthSessionService.IsAuthenticated)
+            {
+                NavigationManager.NavigateTo("/login");
+                return;
+            }
+
+            _board = await WorkflowApiClient.GetBoardDetailAsync(AuthSessionService.AccessToken!, BoardId, CancellationToken.None);
+            _swimlanes = _board.Swimlanes
+                .Where(s => !s.IsDeletedStatus)
+                .OrderBy(s => s.Order)
+                .ToList();
+
+            _ideasResult = await WorkflowApiClient.ListIdeasAsync(AuthSessionService.AccessToken!, BoardId, CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = ErrorMessageService.GetDisplayMessage(null, null, ex);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private List<IdeaListItemDto> IdeasForSwimlane(Guid statusId) =>
+        _ideasResult.Items.Where(i => i.StatusId == statusId).ToList();
+
+    private void OpenIdea(Guid ideaId) =>
+        NavigationManager.NavigateTo($"/ideas/{ideaId}/edit");
+
+    private void StartCreateIdea()
+    {
+        _createForm = new CreateIdeaFormModel();
+        _createError = null;
+        _showCreateForm = true;
+    }
+
+    private void CancelCreate()
+    {
+        _showCreateForm = false;
+        _createError = null;
+    }
+
+    private async Task SaveNewIdeaAsync()
+    {
+        _isSubmitting = true;
+        _createError = null;
+
+        try
+        {
+            DateOnly? dueDate = null;
+            if (!string.IsNullOrWhiteSpace(_createForm.DueDateString)
+                && DateOnly.TryParse(_createForm.DueDateString, out var parsed))
+            {
+                dueDate = parsed;
+            }
+
+            await WorkflowApiClient.CreateIdeaAsync(
+                AuthSessionService.AccessToken!,
+                BoardId,
+                new IdeaWriteRequestDto
+                {
+                    Title = _createForm.Title.Trim(),
+                    Description = _createForm.Description?.Trim() ?? string.Empty,
+                    Priority = _createForm.Priority ?? string.Empty,
+                    DueDate = dueDate
+                },
+                CancellationToken.None);
+
+            _showCreateForm = false;
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            _createError = ErrorMessageService.GetDisplayMessage(null, null, ex);
+        }
+        finally
+        {
+            _isSubmitting = false;
+        }
+    }
+
+    private static string PriorityBadgeClass(string priority) => priority.ToLowerInvariant() switch
+    {
+        "critical" => "text-bg-danger",
+        "high"     => "text-bg-warning",
+        "medium"   => "text-bg-primary",
+        "low"      => "text-bg-secondary",
+        _          => "text-bg-light"
+    };
+
+    private sealed class CreateIdeaFormModel
+    {
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.StringLength(200)]
+        public string Title { get; set; } = string.Empty;
+
+        public string Description { get; set; } = string.Empty;
+
+        public string? Priority { get; set; }
+
+        public string? DueDateString { get; set; }
+    }
+}
