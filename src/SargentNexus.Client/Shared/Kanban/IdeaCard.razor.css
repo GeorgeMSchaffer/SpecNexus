@@ -1,0 +1,114 @@
+.idea-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+    padding: 0.9rem 0.95rem;
+    background: #ffffff;
+    border: 1px solid #d3deea;
+    border-radius: 0.8rem;
+    box-shadow: 0 0.2rem 0.75rem rgba(15, 23, 42, 0.06);
+}
+
+.idea-card__title-button {
+    padding: 0;
+    color: #1d4ed8;
+    text-align: left;
+    background: transparent;
+    border: 0;
+    font-size: 0.92rem;
+    font-weight: 700;
+    line-height: 1.35;
+}
+
+.idea-card__title-button:hover,
+.idea-card__title-button:focus-visible {
+    color: #1e3a8a;
+    text-decoration: underline;
+    outline: none;
+}
+
+.idea-card__row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.65rem;
+}
+
+.idea-card__label,
+.idea-card__assignee-name,
+.idea-card__value {
+    font-size: 0.78rem;
+    color: #334155;
+}
+
+.idea-card__label {
+    color: #64748b;
+}
+
+.idea-card__value--priority {
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.idea-card__value--upvotes {
+    font-weight: 600;
+}
+
+.idea-card__assignee {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    min-width: 6rem;
+    justify-content: flex-end;
+}
+
+.idea-card__avatar {
+    width: 1.55rem;
+    height: 1.55rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    background: #e2e8f0;
+    color: #0f172a;
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    flex-shrink: 0;
+}
+
+.idea-card__assignee-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.idea-card__tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-top: 0.15rem;
+}
+
+.idea-card__tag {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.18rem 0.5rem;
+    border-radius: 999px;
+    background: #f1f5f9;
+    color: #475569;
+    font-size: 0.72rem;
+}
+
+.idea-card__tag--more {
+    background: #e2e8f0;
+    color: #334155;
+    font-weight: 600;
+}
+
+.idea-card--dragging {
+    opacity: 0.55;
+    border-style: dashed;
+}
+

@@ -1,0 +1,56 @@
+﻿<article class="idea-card @(_isDragging ? "idea-card--dragging" : string.Empty)"
+         draggable="true"
+         @ondragstart="HandleDragStart"
+         @ondragstart:stopPropagation
+         @ondragend="HandleDragEnd"
+         @ondragend:stopPropagation>
+    <button type="button" class="idea-card__title-button" @onclick="HandleSelectedAsync">@Card.Title</button>
+
+    <div class="idea-card__row">
+        <span class="idea-card__label">Priority</span>
+        <span class="idea-card__value idea-card__value--priority">@Card.Priority</span>
+    </div>
+
+    <div class="idea-card__row">
+        <span class="idea-card__label">Assigned To</span>
+        <span class="idea-card__assignee" title="@(Card.AssigneeDisplayName ?? "Unassigned")">
+            <span class="idea-card__avatar">@Card.AssigneeInitials</span>
+            <span class="idea-card__assignee-name">@(Card.AssigneeDisplayName ?? "Unassigned")</span>
+        </span>
+    </div>
+
+    <div class="idea-card__row">
+        <span class="idea-card__label">Upvotes</span>
+        <span class="idea-card__value idea-card__value--upvotes">^ @Card.UpvoteCount</span>
+    </div>
+</article>
+
+@code {
+    [Parameter, EditorRequired]
+    public KanbanIdeaCardModel Card { get; set; } = new();
+
+    [Parameter]
+    public EventCallback<Guid> OnSelected { get; set; }
+
+    [Parameter]
+    public EventCallback<Guid> OnDragStart { get; set; }
+
+    [Parameter]
+    public EventCallback OnDragEnd { get; set; }
+
+    private bool _isDragging;
+
+    private Task HandleSelectedAsync() => OnSelected.InvokeAsync(Card.IdeaId);
+
+    private async Task HandleDragStart()
+    {
+        _isDragging = true;
+        await OnDragStart.InvokeAsync(Card.IdeaId);
+    }
+
+    private async Task HandleDragEnd()
+    {
+        _isDragging = false;
+        await OnDragEnd.InvokeAsync();
+    }
+}

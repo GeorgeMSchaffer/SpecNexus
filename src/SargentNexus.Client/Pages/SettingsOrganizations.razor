@@ -51,11 +51,6 @@
                                 <ValidationMessage For="() => _form.Phone" />
                             </div>
                             <div class="col-md-12">
-                                <label class="form-label">Description</label>
-                                <InputTextArea class="form-control" rows="2" @bind-Value="_form.Description" />
-                                <ValidationMessage For="() => _form.Description" />
-                            </div>
-                            <div class="col-md-12">
                                 <label class="form-label">Address</label>
                                 <InputText class="form-control" @bind-Value="_form.Address" />
                                 <ValidationMessage For="() => _form.Address" />
@@ -101,6 +96,21 @@
                             <button class="btn btn-outline-secondary" type="button" @onclick="CancelForm">Cancel</button>
                         </div>
                     </EditForm>
+
+                    @if (_editTarget is not null)
+                    {
+                        <div class="mt-3 border-top pt-3">
+                            <div class="d-flex align-items-center gap-3">
+                                <div>
+                                    <label class="form-label mb-0">Invite Code</label>
+                                    <div><code class="fs-5">@_currentInviteCode</code></div>
+                                </div>
+                                <button class="btn btn-sm btn-outline-warning" type="button" @onclick="RegenerateInviteCodeAsync" disabled="@_isRegenerating">
+                                    @(_isRegenerating ? "Regenerating..." : "Regenerate")
+                                </button>
+                            </div>
+                        </div>
+                    }
                 </div>
             </div>
         }
@@ -141,11 +151,14 @@
                         <thead>
                             <tr>
                                 <th>Company</th>
-                                <th>Description</th>
                                 <th>City</th>
                                 <th>State</th>
                                 <th>Phone</th>
-                                <th>Invite Code</th>
+                                @if (IsSiteAdmin)
+                                {
+                                    <th>Invite Code</th>
+                                }
+                                <th>Status</th>
                                 <th></th>
                             </tr>
                         </thead>
@@ -154,11 +167,23 @@
                             {
                                 <tr>
                                     <td>@item.CompanyName</td>
-                                    <td>@item.Description</td>
                                     <td>@item.City</td>
                                     <td>@item.State</td>
                                     <td>@item.Phone</td>
-                                    <td><code class="small">@item.InviteCode</code></td>
+                                    @if (IsSiteAdmin)
+                                    {
+                                        <td><code>@item.InviteCode</code></td>
+                                    }
+                                    <td>
+                                        @if (item.IsArchived)
+                                        {
+                                            <span class="badge text-bg-secondary">Archived</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge text-bg-success">Active</span>
+                                        }
+                                    </td>
                                     <td class="text-end">
                                         <button class="btn btn-sm btn-outline-primary" @onclick="() => StartEditAsync(item.OrganizationId)">Edit</button>
                                     </td>
@@ -194,7 +219,9 @@
     private bool _includeArchived;
     private bool _isLoading;
     private bool _isSubmitting;
+    private bool _isRegenerating;
     private string? _errorMessage;
+    private string? _currentInviteCode;
     private int _page = 1;
     private int _pageSize = 25;
     private int _totalCount;
@@ -305,10 +332,10 @@
         {
             var detail = await AdministrationApiClient.GetOrganizationAsync(AuthSessionService.AccessToken!, organizationId, CancellationToken.None);
             _editTarget = detail;
+            _currentInviteCode = detail.InviteCode;
             _form = new OrganizationFormModel
             {
                 CompanyName = detail.CompanyName,
-                Description = detail.Description,
                 Address = detail.Address,
                 City = detail.City,
                 State = detail.State,
@@ -345,7 +372,6 @@
             var request = new OrganizationUpsertRequestDto
             {
                 CompanyName = _form.CompanyName.Trim(),
-                Description = string.IsNullOrWhiteSpace(_form.Description) ? null : _form.Description.Trim(),
                 Address = _form.Address.Trim(),
                 City = _form.City.Trim(),
                 State = _form.State.Trim(),
@@ -381,6 +407,7 @@
 
             _view = PageView.List;
             _editTarget = null;
+            _currentInviteCode = null;
             await LoadOrganizationsAsync();
         }
         catch (AuthValidationException ex)
@@ -405,6 +432,45 @@
     {
         _view = PageView.List;
         _editTarget = null;
+        _currentInviteCode = null;
+    }
+
+    private async Task RegenerateInviteCodeAsync()
+    {
+        if (_editTarget is null || string.IsNullOrWhiteSpace(AuthSessionService.AccessToken))
+        {
+            return;
+        }
+
+        _isRegenerating = true;
+
+        try
+        {
+            var result = await AdministrationApiClient.RegenerateInviteCodeAsync(
+                AuthSessionService.AccessToken!,
+                _editTarget.OrganizationId,
+                CancellationToken.None);
+
+            _currentInviteCode = result.InviteCode;
+
+            var orgInList = _organizations.FirstOrDefault(o => o.OrganizationId == _editTarget.OrganizationId);
+            if (orgInList is not null)
+            {
+                orgInList.InviteCode = result.InviteCode;
+            }
+        }
+        catch (AuthApiException ex)
+        {
+            _errorMessage = ErrorMessageService.GetDisplayMessage(ex.Title, ex.Detail, ex);
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = ErrorMessageService.GetDisplayMessage(null, null, ex);
+        }
+        finally
+        {
+            _isRegenerating = false;
+        }
     }
 
     private static OrganizationListItemDto ToListItem(OrganizationDetailDto detail)
@@ -413,11 +479,9 @@
         {
             OrganizationId = detail.OrganizationId,
             CompanyName = detail.CompanyName,
-            Description = detail.Description,
             City = detail.City,
             State = detail.State,
             Phone = detail.Phone,
-            InviteCode = detail.InviteCode,
             LogoThumbnailUrl = detail.LogoThumbnailUrl,
             IsArchived = detail.IsArchived
         };
@@ -428,9 +492,6 @@
         [System.ComponentModel.DataAnnotations.Required]
         [System.ComponentModel.DataAnnotations.MaxLength(200)]
         public string CompanyName { get; set; } = string.Empty;
-
-        [System.ComponentModel.DataAnnotations.MaxLength(500)]
-        public string? Description { get; set; }
 
         [System.ComponentModel.DataAnnotations.MaxLength(200)]
         public string Address { get; set; } = string.Empty;

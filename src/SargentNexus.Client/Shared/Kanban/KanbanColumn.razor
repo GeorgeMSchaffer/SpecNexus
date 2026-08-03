@@ -1,0 +1,84 @@
+﻿<section class="kanban-column @(IsDropTarget ? "kanban-column--drag-target" : string.Empty)"
+         role="listitem"
+         aria-label="@Column.StatusName"
+         @ondragenter="HandleDragEnter"
+         @ondragover:preventDefault
+         @ondrop="HandleDrop">
+    <header class="kanban-column__header @(CanReorderColumns ? "kanban-column__header--draggable" : string.Empty) @((IsColumnDragSource ? "kanban-column__header--dragging" : string.Empty))"
+            draggable="@(CanReorderColumns ? "true" : "false")"
+            @ondragstart="HandleColumnDragStart"
+            @ondragstart:stopPropagation
+            @ondragend="HandleColumnDragEnd"
+            @ondragend:stopPropagation>
+        <div class="kanban-column__title-group">
+            <span class="kanban-column__dot" style="background-color: @Column.StatusColor" aria-hidden="true"></span>
+            <div class="kanban-column__title-stack">
+                <div class="kanban-column__title-row">
+                    <h2 class="kanban-column__title">@Column.StatusName</h2>
+                    @if (Column.IsDeletedStatus)
+                    {
+                        <span class="badge text-bg-secondary">Deleted</span>
+                    }
+                </div>
+                <span class="kanban-column__count">@Column.Cards.Count idea@(Column.Cards.Count == 1 ? string.Empty : "s")</span>
+            </div>
+        </div>
+    </header>
+
+    <div class="kanban-column__body">
+        @if (Column.Cards.Count == 0)
+        {
+            <div class="kanban-column__empty">No ideas</div>
+        }
+        else
+        {
+            @foreach (var card in Column.Cards)
+            {
+                <IdeaCard Card="card"
+                          OnSelected="OnCardSelected"
+                          OnDragStart="OnCardDragStart"
+                          OnDragEnd="OnCardDragEnd" />
+            }
+        }
+    </div>
+</section>
+
+@code {
+    [Parameter, EditorRequired]
+    public KanbanColumnModel Column { get; set; } = new();
+
+    [Parameter]
+    public bool CanReorderColumns { get; set; }
+
+    [Parameter]
+    public bool IsDropTarget { get; set; }
+
+    [Parameter]
+    public bool IsColumnDragSource { get; set; }
+
+    [Parameter]
+    public EventCallback<Guid> OnCardSelected { get; set; }
+
+    [Parameter]
+    public EventCallback<Guid> OnCardDragStart { get; set; }
+
+    [Parameter]
+    public EventCallback OnCardDragEnd { get; set; }
+
+    [Parameter]
+    public EventCallback OnDragEnter { get; set; }
+
+    [Parameter]
+    public EventCallback OnDrop { get; set; }
+
+    [Parameter]
+    public EventCallback OnColumnDragStart { get; set; }
+
+    [Parameter]
+    public EventCallback OnColumnDragEnd { get; set; }
+
+    private Task HandleDragEnter() => OnDragEnter.InvokeAsync();
+    private Task HandleDrop() => OnDrop.InvokeAsync();
+    private Task HandleColumnDragStart() => OnColumnDragStart.InvokeAsync();
+    private Task HandleColumnDragEnd() => OnColumnDragEnd.InvokeAsync();
+}
