@@ -4,9 +4,9 @@
 Track implementation work that Copilot-driven implementation agents should complete, what is currently active, and what has already been finished.
 
 ## Current Status
-- Current implementation slice: Epic 8 Hardening (T050 Seed verification)
+- Current implementation slice: Epic 8 Hardening (complete — T050 finished)
 - Current owner: main session
-- Current state: Ready Next
+- Current state: All Epic 8 hardening tasks complete
 - Last updated: 2026-08-03
 
 ## Completed
@@ -37,12 +37,16 @@ Track implementation work that Copilot-driven implementation agents should compl
 - Domain-additions Add `Board.IsArchived` (bool) and `Status.Color/SortOrder/IsDefault` to domain + EF config + seed. Migration `AddBoardIsArchived` generated.
 - T037–T039 Complete notification event wiring and coverage (idea/comment mentions, comment-added, status-changed), canonical `/ideas/{ideaId}/edit` links, self-notification suppression, and deferred-email DI guard coverage.
 - T049 Add contract tests for 4xx problem-details response schemas, merged OpenAPI auth-register coverage, and integration validation of problem-details envelopes.
+- T050 End-to-end seed verification: added `OrganizationBootstrapTests` (infrastructure bootstrap defaults and audit writer persistence), extended `AuthSeederTests` for invite code uniqueness, added `SeedVerificationIntegrationTests` (org create defaults, invite code in response, audit DB persistence, Site Admin first-login enforcement, demo org invite codes, OAuth/SAML deferred-scope 404 boundaries), and extended `NotificationWriterRegistrationTests` with OAuth/SAML DI guard assertions.
 
 ## In Progress
 - none
 
 ## Ready Next
-- T050 End-to-end seed verification (after T049).
+- none (Epic 8 hardening complete)
+- T039 Keep outbound email delivery explicitly deferred outside MVP.
+- T049 Add contract tests for 4xx problem-details response schemas, merged OpenAPI auth-register coverage, and integration validation of problem-details envelopes.
+- T050 End-to-end seed verification: added OrganizationBootstrapTests, AuthSeeder invite code coverage, SeedVerificationIntegrationTests, and deferred-scope DI guards for OAuth/SAML.
 
 ## Progress Notes
 - T001 completed: created `SargentNexus.sln`, `global.json`, and the five core projects under `src/`.
