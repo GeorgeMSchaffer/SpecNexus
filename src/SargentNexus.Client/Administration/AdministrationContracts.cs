@@ -21,6 +21,8 @@ public sealed class OrganizationListItemDto
 
     public string CompanyName { get; set; } = string.Empty;
 
+    public string? Description { get; set; }
+
     public string City { get; set; } = string.Empty;
 
     public string State { get; set; } = string.Empty;
@@ -37,6 +39,8 @@ public sealed class OrganizationListItemDto
 public sealed class OrganizationUpsertRequestDto
 {
     public string CompanyName { get; set; } = string.Empty;
+
+    public string? Description { get; set; }
 
     public string Address { get; set; } = string.Empty;
 
@@ -67,6 +71,8 @@ public sealed class OrganizationDetailDto
     public Guid OrganizationId { get; set; }
 
     public string CompanyName { get; set; } = string.Empty;
+
+    public string? Description { get; set; }
 
     public string Address { get; set; } = string.Empty;
 

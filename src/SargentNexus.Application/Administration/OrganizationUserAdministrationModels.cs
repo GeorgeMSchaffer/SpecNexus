@@ -41,6 +41,8 @@ public sealed class OrganizationListItemModel
 
     public string CompanyName { get; init; } = string.Empty;
 
+    public string? Description { get; init; }
+
     public string City { get; init; } = string.Empty;
 
     public string State { get; init; } = string.Empty;
@@ -59,6 +61,9 @@ public sealed class OrganizationUpsertRequestModel
     [Required]
     [MaxLength(200)]
     public string CompanyName { get; set; } = string.Empty;
+
+    [MaxLength(500)]
+    public string? Description { get; set; }
 
     [Required]
     [MaxLength(200)]
@@ -105,6 +110,8 @@ public sealed class OrganizationDetailModel
     public Guid OrganizationId { get; init; }
 
     public string CompanyName { get; init; } = string.Empty;
+
+    public string? Description { get; init; }
 
     public string Address { get; init; } = string.Empty;
 

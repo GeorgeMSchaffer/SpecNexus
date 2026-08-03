@@ -82,6 +82,7 @@ public sealed class WorkflowDataAccess : IWorkflowDataAccess
     {
         return _dbContext.Ideas
             .Include(item => item.Status)
+            .Include(item => item.AuthorUser)
             .Include(item => item.AssigneeUser)
             .Include(item => item.IdeaTags)
                 .ThenInclude(item => item.Tag)
@@ -89,13 +90,14 @@ public sealed class WorkflowDataAccess : IWorkflowDataAccess
                 .ThenInclude(item => item.MentionedUser)
             .Include(item => item.Comments)
             .Include(item => item.Upvotes)
-            .SingleOrDefaultAsync(item => item.Id == ideaId, cancellationToken);
+            .SingleOrDefaultAsync(item => item.Id == ideaId && !item.IsDeleted, cancellationToken);
     }
 
     public async Task<IReadOnlyList<Idea>> ListIdeasByBoardIdAsync(Guid boardId, CancellationToken cancellationToken)
     {
         return await _dbContext.Ideas
             .Include(item => item.Status)
+            .Include(item => item.AuthorUser)
             .Include(item => item.AssigneeUser)
             .Include(item => item.IdeaTags)
                 .ThenInclude(item => item.Tag)

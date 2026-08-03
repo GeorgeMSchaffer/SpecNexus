@@ -46,9 +46,10 @@
                         <thead>
                             <tr>
                                 <th>Title</th>
+                                <th>Created By</th>
+                                <th>Assigned To</th>
                                 <th>Status</th>
-                                <th>Priority</th>
-                                <th>Created</th>
+                                <th>Created Date</th>
                                 <th></th>
                             </tr>
                         </thead>
@@ -58,8 +59,9 @@
                                 var ideaId = idea.IdeaId;
                                 <tr>
                                     <td>@idea.Title</td>
+                                    <td>@(idea.AuthorDisplayName ?? idea.AuthorUserId.ToString("D")[..8])</td>
+                                    <td>@(idea.AssigneeDisplayName ?? "—")</td>
                                     <td>@idea.StatusName</td>
-                                    <td>@idea.Priority</td>
                                     <td>@idea.CreatedAtUtc.ToLocalTime().ToString("d")</td>
                                     <td class="text-end">
                                         <button class="btn btn-sm btn-outline-primary" @onclick="() => ViewIdea(ideaId)">Details</button>

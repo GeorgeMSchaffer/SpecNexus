@@ -212,6 +212,23 @@ public sealed class IdeasController : ApiControllerBase
         return ToProblem(result.FailureReason!.Value, result.Errors);
     }
 
+    [HttpDelete("/api/v1/ideas/{ideaId:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> SoftDeleteIdea(Guid ideaId, CancellationToken cancellationToken)
+    {
+        var result = await _workflowService.SoftDeleteIdeaAsync(GetWorkflowActorContext(), ideaId, cancellationToken);
+
+        if (result.Succeeded)
+        {
+            return NoContent();
+        }
+
+        return ToProblem(result.FailureReason!.Value, result.Errors);
+    }
+
     [HttpPost("/api/v1/ideas/{ideaId:guid}/upvote/toggle")]
     [ProducesResponseType(typeof(UpvoteToggleResultModel), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]

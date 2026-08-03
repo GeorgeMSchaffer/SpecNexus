@@ -69,6 +69,7 @@ internal sealed class OrganizationUserAdministrationStore : IOrganizationUserAdm
             {
                 OrganizationId = item.Id,
                 CompanyName = item.CompanyName,
+                Description = item.Description,
                 City = item.City,
                 State = item.State,
                 Phone = item.Phone,

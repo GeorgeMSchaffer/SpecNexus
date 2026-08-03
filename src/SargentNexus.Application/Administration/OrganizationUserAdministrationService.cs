@@ -158,6 +158,7 @@ public sealed class OrganizationUserAdministrationService : IOrganizationUserAdm
         {
             Id = Guid.NewGuid(),
             CompanyName = request.CompanyName.Trim(),
+            Description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim(),
             Address = request.Address.Trim(),
             City = request.City.Trim(),
             State = request.State.Trim(),
@@ -242,6 +243,7 @@ public sealed class OrganizationUserAdministrationService : IOrganizationUserAdm
         }
 
         organization.CompanyName = request.CompanyName.Trim();
+        organization.Description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim();
         organization.Address = request.Address.Trim();
         organization.City = request.City.Trim();
         organization.State = request.State.Trim();
@@ -792,6 +794,7 @@ public sealed class OrganizationUserAdministrationService : IOrganizationUserAdm
         {
             OrganizationId = organization.Id,
             CompanyName = organization.CompanyName,
+            Description = organization.Description,
             Address = organization.Address,
             City = organization.City,
             State = organization.State,

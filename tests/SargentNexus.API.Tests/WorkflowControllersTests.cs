@@ -717,6 +717,15 @@ public sealed class WorkflowControllersTests
                 : MoveIdeaStatusAsyncHandler(actor, ideaId, request, cancellationToken);
         }
 
+        public Task<WorkflowResult> SoftDeleteIdeaAsync(
+            WorkflowActorContext actor,
+            Guid ideaId,
+            CancellationToken cancellationToken)
+        {
+            LastActor = actor;
+            return Task.FromResult(WorkflowResult.Failure(WorkflowFailureReason.Forbidden));
+        }
+
         public Task<WorkflowResult<PagedResultModel<CommentModel>>> ListCommentsAsync(
             WorkflowActorContext actor,
             Guid ideaId,

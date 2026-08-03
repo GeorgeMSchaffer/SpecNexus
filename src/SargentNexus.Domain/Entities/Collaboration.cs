@@ -30,6 +30,8 @@ public sealed class Idea : AuditableEntityBase
 
     public Status Status { get; set; } = null!;
 
+    public bool IsDeleted { get; set; }
+
     public IdeaApprovalState ApprovalState { get; set; }
 
     public Guid? PendingApprovalTargetStatusId { get; set; }

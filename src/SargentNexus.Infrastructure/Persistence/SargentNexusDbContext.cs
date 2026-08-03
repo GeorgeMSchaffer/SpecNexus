@@ -43,6 +43,7 @@ public sealed class SargentNexusDbContext : DbContext
             entity.ToTable("organizations");
             entity.HasKey(item => item.Id);
             entity.Property(item => item.CompanyName).HasMaxLength(200).IsRequired();
+            entity.Property(item => item.Description).HasMaxLength(500);
             entity.Property(item => item.Address).HasMaxLength(200).IsRequired();
             entity.Property(item => item.City).HasMaxLength(100).IsRequired();
             entity.Property(item => item.State).HasMaxLength(50).IsRequired();
@@ -120,6 +121,7 @@ public sealed class SargentNexusDbContext : DbContext
             entity.HasKey(item => item.Id);
             entity.Property(item => item.Title).HasMaxLength(150).IsRequired();
             entity.Property(item => item.Description).HasMaxLength(4000).IsRequired();
+            entity.Property(item => item.IsDeleted).HasDefaultValue(false);
             entity.Property(item => item.Priority).HasConversion<string>().HasMaxLength(20).HasDefaultValue(IdeaPriority.Medium).IsRequired();
             entity.Property(item => item.DueDate).HasColumnType("date");
             entity.HasOne(item => item.Board)

@@ -97,6 +97,11 @@ public interface IWorkflowManagementService
         MoveIdeaStatusRequestModel request,
         CancellationToken cancellationToken);
 
+    Task<WorkflowResult> SoftDeleteIdeaAsync(
+        WorkflowActorContext actor,
+        Guid ideaId,
+        CancellationToken cancellationToken);
+
     Task<WorkflowResult<PagedResultModel<CommentModel>>> ListCommentsAsync(
         WorkflowActorContext actor,
         Guid ideaId,
@@ -717,7 +722,7 @@ public sealed class WorkflowManagementService : IWorkflowManagementService
         }
 
         var ideas = await _dataAccess.ListIdeasByBoardIdAsync(boardId, cancellationToken);
-        var filtered = ideas.AsEnumerable();
+        var filtered = ideas.AsEnumerable().Where(item => !item.IsDeleted);
 
         if (!string.IsNullOrWhiteSpace(query.Search))
         {
@@ -920,6 +925,31 @@ public sealed class WorkflowManagementService : IWorkflowManagementService
         var persisted = await _dataAccess.FindIdeaByIdAsync(idea.Id, cancellationToken);
         await _auditWriter.WriteIdeaUpdatedAsync(actor.UserId, persisted!, cancellationToken);
         return WorkflowResult<IdeaDetailModel>.Success(ToIdeaDetail(persisted!));
+    }
+
+    public async Task<WorkflowResult> SoftDeleteIdeaAsync(
+        WorkflowActorContext actor,
+        Guid ideaId,
+        CancellationToken cancellationToken)
+    {
+        var idea = await _dataAccess.FindIdeaByIdAsync(ideaId, cancellationToken);
+
+        if (idea is null)
+        {
+            return WorkflowResult.Failure(WorkflowFailureReason.IdeaNotFound);
+        }
+
+        var authorization = await AuthorizeAsync(actor, idea.OrganizationId, ManageRoles, cancellationToken);
+
+        if (!authorization.Succeeded)
+        {
+            return WorkflowResult.Failure(authorization.FailureReason!.Value, authorization.Errors);
+        }
+
+        idea.IsDeleted = true;
+        idea.UpdatedAtUtc = DateTime.UtcNow;
+        await _dataAccess.SaveChangesAsync(cancellationToken);
+        return WorkflowResult.Success();
     }
 
     public async Task<WorkflowResult> MoveIdeaStatusAsync(
@@ -1380,6 +1410,7 @@ public sealed class WorkflowManagementService : IWorkflowManagementService
             StatusName = idea.Status.Name,
             UpvoteCount = idea.Upvotes.Count,
             AuthorUserId = idea.AuthorUserId,
+            AuthorDisplayName = $"{idea.AuthorUser.FirstName} {idea.AuthorUser.LastName}".Trim(),
             CreatedAtUtc = idea.CreatedAtUtc
         };
     }

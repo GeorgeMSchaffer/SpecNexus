@@ -51,6 +51,11 @@
                                 <ValidationMessage For="() => _form.Phone" />
                             </div>
                             <div class="col-md-12">
+                                <label class="form-label">Description</label>
+                                <InputTextArea class="form-control" rows="2" @bind-Value="_form.Description" />
+                                <ValidationMessage For="() => _form.Description" />
+                            </div>
+                            <div class="col-md-12">
                                 <label class="form-label">Address</label>
                                 <InputText class="form-control" @bind-Value="_form.Address" />
                                 <ValidationMessage For="() => _form.Address" />
@@ -136,10 +141,11 @@
                         <thead>
                             <tr>
                                 <th>Company</th>
+                                <th>Description</th>
                                 <th>City</th>
                                 <th>State</th>
                                 <th>Phone</th>
-                                <th>Status</th>
+                                <th>Invite Code</th>
                                 <th></th>
                             </tr>
                         </thead>
@@ -148,19 +154,11 @@
                             {
                                 <tr>
                                     <td>@item.CompanyName</td>
+                                    <td>@item.Description</td>
                                     <td>@item.City</td>
                                     <td>@item.State</td>
                                     <td>@item.Phone</td>
-                                    <td>
-                                        @if (item.IsArchived)
-                                        {
-                                            <span class="badge text-bg-secondary">Archived</span>
-                                        }
-                                        else
-                                        {
-                                            <span class="badge text-bg-success">Active</span>
-                                        }
-                                    </td>
+                                    <td><code class="small">@item.InviteCode</code></td>
                                     <td class="text-end">
                                         <button class="btn btn-sm btn-outline-primary" @onclick="() => StartEditAsync(item.OrganizationId)">Edit</button>
                                     </td>
@@ -310,6 +308,7 @@
             _form = new OrganizationFormModel
             {
                 CompanyName = detail.CompanyName,
+                Description = detail.Description,
                 Address = detail.Address,
                 City = detail.City,
                 State = detail.State,
@@ -346,6 +345,7 @@
             var request = new OrganizationUpsertRequestDto
             {
                 CompanyName = _form.CompanyName.Trim(),
+                Description = string.IsNullOrWhiteSpace(_form.Description) ? null : _form.Description.Trim(),
                 Address = _form.Address.Trim(),
                 City = _form.City.Trim(),
                 State = _form.State.Trim(),
@@ -413,9 +413,11 @@
         {
             OrganizationId = detail.OrganizationId,
             CompanyName = detail.CompanyName,
+            Description = detail.Description,
             City = detail.City,
             State = detail.State,
             Phone = detail.Phone,
+            InviteCode = detail.InviteCode,
             LogoThumbnailUrl = detail.LogoThumbnailUrl,
             IsArchived = detail.IsArchived
         };
@@ -426,6 +428,9 @@
         [System.ComponentModel.DataAnnotations.Required]
         [System.ComponentModel.DataAnnotations.MaxLength(200)]
         public string CompanyName { get; set; } = string.Empty;
+
+        [System.ComponentModel.DataAnnotations.MaxLength(500)]
+        public string? Description { get; set; }
 
         [System.ComponentModel.DataAnnotations.MaxLength(200)]
         public string Address { get; set; } = string.Empty;

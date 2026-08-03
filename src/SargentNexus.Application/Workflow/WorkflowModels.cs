@@ -180,6 +180,8 @@ public sealed class IdeaListItemModel
 
     public Guid AuthorUserId { get; init; }
 
+    public string? AuthorDisplayName { get; init; }
+
     public DateTime CreatedAtUtc { get; init; }
 }
 
