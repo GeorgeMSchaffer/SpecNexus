@@ -1,3 +1,4 @@
+using System.Buffers.Binary;
 using System.ComponentModel.DataAnnotations;
 using System.Text;
 using SargentNexus.Application.Auth;
@@ -45,6 +46,8 @@ public interface IOrganizationUserAuditWriter
 
     Task WriteOrganizationArchivedAsync(Guid actorUserId, Organization organization, CancellationToken cancellationToken);
 
+    Task WriteOrganizationLogoUpdatedAsync(Guid actorUserId, Organization organization, CancellationToken cancellationToken);
+
     Task WriteUserCreatedAsync(Guid actorUserId, User user, CancellationToken cancellationToken);
 
     Task WriteUserUpdatedAsync(Guid actorUserId, User user, string previousRole, string previousStatus, CancellationToken cancellationToken);
@@ -59,6 +62,13 @@ public interface IOrganizationUserAdministrationService
     Task<AdministrationResult<OrganizationDetailModel>> GetOrganizationAsync(Guid actorUserId, Guid organizationId, CancellationToken cancellationToken);
 
     Task<AdministrationResult<OrganizationDetailModel>> UpdateOrganizationAsync(Guid actorUserId, Guid organizationId, OrganizationUpsertRequestModel request, CancellationToken cancellationToken);
+
+    Task<AdministrationResult<OrganizationLogoModel>> UploadOrganizationLogoAsync(
+        Guid actorUserId,
+        Guid organizationId,
+        string contentType,
+        byte[] logoBytes,
+        CancellationToken cancellationToken);
 
     Task<AdministrationResult> ArchiveOrganizationAsync(Guid actorUserId, Guid organizationId, CancellationToken cancellationToken);
 
@@ -265,6 +275,80 @@ public sealed class OrganizationUserAdministrationService : IOrganizationUserAdm
         await _auditWriter.WriteOrganizationUpdatedAsync(actor.Id, organization, cancellationToken);
 
         return AdministrationResult<OrganizationDetailModel>.Success(ToOrganizationDetail(organization));
+    }
+
+    public async Task<AdministrationResult<OrganizationLogoModel>> UploadOrganizationLogoAsync(
+        Guid actorUserId,
+        Guid organizationId,
+        string contentType,
+        byte[] logoBytes,
+        CancellationToken cancellationToken)
+    {
+        var actor = await _store.FindUserByIdAsync(actorUserId, cancellationToken);
+
+        if (actor is null)
+        {
+            return AdministrationResult<OrganizationLogoModel>.Fail(AdministrationFailureReason.Forbidden);
+        }
+
+        var organization = await _store.FindOrganizationByIdAsync(organizationId, cancellationToken);
+
+        if (organization is null)
+        {
+            return AdministrationResult<OrganizationLogoModel>.Fail(AdministrationFailureReason.NotFound);
+        }
+
+        if (!CanAccessOrganization(actor, organization.Id))
+        {
+            return AdministrationResult<OrganizationLogoModel>.Fail(AdministrationFailureReason.Forbidden);
+        }
+
+        if (logoBytes.Length == 0)
+        {
+            return AdministrationResult<OrganizationLogoModel>.Fail(
+                AdministrationFailureReason.ValidationFailed,
+                new Dictionary<string, string[]>
+                {
+                    ["logoFile"] = new[] { "Logo file is required." }
+                });
+        }
+
+        if (logoBytes.Length > 2 * 1024 * 1024)
+        {
+            return AdministrationResult<OrganizationLogoModel>.Fail(
+                AdministrationFailureReason.ValidationFailed,
+                new Dictionary<string, string[]>
+                {
+                    ["logoFile"] = new[] { "Logo file cannot exceed 2 MB." }
+                });
+        }
+
+        if (!TryReadImageDimensions(contentType, logoBytes, out var dimensions))
+        {
+            return AdministrationResult<OrganizationLogoModel>.Fail(
+                AdministrationFailureReason.ValidationFailed,
+                new Dictionary<string, string[]>
+                {
+                    ["logoFile"] = new[] { "Logo file must be a valid PNG or JPEG image." }
+                });
+        }
+
+        var renderedHeight = Math.Min(dimensions.Height, 150);
+        var dataUrl = $"data:{contentType};base64,{Convert.ToBase64String(logoBytes)}";
+
+        organization.LogoUrl = dataUrl;
+        organization.LogoThumbnailUrl = dataUrl;
+        organization.LogoHeightPx = renderedHeight;
+
+        await _store.SaveChangesAsync(cancellationToken);
+        await _auditWriter.WriteOrganizationLogoUpdatedAsync(actor.Id, organization, cancellationToken);
+
+        return AdministrationResult<OrganizationLogoModel>.Success(new OrganizationLogoModel
+        {
+            LogoUrl = dataUrl,
+            LogoThumbnailUrl = dataUrl,
+            LogoHeightPx = renderedHeight
+        });
     }
 
     public async Task<AdministrationResult> ArchiveOrganizationAsync(Guid actorUserId, Guid organizationId, CancellationToken cancellationToken)
@@ -1126,8 +1210,104 @@ public sealed class OrganizationUserAdministrationService : IOrganizationUserAdm
             PrimaryContactFirstName = organization.PrimaryContactFirstName,
             PrimaryContactLastName = organization.PrimaryContactLastName,
             InviteCode = organization.InviteCode,
+            LogoUrl = organization.LogoUrl,
+            LogoThumbnailUrl = organization.LogoThumbnailUrl,
+            LogoHeightPx = organization.LogoHeightPx,
             IsArchived = organization.IsArchived
         };
+    }
+
+    private static bool TryReadImageDimensions(string contentType, byte[] bytes, out (int Width, int Height) dimensions)
+    {
+        dimensions = default;
+        var normalizedContentType = contentType.Trim().ToLowerInvariant();
+
+        if (normalizedContentType == "image/png")
+        {
+            return TryReadPngDimensions(bytes, out dimensions);
+        }
+
+        if (normalizedContentType == "image/jpeg" || normalizedContentType == "image/jpg")
+        {
+            return TryReadJpegDimensions(bytes, out dimensions);
+        }
+
+        return false;
+    }
+
+    private static bool TryReadPngDimensions(byte[] bytes, out (int Width, int Height) dimensions)
+    {
+        dimensions = default;
+
+        ReadOnlySpan<byte> signature = stackalloc byte[] { 137, 80, 78, 71, 13, 10, 26, 10 };
+        if (bytes.Length < 24 || !bytes.AsSpan(0, 8).SequenceEqual(signature))
+        {
+            return false;
+        }
+
+        if (!bytes.AsSpan(12, 4).SequenceEqual("IHDR"u8))
+        {
+            return false;
+        }
+
+        var width = BinaryPrimitives.ReadInt32BigEndian(bytes.AsSpan(16, 4));
+        var height = BinaryPrimitives.ReadInt32BigEndian(bytes.AsSpan(20, 4));
+        if (width <= 0 || height <= 0)
+        {
+            return false;
+        }
+
+        dimensions = (width, height);
+        return true;
+    }
+
+    private static bool TryReadJpegDimensions(byte[] bytes, out (int Width, int Height) dimensions)
+    {
+        dimensions = default;
+
+        if (bytes.Length < 4 || bytes[0] != 0xFF || bytes[1] != 0xD8)
+        {
+            return false;
+        }
+
+        var index = 2;
+        while (index + 9 < bytes.Length)
+        {
+            if (bytes[index] != 0xFF)
+            {
+                index++;
+                continue;
+            }
+
+            var marker = bytes[index + 1];
+            if (marker == 0xD9 || marker == 0xDA)
+            {
+                break;
+            }
+
+            var blockLength = BinaryPrimitives.ReadUInt16BigEndian(bytes.AsSpan(index + 2, 2));
+            if (blockLength < 2 || index + 2 + blockLength > bytes.Length)
+            {
+                return false;
+            }
+
+            if (marker >= 0xC0 && marker <= 0xC3)
+            {
+                var height = BinaryPrimitives.ReadUInt16BigEndian(bytes.AsSpan(index + 5, 2));
+                var width = BinaryPrimitives.ReadUInt16BigEndian(bytes.AsSpan(index + 7, 2));
+                if (width <= 0 || height <= 0)
+                {
+                    return false;
+                }
+
+                dimensions = (width, height);
+                return true;
+            }
+
+            index += 2 + blockLength;
+        }
+
+        return false;
     }
 
     private static string GenerateInviteCode()

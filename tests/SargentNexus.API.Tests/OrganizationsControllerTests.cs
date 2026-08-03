@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using System.Text;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using SargentNexus.API.Controllers;
@@ -84,6 +85,53 @@ public sealed class OrganizationsControllerTests
         AssertProblem(result, StatusCodes.Status403Forbidden, "Forbidden.");
     }
 
+    [Fact]
+    public async Task UploadLogo_WhenServiceSucceeds_ReturnsOk()
+    {
+        var response = new OrganizationLogoModel
+        {
+            LogoUrl = "data:image/png;base64,abc",
+            LogoThumbnailUrl = "data:image/png;base64,abc",
+            LogoHeightPx = 100
+        };
+
+        var service = new StubService
+        {
+            UploadOrganizationLogoAsyncHandler = (_, _, _, _, _) =>
+                Task.FromResult(AdministrationResult<OrganizationLogoModel>.Success(response))
+        };
+
+        var controller = CreateController(service, Guid.NewGuid());
+        var file = new FormFile(
+            new MemoryStream(Encoding.UTF8.GetBytes("fake")),
+            0,
+            4,
+            "logoFile",
+            "logo.png")
+        {
+            Headers = new HeaderDictionary(),
+            ContentType = "image/png"
+        };
+
+        var result = await controller.UploadLogo(Guid.NewGuid(), file, CancellationToken.None);
+
+        var ok = Assert.IsType<OkObjectResult>(result);
+        Assert.Equal(StatusCodes.Status200OK, ok.StatusCode);
+        Assert.Same(response, ok.Value);
+    }
+
+    [Fact]
+    public async Task UploadLogo_WhenFileMissing_ReturnsValidationProblem()
+    {
+        var controller = CreateController(new StubService(), Guid.NewGuid());
+
+        var result = await controller.UploadLogo(Guid.NewGuid(), null, CancellationToken.None);
+
+        var bad = Assert.IsType<BadRequestObjectResult>(result);
+        var details = Assert.IsType<ValidationProblemDetails>(bad.Value);
+        Assert.True(details.Errors.ContainsKey("logoFile"));
+    }
+
     private static OrganizationsController CreateController(IOrganizationUserAdministrationService service, Guid? actorUserId = null)
     {
         var controller = new OrganizationsController(service)
@@ -134,6 +182,8 @@ public sealed class OrganizationsControllerTests
 
         public Func<Guid, Guid, CancellationToken, Task<AdministrationResult>>? ArchiveOrganizationAsyncHandler { get; init; }
 
+        public Func<Guid, Guid, string, byte[], CancellationToken, Task<AdministrationResult<OrganizationLogoModel>>>? UploadOrganizationLogoAsyncHandler { get; init; }
+
         public Func<Guid, Guid, OrganizationUsersListQueryModel, CancellationToken, Task<AdministrationResult<PagedResultModel<UserSummaryModel>>>>? ListUsersAsyncHandler { get; init; }
 
         public Func<Guid, Guid, UserCreateRequestModel, CancellationToken, Task<AdministrationResult<UserCreateResponseModel>>>? CreateUserAsyncHandler { get; init; }
@@ -151,6 +201,18 @@ public sealed class OrganizationsControllerTests
 
         public Task<AdministrationResult<string>> RegenerateInviteCodeAsync(Guid actorUserId, Guid organizationId, CancellationToken cancellationToken) =>
             Task.FromResult(AdministrationResult<string>.Fail(AdministrationFailureReason.NotFound));
+
+        public Task<AdministrationResult<OrganizationLogoModel>> UploadOrganizationLogoAsync(
+            Guid actorUserId,
+            Guid organizationId,
+            string contentType,
+            byte[] logoBytes,
+            CancellationToken cancellationToken)
+        {
+            return UploadOrganizationLogoAsyncHandler is null
+                ? Task.FromResult(AdministrationResult<OrganizationLogoModel>.Fail(AdministrationFailureReason.NotFound))
+                : UploadOrganizationLogoAsyncHandler(actorUserId, organizationId, contentType, logoBytes, cancellationToken);
+        }
 
         public Task<AdministrationResult<OrganizationCreateResponseModel>> CreateOrganizationAsync(Guid actorUserId, OrganizationUpsertRequestModel request, CancellationToken cancellationToken)
         {

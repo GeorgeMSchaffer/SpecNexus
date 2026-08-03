@@ -75,7 +75,7 @@ internal sealed class OrganizationUserAdministrationStore : IOrganizationUserAdm
                 Phone = item.Phone,
                 InviteCode = item.InviteCode,
                 IsArchived = item.IsArchived,
-                LogoThumbnailUrl = null
+                LogoThumbnailUrl = item.LogoThumbnailUrl
             })
             .ToArrayAsync(cancellationToken);
 
@@ -330,6 +330,22 @@ internal sealed class OrganizationUserAuditWriter : IOrganizationUserAuditWriter
             {
                 organization.CompanyName,
                 organization.IsArchived
+            },
+            cancellationToken);
+    }
+
+    public Task WriteOrganizationLogoUpdatedAsync(Guid actorUserId, Organization organization, CancellationToken cancellationToken)
+    {
+        return WriteAsync(
+            actorUserId,
+            organization.Id,
+            "Organization",
+            organization.Id,
+            "Administration.OrganizationLogoUpdated",
+            new
+            {
+                organization.CompanyName,
+                organization.LogoHeightPx
             },
             cancellationToken);
     }

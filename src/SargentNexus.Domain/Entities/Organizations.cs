@@ -24,6 +24,12 @@ public sealed class Organization : EntityBase
 
     public DateTime InviteCodeGeneratedAtUtc { get; set; }
 
+    public string? LogoUrl { get; set; }
+
+    public string? LogoThumbnailUrl { get; set; }
+
+    public int? LogoHeightPx { get; set; }
+
     public bool IsArchived { get; set; }
 
     public ICollection<User> Users { get; set; } = new List<User>();

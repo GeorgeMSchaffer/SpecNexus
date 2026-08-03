@@ -112,6 +112,55 @@ public sealed class OrganizationsController : ApiControllerBase
         return ToActionResult(result, onSuccess: model => Ok(model));
     }
 
+    [HttpPut("/api/v1/organizations/{organizationId:guid}/logo")]
+    [Consumes("multipart/form-data")]
+    [ProducesResponseType(typeof(OrganizationLogoModel), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> UploadLogo(Guid organizationId, [FromForm] IFormFile? logoFile, CancellationToken cancellationToken)
+    {
+        var actorUserId = GetCurrentUserId();
+
+        if (!actorUserId.HasValue)
+        {
+            return Problem(
+                statusCode: StatusCodes.Status401Unauthorized,
+                title: "Authentication required.",
+                detail: "A valid bearer token is required.");
+        }
+
+        if (logoFile is null || logoFile.Length <= 0)
+        {
+            return BadRequest(new ValidationProblemDetails(new Dictionary<string, string[]>
+            {
+                ["logoFile"] = new[] { "Logo file is required." }
+            })
+            {
+                Status = StatusCodes.Status400BadRequest,
+                Title = "One or more validation errors occurred."
+            });
+        }
+
+        byte[] logoBytes;
+        await using (var stream = logoFile.OpenReadStream())
+        {
+            using var memory = new MemoryStream();
+            await stream.CopyToAsync(memory, cancellationToken);
+            logoBytes = memory.ToArray();
+        }
+
+        var result = await _service.UploadOrganizationLogoAsync(
+            actorUserId.Value,
+            organizationId,
+            logoFile.ContentType,
+            logoBytes,
+            cancellationToken);
+
+        return ToActionResult(result, onSuccess: model => Ok(model));
+    }
+
     [HttpPost("/api/v1/organizations/{organizationId:guid}/invite-code/regenerate")]
     [ProducesResponseType(typeof(InviteCodeResponseModel), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]

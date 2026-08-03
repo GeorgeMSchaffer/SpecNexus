@@ -239,6 +239,16 @@ public sealed class UsersControllerTests
         public Task<AdministrationResult<string>> RegenerateInviteCodeAsync(Guid actorUserId, Guid organizationId, CancellationToken cancellationToken) =>
             Task.FromResult(AdministrationResult<string>.Fail(AdministrationFailureReason.NotFound));
 
+        public Task<AdministrationResult<OrganizationLogoModel>> UploadOrganizationLogoAsync(
+            Guid actorUserId,
+            Guid organizationId,
+            string contentType,
+            byte[] logoBytes,
+            CancellationToken cancellationToken)
+        {
+            return Task.FromResult(AdministrationResult<OrganizationLogoModel>.Fail(AdministrationFailureReason.NotFound));
+        }
+
         public Task<AdministrationResult<PagedResultModel<UserSummaryModel>>> ListUsersAsync(Guid actorUserId, Guid organizationId, OrganizationUsersListQueryModel request, CancellationToken cancellationToken)
         {
             return ListUsersAsyncHandler is null

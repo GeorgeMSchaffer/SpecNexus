@@ -156,6 +156,60 @@ public sealed class OrganizationUserAdministrationServiceTests
     }
 
     [Fact]
+    public async Task GivenValidPngLogo_WhenUploadOrganizationLogo_ThenStoresLogoAndReturnsMetadata()
+    {
+        var organizationId = Guid.NewGuid();
+        var actor = TestUsers.CreateDefault();
+        actor.Role = UserRole.OrgAdmin;
+        actor.OrganizationId = organizationId;
+
+        var organization = CreateOrganization(organizationId);
+        var store = new FakeOrganizationUserAdministrationStore(
+            users: new[] { actor },
+            organizations: new[] { organization });
+        var audit = new FakeOrganizationUserAuditWriter();
+        var service = CreateService(store, audit);
+
+        var result = await service.UploadOrganizationLogoAsync(
+            actor.Id,
+            organizationId,
+            "image/png",
+            CreatePng(300, 120),
+            CancellationToken.None);
+
+        Assert.True(result.Succeeded);
+        Assert.Equal(120, result.Value!.LogoHeightPx);
+        Assert.StartsWith("data:image/png;base64,", result.Value.LogoUrl);
+        Assert.Equal(result.Value.LogoUrl, organization.LogoUrl);
+        Assert.Single(audit.OrganizationLogoUpdatedEvents);
+    }
+
+    [Fact]
+    public async Task GivenInvalidLogoContentType_WhenUploadOrganizationLogo_ThenValidationFailed()
+    {
+        var organizationId = Guid.NewGuid();
+        var actor = TestUsers.CreateDefault();
+        actor.Role = UserRole.OrgAdmin;
+        actor.OrganizationId = organizationId;
+
+        var store = new FakeOrganizationUserAdministrationStore(
+            users: new[] { actor },
+            organizations: new[] { CreateOrganization(organizationId) });
+        var service = CreateService(store, new FakeOrganizationUserAuditWriter());
+
+        var result = await service.UploadOrganizationLogoAsync(
+            actor.Id,
+            organizationId,
+            "text/plain",
+            System.Text.Encoding.UTF8.GetBytes("bad"),
+            CancellationToken.None);
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(AdministrationFailureReason.ValidationFailed, result.FailureReason);
+        Assert.True(result.Errors.ContainsKey("logoFile"));
+    }
+
+    [Fact]
     public async Task GivenDuplicateEmail_WhenCreateUser_ThenValidationError()
     {
         var actor = TestUsers.CreateDefault();
@@ -503,6 +557,23 @@ public sealed class OrganizationUserAdministrationServiceTests
         };
     }
 
+    private static byte[] CreatePng(int width, int height)
+    {
+        var png = new byte[24];
+        png[0] = 137; png[1] = 80; png[2] = 78; png[3] = 71; png[4] = 13; png[5] = 10; png[6] = 26; png[7] = 10;
+        png[8] = 0; png[9] = 0; png[10] = 0; png[11] = 13;
+        png[12] = (byte)'I'; png[13] = (byte)'H'; png[14] = (byte)'D'; png[15] = (byte)'R';
+        png[16] = (byte)((width >> 24) & 0xFF);
+        png[17] = (byte)((width >> 16) & 0xFF);
+        png[18] = (byte)((width >> 8) & 0xFF);
+        png[19] = (byte)(width & 0xFF);
+        png[20] = (byte)((height >> 24) & 0xFF);
+        png[21] = (byte)((height >> 16) & 0xFF);
+        png[22] = (byte)((height >> 8) & 0xFF);
+        png[23] = (byte)(height & 0xFF);
+        return png;
+    }
+
     private sealed class FakeOrganizationUserAdministrationStore : IOrganizationUserAdministrationStore
     {
         private readonly Dictionary<Guid, User> _users;
@@ -644,6 +715,8 @@ public sealed class OrganizationUserAdministrationServiceTests
 
         public List<(Guid ActorUserId, Guid OrganizationId)> OrganizationArchivedEvents { get; } = new();
 
+        public List<(Guid ActorUserId, Guid OrganizationId)> OrganizationLogoUpdatedEvents { get; } = new();
+
         public List<(Guid ActorUserId, Guid UserId)> UserCreatedEvents { get; } = new();
 
         public List<(Guid ActorUserId, Guid UserId, string PreviousRole, string PreviousStatus)> UserUpdatedEvents { get; } = new();
@@ -663,6 +736,12 @@ public sealed class OrganizationUserAdministrationServiceTests
         public Task WriteOrganizationArchivedAsync(Guid actorUserId, Organization organization, CancellationToken cancellationToken)
         {
             OrganizationArchivedEvents.Add((actorUserId, organization.Id));
+            return Task.CompletedTask;
+        }
+
+        public Task WriteOrganizationLogoUpdatedAsync(Guid actorUserId, Organization organization, CancellationToken cancellationToken)
+        {
+            OrganizationLogoUpdatedEvents.Add((actorUserId, organization.Id));
             return Task.CompletedTask;
         }
 

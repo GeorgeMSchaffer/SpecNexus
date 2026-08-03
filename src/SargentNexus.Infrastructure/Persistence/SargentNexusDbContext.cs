@@ -52,6 +52,8 @@ public sealed class SargentNexusDbContext : DbContext
             entity.Property(item => item.PrimaryContactFirstName).HasMaxLength(100).IsRequired();
             entity.Property(item => item.PrimaryContactLastName).HasMaxLength(100).IsRequired();
             entity.Property(item => item.InviteCode).HasMaxLength(16).IsRequired();
+            entity.Property(item => item.LogoUrl).HasMaxLength(8000);
+            entity.Property(item => item.LogoThumbnailUrl).HasMaxLength(8000);
             entity.HasIndex(item => item.InviteCode).IsUnique();
         });
 

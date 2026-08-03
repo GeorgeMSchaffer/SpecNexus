@@ -138,6 +138,15 @@ public sealed class OrganizationDetailModel
     public bool IsArchived { get; init; }
 }
 
+public sealed class OrganizationLogoModel
+{
+    public string LogoUrl { get; init; } = string.Empty;
+
+    public string LogoThumbnailUrl { get; init; } = string.Empty;
+
+    public int LogoHeightPx { get; init; }
+}
+
 public sealed class OrganizationUsersListQueryModel
 {
     [Range(1, int.MaxValue)]
