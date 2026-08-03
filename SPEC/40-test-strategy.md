@@ -53,3 +53,8 @@
 - MVP release verification does not require OAuth or SAML endpoint implementation.
 - OAuth validation is executed in post-MVP Phase 2 test cycles.
 - SAML validation is executed in a post-OAuth phase test cycle.
+
+## Client UI — /ideas Kanban Board
+- Card drag-and-drop: verify optimistic column move is applied immediately, `MoveIdeaStatusAsync` is called with the correct status ID, and the card reverts to its original column with an error toast on API failure.
+- Column reorder: verify SiteAdmin and OrgAdmin users can reorder columns and `UpdateStatusAsync` is called per affected status; verify User and ReadOnly users cannot trigger a reorder; verify all columns revert on failure with error toast.
+- Filter chips and search: verify All / Created by me / Assigned to me filter chips correctly hide non-matching cards client-side; verify title search is case-insensitive and combinable with filter chips; verify empty columns display the "No ideas" placeholder.
