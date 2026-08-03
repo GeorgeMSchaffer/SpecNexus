@@ -95,6 +95,57 @@ public sealed class IdeasController : ApiControllerBase
         return ToProblem(result.FailureReason!.Value, result.Errors);
     }
 
+    [HttpPost("/api/v1/boards/{boardId:guid}/ideas/import")]
+    [Consumes("multipart/form-data")]
+    [ProducesResponseType(typeof(IdeaImportResponseModel), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ImportIdeas(
+        Guid boardId,
+        [FromForm] IFormFile? file,
+        CancellationToken cancellationToken)
+    {
+        if (file is null || file.Length <= 0)
+        {
+            return BadRequest(new ValidationProblemDetails(new Dictionary<string, string[]>
+            {
+                ["file"] = new[] { "CSV file is required." }
+            })
+            {
+                Status = StatusCodes.Status400BadRequest,
+                Title = "One or more validation errors occurred."
+            });
+        }
+
+        byte[] bytes;
+        await using (var stream = file.OpenReadStream())
+        {
+            using var memory = new MemoryStream();
+            await stream.CopyToAsync(memory, cancellationToken);
+            bytes = memory.ToArray();
+        }
+
+        var result = await _workflowService.ImportIdeasCsvAsync(GetWorkflowActorContext(), boardId, bytes, cancellationToken);
+        if (result.Succeeded)
+        {
+            return Ok(result.Response);
+        }
+
+        if (result.FailureReason == WorkflowFailureReason.ValidationError)
+        {
+            return BadRequest(new ValidationProblemDetails(new Dictionary<string, string[]>(result.Errors))
+            {
+                Status = StatusCodes.Status400BadRequest,
+                Title = "One or more validation errors occurred."
+            });
+        }
+
+        var flattenedErrors = result.Errors.SelectMany(kvp => kvp.Value).ToArray();
+        return ToProblem(result.FailureReason!.Value, flattenedErrors);
+    }
+
     [HttpGet("/api/v1/ideas/{ideaId:guid}")]
     [ProducesResponseType(typeof(IdeaDetailModel), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]

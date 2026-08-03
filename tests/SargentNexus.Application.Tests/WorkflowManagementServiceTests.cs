@@ -1,3 +1,4 @@
+using System.Text;
 using SargentNexus.Application.Workflow;
 using SargentNexus.Domain;
 
@@ -974,6 +975,54 @@ public sealed class WorkflowManagementServiceTests
         Assert.True(result.Succeeded);
         Assert.NotNull(result.Response);
         Assert.Equal(new[] { "Security", "Service" }, result.Response!);
+    }
+
+    [Fact]
+    public async Task ImportIdeasCsv_WhenValidRows_ReturnsImportedAndSkippedCountsAndAudits()
+    {
+        var fixture = new WorkflowFixture();
+        var board = fixture.CreateBoardWithTwoSwimlanes();
+        fixture.CreateIdeaWithAuthor(fixture.OrgAdminUser, board).Title = "Existing Idea";
+
+        var csv = "Title,Description,Priority,DueDate,Status,AssignedTo,Tags\n"
+            + "Existing Idea,Already there,Low,,,,\n"
+            + "New Idea,Brand new item,High,2026-08-10,In Progress,user@test.local,alpha|beta\n";
+
+        var result = await fixture.Service.ImportIdeasCsvAsync(
+            fixture.OrgAdminActor,
+            board.Id,
+            Encoding.UTF8.GetBytes(csv),
+            CancellationToken.None);
+
+        Assert.True(result.Succeeded);
+        Assert.NotNull(result.Response);
+        Assert.Equal(1, result.Response!.ImportedCount);
+        Assert.Equal(1, result.Response.SkippedCount);
+        Assert.Empty(result.Response.Errors);
+        Assert.Single(fixture.AuditWriter.IdeasImportedEvents);
+        Assert.Single(fixture.AuditWriter.IdeaCreatedEvents.Where(i => i.Title == "New Idea"));
+    }
+
+    [Fact]
+    public async Task ImportIdeasCsv_WhenDuplicateTitleInFile_ReturnsValidationError()
+    {
+        var fixture = new WorkflowFixture();
+        var board = fixture.CreateBoardWithTwoSwimlanes();
+
+        var csv = "Title,Description,Priority,DueDate,Status,AssignedTo,Tags\n"
+            + "Dup,First row,Low,,,,\n"
+            + "Dup,Second row,Medium,,,,\n";
+
+        var result = await fixture.Service.ImportIdeasCsvAsync(
+            fixture.OrgAdminActor,
+            board.Id,
+            Encoding.UTF8.GetBytes(csv),
+            CancellationToken.None);
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(WorkflowFailureReason.ValidationError, result.FailureReason);
+        Assert.True(result.Errors.ContainsKey("2"));
+        Assert.Contains("Title is duplicated within the import file.", result.Errors["2"]);
     }
 
     private sealed class WorkflowFixture

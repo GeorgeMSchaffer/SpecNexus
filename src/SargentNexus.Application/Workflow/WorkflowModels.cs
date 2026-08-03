@@ -307,6 +307,15 @@ public sealed class MoveIdeaStatusRequestModel
     public bool Reject { get; set; }
 }
 
+public sealed class IdeaImportResponseModel
+{
+    public int ImportedCount { get; init; }
+
+    public int SkippedCount { get; init; }
+
+    public IReadOnlyList<string> Errors { get; init; } = Array.Empty<string>();
+}
+
 public sealed class CommentModel
 {
     public Guid CommentId { get; init; }
@@ -377,6 +386,37 @@ public sealed class WorkflowResult<T>
     {
         return new WorkflowResult<T>(false, default, failureReason, errors);
     }
+}
+
+public sealed class WorkflowImportResult<T>
+{
+    private WorkflowImportResult(
+        bool succeeded,
+        T? response,
+        WorkflowFailureReason? failureReason,
+        IReadOnlyDictionary<string, string[]> errors)
+    {
+        Succeeded = succeeded;
+        Response = response;
+        FailureReason = failureReason;
+        Errors = errors;
+    }
+
+    public bool Succeeded { get; }
+
+    public T? Response { get; }
+
+    public WorkflowFailureReason? FailureReason { get; }
+
+    public IReadOnlyDictionary<string, string[]> Errors { get; }
+
+    public static WorkflowImportResult<T> Success(T response) =>
+        new(true, response, null, new Dictionary<string, string[]>());
+
+    public static WorkflowImportResult<T> Failure(
+        WorkflowFailureReason reason,
+        IReadOnlyDictionary<string, string[]>? errors = null) =>
+        new(false, default, reason, errors ?? new Dictionary<string, string[]>());
 }
 
 public sealed class WorkflowResult

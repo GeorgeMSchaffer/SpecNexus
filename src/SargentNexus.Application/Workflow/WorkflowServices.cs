@@ -1,3 +1,5 @@
+using System.Globalization;
+using System.Text;
 using System.Text.RegularExpressions;
 using SargentNexus.Domain;
 
@@ -83,6 +85,12 @@ public interface IWorkflowManagementService
         WorkflowActorContext actor,
         Guid boardId,
         IdeaWriteRequestModel request,
+        CancellationToken cancellationToken);
+
+    Task<WorkflowImportResult<IdeaImportResponseModel>> ImportIdeasCsvAsync(
+        WorkflowActorContext actor,
+        Guid boardId,
+        byte[] fileBytes,
         CancellationToken cancellationToken);
 
     Task<WorkflowResult<IdeaDetailModel>> UpdateIdeaAsync(
@@ -238,6 +246,14 @@ public interface IWorkflowAuditWriter
     Task WriteBoardSwimlanesReorderedAsync(Guid actorUserId, Board board, IReadOnlyList<Guid> orderedStatusIds, CancellationToken cancellationToken);
 
     Task WriteIdeaCreatedAsync(Guid actorUserId, Idea idea, CancellationToken cancellationToken);
+
+    Task WriteIdeasImportedAsync(
+        Guid actorUserId,
+        Guid organizationId,
+        Guid boardId,
+        int importedCount,
+        int skippedCount,
+        CancellationToken cancellationToken);
 
     Task WriteIdeaUpdatedAsync(Guid actorUserId, Idea idea, CancellationToken cancellationToken);
 
@@ -880,6 +896,341 @@ public sealed class WorkflowManagementService : IWorkflowManagementService
         var persisted = await _dataAccess.FindIdeaByIdAsync(idea.Id, cancellationToken);
         await _auditWriter.WriteIdeaCreatedAsync(actor.UserId, persisted!, cancellationToken);
         return WorkflowResult<IdeaDetailModel>.Success(ToIdeaDetail(persisted!));
+    }
+
+    public async Task<WorkflowImportResult<IdeaImportResponseModel>> ImportIdeasCsvAsync(
+        WorkflowActorContext actor,
+        Guid boardId,
+        byte[] fileBytes,
+        CancellationToken cancellationToken)
+    {
+        var board = await _dataAccess.FindBoardByIdAsync(boardId, cancellationToken);
+        if (board is null)
+        {
+            return WorkflowImportResult<IdeaImportResponseModel>.Failure(WorkflowFailureReason.BoardNotFound);
+        }
+
+        var authorization = await AuthorizeAsync(actor, board.OrganizationId, ManageRoles, cancellationToken);
+        if (!authorization.Succeeded)
+        {
+            return WorkflowImportResult<IdeaImportResponseModel>.Failure(authorization.FailureReason!.Value);
+        }
+
+        if (fileBytes.Length == 0)
+        {
+            return WorkflowImportResult<IdeaImportResponseModel>.Failure(
+                WorkflowFailureReason.ValidationError,
+                new Dictionary<string, string[]>
+                {
+                    ["file"] = new[] { "CSV file is required." }
+                });
+        }
+
+        string csvText;
+        try
+        {
+            csvText = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true).GetString(fileBytes);
+        }
+        catch (DecoderFallbackException)
+        {
+            return WorkflowImportResult<IdeaImportResponseModel>.Failure(
+                WorkflowFailureReason.ValidationError,
+                new Dictionary<string, string[]>
+                {
+                    ["file"] = new[] { "CSV file must be UTF-8 encoded." }
+                });
+        }
+
+        using var reader = new StringReader(csvText);
+        var headerLine = reader.ReadLine();
+        if (string.IsNullOrWhiteSpace(headerLine))
+        {
+            return WorkflowImportResult<IdeaImportResponseModel>.Failure(
+                WorkflowFailureReason.ValidationError,
+                new Dictionary<string, string[]>
+                {
+                    ["file"] = new[] { "CSV header row is required." }
+                });
+        }
+
+        var header = ParseCsvLine(headerLine.TrimStart('\uFEFF'));
+        var expectedHeader = new[] { "Title", "Description", "Priority", "DueDate", "Status", "AssignedTo", "Tags" };
+        if (header.Count != expectedHeader.Length || !header.SequenceEqual(expectedHeader, StringComparer.Ordinal))
+        {
+            return WorkflowImportResult<IdeaImportResponseModel>.Failure(
+                WorkflowFailureReason.ValidationError,
+                new Dictionary<string, string[]>
+                {
+                    ["file"] = new[] { "CSV header must be exactly: Title,Description,Priority,DueDate,Status,AssignedTo,Tags" }
+                });
+        }
+
+        var swimlanes = await _dataAccess.ListBoardSwimlanesAsync(boardId, cancellationToken);
+        var activeSwimlanes = swimlanes
+            .Where(item => !item.Status.IsDeleted)
+            .OrderBy(item => item.Order)
+            .ToArray();
+
+        if (activeSwimlanes.Length == 0)
+        {
+            return WorkflowImportResult<IdeaImportResponseModel>.Failure(
+                WorkflowFailureReason.ValidationError,
+                new Dictionary<string, string[]>
+                {
+                    ["file"] = new[] { "The target board has no active swimlanes." }
+                });
+        }
+
+        var statuses = await _dataAccess.ListStatusesAsync(board.OrganizationId, cancellationToken);
+        var statusByName = statuses
+            .Where(item => !item.IsDeleted)
+            .GroupBy(item => item.Name.Trim(), StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(item => item.Key, item => item.First(), StringComparer.OrdinalIgnoreCase);
+
+        var existingIdeas = await _dataAccess.ListIdeasByBoardIdAsync(boardId, cancellationToken);
+        var existingTitles = existingIdeas
+            .Where(item => !item.IsDeleted)
+            .Select(item => item.Title.Trim())
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        var rowErrors = new Dictionary<string, List<string>>();
+        var candidates = new List<IdeaImportCandidate>();
+        var seenTitlesInFile = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var skippedCount = 0;
+        var dataRowNumber = 0;
+
+        string? line;
+        while ((line = reader.ReadLine()) is not null)
+        {
+            if (string.IsNullOrWhiteSpace(line))
+            {
+                continue;
+            }
+
+            dataRowNumber++;
+            if (dataRowNumber > 500)
+            {
+                return WorkflowImportResult<IdeaImportResponseModel>.Failure(
+                    WorkflowFailureReason.ValidationError,
+                    new Dictionary<string, string[]>
+                    {
+                        ["file"] = new[] { "CSV file cannot exceed 500 data rows." }
+                    });
+            }
+
+            var columns = ParseCsvLine(line);
+            if (columns.Count != expectedHeader.Length)
+            {
+                AddRowError(rowErrors, dataRowNumber, "Row must contain exactly 7 columns.");
+                continue;
+            }
+
+            var title = columns[0].Trim();
+            var description = columns[1].Trim();
+            var priorityText = columns[2].Trim();
+            var dueDateText = columns[3].Trim();
+            var statusText = columns[4].Trim();
+            var assignedToText = columns[5].Trim();
+            var tagsText = columns[6].Trim();
+
+            if (title.Length == 0)
+            {
+                AddRowError(rowErrors, dataRowNumber, "Title is required.");
+            }
+            else if (title.Length > 150)
+            {
+                AddRowError(rowErrors, dataRowNumber, "Title must be 150 characters or fewer.");
+            }
+
+            if (description.Length == 0)
+            {
+                AddRowError(rowErrors, dataRowNumber, "Description is required.");
+            }
+            else if (description.Length > 4000)
+            {
+                AddRowError(rowErrors, dataRowNumber, "Description must be 4000 characters or fewer.");
+            }
+
+            if (!Enum.TryParse<IdeaPriority>(priorityText, ignoreCase: true, out var priority))
+            {
+                AddRowError(rowErrors, dataRowNumber, "Priority must be one of: Low, Medium, High, Critical.");
+            }
+
+            DateOnly? dueDate = null;
+            if (!string.IsNullOrWhiteSpace(dueDateText))
+            {
+                if (!DateOnly.TryParseExact(dueDateText, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsedDueDate))
+                {
+                    AddRowError(rowErrors, dataRowNumber, "DueDate must be a valid YYYY-MM-DD date.");
+                }
+                else
+                {
+                    dueDate = parsedDueDate;
+                }
+            }
+
+            if (!string.IsNullOrWhiteSpace(title) && !seenTitlesInFile.Add(title))
+            {
+                AddRowError(rowErrors, dataRowNumber, "Title is duplicated within the import file.");
+            }
+
+            if (!string.IsNullOrWhiteSpace(title) && existingTitles.Contains(title))
+            {
+                skippedCount++;
+                continue;
+            }
+
+            Guid statusId;
+            if (string.IsNullOrWhiteSpace(statusText))
+            {
+                statusId = activeSwimlanes[0].StatusId;
+            }
+            else if (statusByName.TryGetValue(statusText, out var resolvedStatus))
+            {
+                statusId = resolvedStatus.Id;
+            }
+            else
+            {
+                AddRowError(rowErrors, dataRowNumber, $"Status '{statusText}' does not exist in this organization.");
+                statusId = Guid.Empty;
+            }
+
+            Guid? assigneeUserId = null;
+            if (!string.IsNullOrWhiteSpace(assignedToText))
+            {
+                var assignee = await _dataAccess.FindUserByEmailAsync(board.OrganizationId, assignedToText, cancellationToken);
+                if (assignee is null || assignee.Status != UserLifecycleStatus.Active)
+                {
+                    AddRowError(rowErrors, dataRowNumber, $"AssignedTo '{assignedToText}' must resolve to an active user in this organization.");
+                }
+                else
+                {
+                    assigneeUserId = assignee.Id;
+                }
+            }
+
+            var tagNames = tagsText.Length == 0
+                ? Array.Empty<string>()
+                : tagsText.Split('|', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+
+            foreach (var tagName in tagNames)
+            {
+                if (tagName.Length > 100)
+                {
+                    AddRowError(rowErrors, dataRowNumber, "Each tag must be 100 characters or fewer.");
+                    break;
+                }
+            }
+
+            candidates.Add(new IdeaImportCandidate(
+                dataRowNumber,
+                title,
+                description,
+                priorityText,
+                dueDate,
+                statusId,
+                assigneeUserId,
+                tagNames));
+        }
+
+        if (dataRowNumber == 0)
+        {
+            return WorkflowImportResult<IdeaImportResponseModel>.Failure(
+                WorkflowFailureReason.ValidationError,
+                new Dictionary<string, string[]>
+                {
+                    ["file"] = new[] { "CSV file must include at least one non-blank data row." }
+                });
+        }
+
+        if (rowErrors.Count > 0)
+        {
+            return WorkflowImportResult<IdeaImportResponseModel>.Failure(
+                WorkflowFailureReason.ValidationError,
+                rowErrors.ToDictionary(item => item.Key, item => item.Value.ToArray()));
+        }
+
+        var createdIdeas = new List<Idea>(candidates.Count);
+        var stagedTags = new Dictionary<string, Tag>(StringComparer.OrdinalIgnoreCase);
+        var nowUtc = DateTime.UtcNow;
+
+        foreach (var candidate in candidates)
+        {
+            var idea = new Idea
+            {
+                Id = Guid.NewGuid(),
+                BoardId = board.Id,
+                OrganizationId = board.OrganizationId,
+                AuthorUserId = actor.UserId,
+                Title = candidate.Title,
+                Description = candidate.Description,
+                Priority = Enum.Parse<IdeaPriority>(candidate.Priority, true),
+                DueDate = candidate.DueDate,
+                AssigneeUserId = candidate.AssigneeUserId,
+                StatusId = candidate.StatusId,
+                CreatedAtUtc = nowUtc
+            };
+
+            _dataAccess.AddIdea(idea);
+
+            foreach (var rawTag in candidate.TagNames.Distinct(StringComparer.OrdinalIgnoreCase))
+            {
+                var normalizedTag = rawTag.Trim().ToUpperInvariant();
+                if (normalizedTag.Length == 0)
+                {
+                    continue;
+                }
+
+                if (!stagedTags.TryGetValue(normalizedTag, out var tag))
+                {
+                    tag = await _dataAccess.FindTagByNormalizedNameAsync(board.OrganizationId, normalizedTag, cancellationToken);
+                    if (tag is null)
+                    {
+                        tag = new Tag
+                        {
+                            Id = Guid.NewGuid(),
+                            OrganizationId = board.OrganizationId,
+                            Name = rawTag.Trim(),
+                            NormalizedName = normalizedTag
+                        };
+
+                        _dataAccess.AddTag(tag);
+                    }
+
+                    stagedTags[normalizedTag] = tag;
+                }
+
+                _dataAccess.AddIdeaTag(new IdeaTag
+                {
+                    IdeaId = idea.Id,
+                    TagId = tag.Id
+                });
+            }
+
+            createdIdeas.Add(idea);
+        }
+
+        await _dataAccess.SaveChangesAsync(cancellationToken);
+
+        await _auditWriter.WriteIdeasImportedAsync(
+            actor.UserId,
+            board.OrganizationId,
+            board.Id,
+            createdIdeas.Count,
+            skippedCount,
+            cancellationToken);
+
+        foreach (var idea in createdIdeas)
+        {
+            await _auditWriter.WriteIdeaCreatedAsync(actor.UserId, idea, cancellationToken);
+        }
+
+        return WorkflowImportResult<IdeaImportResponseModel>.Success(new IdeaImportResponseModel
+        {
+            ImportedCount = createdIdeas.Count,
+            SkippedCount = skippedCount,
+            Errors = Array.Empty<string>()
+        });
     }
 
     public async Task<WorkflowResult<IdeaDetailModel>> UpdateIdeaAsync(
@@ -1606,6 +1957,56 @@ public sealed class WorkflowManagementService : IWorkflowManagementService
             : null;
     }
 
+    private static void AddRowError(Dictionary<string, List<string>> errors, int rowNumber, string message)
+    {
+        var key = rowNumber.ToString(CultureInfo.InvariantCulture);
+        if (!errors.TryGetValue(key, out var list))
+        {
+            list = new List<string>();
+            errors[key] = list;
+        }
+
+        list.Add(message);
+    }
+
+    private static List<string> ParseCsvLine(string line)
+    {
+        var columns = new List<string>();
+        var current = new StringBuilder();
+        var inQuotes = false;
+
+        for (var i = 0; i < line.Length; i++)
+        {
+            var ch = line[i];
+            if (ch == '"')
+            {
+                if (inQuotes && i + 1 < line.Length && line[i + 1] == '"')
+                {
+                    current.Append('"');
+                    i++;
+                }
+                else
+                {
+                    inQuotes = !inQuotes;
+                }
+
+                continue;
+            }
+
+            if (ch == ',' && !inQuotes)
+            {
+                columns.Add(current.ToString());
+                current.Clear();
+                continue;
+            }
+
+            current.Append(ch);
+        }
+
+        columns.Add(current.ToString());
+        return columns;
+    }
+
     private async Task ReplaceIdeaTagsAndMentionsAsync(
         Idea idea,
         Guid actorUserId,
@@ -1767,6 +2168,16 @@ public sealed class WorkflowManagementService : IWorkflowManagementService
             }
         }
     }
+
+    private sealed record IdeaImportCandidate(
+        int RowNumber,
+        string Title,
+        string Description,
+        string Priority,
+        DateOnly? DueDate,
+        Guid StatusId,
+        Guid? AssigneeUserId,
+        IReadOnlyList<string> TagNames);
 
     private static string BuildIdeaLink(Idea idea)
     {

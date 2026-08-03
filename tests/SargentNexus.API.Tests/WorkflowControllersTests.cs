@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using System.Text;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using SargentNexus.API.Controllers;
@@ -250,6 +251,68 @@ public sealed class WorkflowControllersTests
         var validation = Assert.IsType<ValidationProblemDetails>(badRequest.Value);
         Assert.True(validation.Errors.TryGetValue("workflow", out var errors));
         Assert.Contains("Idea title is required.", errors);
+    }
+
+    [Fact]
+    public async Task IdeasImport_WhenSucceeded_ReturnsOk()
+    {
+        var service = new StubWorkflowManagementService
+        {
+            ImportIdeasCsvAsyncHandler = (_, _, _, _) => Task.FromResult(
+                WorkflowImportResult<IdeaImportResponseModel>.Success(
+                    new IdeaImportResponseModel
+                    {
+                        ImportedCount = 2,
+                        SkippedCount = 1,
+                        Errors = Array.Empty<string>()
+                    }))
+        };
+
+        var controller = CreateIdeasController(service, Guid.NewGuid(), UserRole.OrgAdmin.ToString(), Guid.NewGuid());
+        var file = new FormFile(
+            new MemoryStream(Encoding.UTF8.GetBytes("Title,Description,Priority,DueDate,Status,AssignedTo,Tags\nA,B,Low,,,,\n")),
+            0,
+            68,
+            "file",
+            "ideas.csv");
+
+        var result = await controller.ImportIdeas(Guid.NewGuid(), file, CancellationToken.None);
+        var ok = Assert.IsType<OkObjectResult>(result);
+        Assert.Equal(StatusCodes.Status200OK, ok.StatusCode);
+
+        var payload = Assert.IsType<IdeaImportResponseModel>(ok.Value);
+        Assert.Equal(2, payload.ImportedCount);
+        Assert.Equal(1, payload.SkippedCount);
+        Assert.Empty(payload.Errors);
+    }
+
+    [Fact]
+    public async Task IdeasImport_WhenValidationError_ReturnsRowKeyedValidationProblem()
+    {
+        var service = new StubWorkflowManagementService
+        {
+            ImportIdeasCsvAsyncHandler = (_, _, _, _) => Task.FromResult(
+                WorkflowImportResult<IdeaImportResponseModel>.Failure(
+                    WorkflowFailureReason.ValidationError,
+                    new Dictionary<string, string[]>
+                    {
+                        ["3"] = new[] { "Priority must be one of: Low, Medium, High, Critical." }
+                    }))
+        };
+
+        var controller = CreateIdeasController(service, Guid.NewGuid(), UserRole.OrgAdmin.ToString(), Guid.NewGuid());
+        var file = new FormFile(
+            new MemoryStream(Encoding.UTF8.GetBytes("Title,Description,Priority,DueDate,Status,AssignedTo,Tags\nA,B,Bad,,,,\n")),
+            0,
+            67,
+            "file",
+            "ideas.csv");
+
+        var result = await controller.ImportIdeas(Guid.NewGuid(), file, CancellationToken.None);
+        var badRequest = Assert.IsType<BadRequestObjectResult>(result);
+        var details = Assert.IsType<ValidationProblemDetails>(badRequest.Value);
+        Assert.True(details.Errors.TryGetValue("3", out var messages));
+        Assert.Contains("Priority must be one of: Low, Medium, High, Critical.", messages);
     }
 
     [Fact]
@@ -530,6 +593,8 @@ public sealed class WorkflowControllersTests
 
         public Func<WorkflowActorContext, Guid, IdeaWriteRequestModel, CancellationToken, Task<WorkflowResult<IdeaDetailModel>>>? CreateIdeaAsyncHandler { get; init; }
 
+        public Func<WorkflowActorContext, Guid, byte[], CancellationToken, Task<WorkflowImportResult<IdeaImportResponseModel>>>? ImportIdeasCsvAsyncHandler { get; init; }
+
         public Func<WorkflowActorContext, Guid, IdeaWriteRequestModel, CancellationToken, Task<WorkflowResult<IdeaDetailModel>>>? UpdateIdeaAsyncHandler { get; init; }
 
         public Func<WorkflowActorContext, Guid, MoveIdeaStatusRequestModel, CancellationToken, Task<WorkflowResult>>? MoveIdeaStatusAsyncHandler { get; init; }
@@ -691,6 +756,18 @@ public sealed class WorkflowControllersTests
             return CreateIdeaAsyncHandler is null
                 ? Task.FromResult(WorkflowResult<IdeaDetailModel>.Failure(WorkflowFailureReason.Forbidden))
                 : CreateIdeaAsyncHandler(actor, boardId, request, cancellationToken);
+        }
+
+        public Task<WorkflowImportResult<IdeaImportResponseModel>> ImportIdeasCsvAsync(
+            WorkflowActorContext actor,
+            Guid boardId,
+            byte[] fileBytes,
+            CancellationToken cancellationToken)
+        {
+            LastActor = actor;
+            return ImportIdeasCsvAsyncHandler is null
+                ? Task.FromResult(WorkflowImportResult<IdeaImportResponseModel>.Failure(WorkflowFailureReason.Forbidden))
+                : ImportIdeasCsvAsyncHandler(actor, boardId, fileBytes, cancellationToken);
         }
 
         public Task<WorkflowResult<IdeaDetailModel>> UpdateIdeaAsync(

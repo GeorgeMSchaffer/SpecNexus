@@ -409,6 +409,28 @@ public sealed class WorkflowAuditWriter : IWorkflowAuditWriter
             cancellationToken);
     }
 
+    public Task WriteIdeasImportedAsync(
+        Guid actorUserId,
+        Guid organizationId,
+        Guid boardId,
+        int importedCount,
+        int skippedCount,
+        CancellationToken cancellationToken)
+    {
+        return WriteAsync(
+            actorUserId,
+            organizationId,
+            "Board",
+            boardId,
+            "Workflow.IdeasImported",
+            new
+            {
+                ImportedCount = importedCount,
+                SkippedCount = skippedCount
+            },
+            cancellationToken);
+    }
+
     public Task WriteIdeaUpdatedAsync(Guid actorUserId, Idea idea, CancellationToken cancellationToken)
     {
         return WriteAsync(

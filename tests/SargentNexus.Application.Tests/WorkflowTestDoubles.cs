@@ -464,6 +464,8 @@ internal sealed class FakeWorkflowAuditWriter : IWorkflowAuditWriter
 
     public List<Idea> IdeaCreatedEvents { get; } = new();
 
+    public List<(Guid OrganizationId, Guid BoardId, int ImportedCount, int SkippedCount)> IdeasImportedEvents { get; } = new();
+
     public List<Idea> IdeaUpdatedEvents { get; } = new();
 
     public List<(Idea Idea, Guid PreviousStatusId)> IdeaStatusMovedEvents { get; } = new();
@@ -515,6 +517,18 @@ internal sealed class FakeWorkflowAuditWriter : IWorkflowAuditWriter
     public Task WriteIdeaCreatedAsync(Guid actorUserId, Idea idea, CancellationToken cancellationToken)
     {
         IdeaCreatedEvents.Add(idea);
+        return Task.CompletedTask;
+    }
+
+    public Task WriteIdeasImportedAsync(
+        Guid actorUserId,
+        Guid organizationId,
+        Guid boardId,
+        int importedCount,
+        int skippedCount,
+        CancellationToken cancellationToken)
+    {
+        IdeasImportedEvents.Add((organizationId, boardId, importedCount, skippedCount));
         return Task.CompletedTask;
     }
 
