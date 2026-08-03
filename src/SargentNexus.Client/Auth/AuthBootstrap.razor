@@ -8,8 +8,25 @@
 
         var relative = NavigationManager.ToBaseRelativePath(NavigationManager.Uri);
         var path = relative.Split('?', '#')[0].Trim('/').ToLowerInvariant();
+        var isPublicRoute = path is "login" or "register";
 
-        if (AuthSessionService.IsAuthenticated && !AuthSessionService.RequiresPasswordChange && path == "")
+        if (!AuthSessionService.IsAuthenticated)
+        {
+            if (!isPublicRoute)
+            {
+                NavigationManager.NavigateTo("/login", forceLoad: false);
+            }
+
+            return;
+        }
+
+        if (AuthSessionService.RequiresPasswordChange && path != "change-password")
+        {
+            NavigationManager.NavigateTo("/change-password", forceLoad: false);
+            return;
+        }
+
+        if (path is "" or "login")
         {
             NavigationManager.NavigateTo("/workflow", forceLoad: false);
         }
