@@ -92,6 +92,16 @@ public sealed class OpenApiContractAlignmentTests
 		Assert.Contains("message", requiredFields);
 	}
 
+	[Fact]
+	public void MergedOpenApi_DoesNotExposeDeferredOAuthOrSamlEndpoints()
+	{
+		var mergedOpenApi = ReadRepoFile("SPEC", "SPECKIT", "openapi", "openapi.yaml");
+
+		Assert.DoesNotContain("/api/v1/auth/oauth", mergedOpenApi, StringComparison.OrdinalIgnoreCase);
+		Assert.DoesNotContain("/api/v1/auth/oidc", mergedOpenApi, StringComparison.OrdinalIgnoreCase);
+		Assert.DoesNotContain("/api/v1/auth/saml", mergedOpenApi, StringComparison.OrdinalIgnoreCase);
+	}
+
 	private static void AssertResponseHasApplicationJsonSchema(string yaml, string path, string method, string statusCode)
 	{
 		var pathBlock = ExtractPathBlock(yaml, path);
