@@ -1,0 +1,71 @@
+{{- if .Values.sqlserver.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sargent-nexus-sqlserver
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    app: sargent-nexus-sqlserver
+    tier: database
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: sargent-nexus-sqlserver
+  template:
+    metadata:
+      labels:
+        app: sargent-nexus-sqlserver
+        tier: database
+    spec:
+      securityContext:
+        fsGroup: 10001
+      containers:
+        - name: sqlserver
+          image: "{{ .Values.sqlserver.image.repository }}:{{ .Values.sqlserver.image.tag }}"
+          imagePullPolicy: {{ .Values.sqlserver.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.sqlserver.service.targetPort }}
+              name: tds
+          env:
+            - name: ACCEPT_EULA
+              value: {{ .Values.sqlserver.config.acceptEula | quote }}
+            - name: MSSQL_PID
+              value: {{ .Values.sqlserver.config.mssqlPid | quote }}
+            - name: SA_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.sqlserver.secretName }}
+                  key: {{ .Values.sqlserver.secretKeys.saPassword }}
+          volumeMounts:
+            - name: sqlserver-data
+              mountPath: /var/opt/mssql
+          readinessProbe:
+            exec:
+              command:
+                - /bin/bash
+                - -c
+                - /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$SA_PASSWORD" -Q "SELECT 1" -C
+            initialDelaySeconds: {{ .Values.sqlserver.probes.readinessInitialDelaySeconds }}
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 6
+          livenessProbe:
+            exec:
+              command:
+                - /bin/bash
+                - -c
+                - /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$SA_PASSWORD" -Q "SELECT 1" -C
+            initialDelaySeconds: {{ .Values.sqlserver.probes.livenessInitialDelaySeconds }}
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+          resources:
+{{ toYaml .Values.sqlserver.resources | indent 12 }}
+      volumes:
+        - name: sqlserver-data
+          persistentVolumeClaim:
+            claimName: sargent-nexus-sqlserver-data
+{{- end }}

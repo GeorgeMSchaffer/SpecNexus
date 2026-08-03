@@ -1,0 +1,16 @@
+{{- if .Values.sqlserver.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: sargent-nexus-sqlserver-data
+  namespace: {{ .Values.namespace.name }}
+spec:
+  accessModes:
+{{ toYaml .Values.sqlserver.persistence.accessModes | indent 4 }}
+  resources:
+    requests:
+      storage: {{ .Values.sqlserver.persistence.size }}
+{{- if .Values.sqlserver.persistence.storageClassName }}
+  storageClassName: {{ .Values.sqlserver.persistence.storageClassName | quote }}
+{{- end }}
+{{- end }}
