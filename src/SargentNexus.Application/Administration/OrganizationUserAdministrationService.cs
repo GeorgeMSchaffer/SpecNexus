@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text;
 using SargentNexus.Application.Auth;
 using SargentNexus.Domain;
 
@@ -66,6 +67,14 @@ public interface IOrganizationUserAdministrationService
     Task<AdministrationResult<PagedResultModel<UserSummaryModel>>> ListUsersAsync(Guid actorUserId, Guid organizationId, OrganizationUsersListQueryModel request, CancellationToken cancellationToken);
 
     Task<AdministrationResult<UserCreateResponseModel>> CreateUserAsync(Guid actorUserId, Guid organizationId, UserCreateRequestModel request, CancellationToken cancellationToken);
+
+    Task<AdministrationResult<string>> GetUserImportTemplateAsync(Guid actorUserId, Guid organizationId, CancellationToken cancellationToken);
+
+    Task<AdministrationResult<UserImportResponseModel>> ImportUsersCsvAsync(
+        Guid actorUserId,
+        Guid organizationId,
+        byte[] csvBytes,
+        CancellationToken cancellationToken);
 
     Task<AdministrationResult<UserDetailModel>> GetUserAsync(Guid actorUserId, Guid userId, CancellationToken cancellationToken);
 
@@ -503,6 +512,268 @@ public sealed class OrganizationUserAdministrationService : IOrganizationUserAdm
         });
     }
 
+    public async Task<AdministrationResult<string>> GetUserImportTemplateAsync(
+        Guid actorUserId,
+        Guid organizationId,
+        CancellationToken cancellationToken)
+    {
+        var actor = await _store.FindUserByIdAsync(actorUserId, cancellationToken);
+        if (actor is null)
+        {
+            return AdministrationResult<string>.Fail(AdministrationFailureReason.Forbidden);
+        }
+
+        var organization = await _store.FindOrganizationByIdAsync(organizationId, cancellationToken);
+        if (organization is null || organization.IsArchived)
+        {
+            return AdministrationResult<string>.Fail(AdministrationFailureReason.NotFound);
+        }
+
+        if (!CanAccessOrganization(actor, organizationId))
+        {
+            return AdministrationResult<string>.Fail(AdministrationFailureReason.Forbidden);
+        }
+
+        const string template = "firstName,lastName,email,role,status,initialPassword\nJane,Doe,jane.doe@example.com,User,Active,ChangeMe123!";
+        return AdministrationResult<string>.Success(template);
+    }
+
+    public async Task<AdministrationResult<UserImportResponseModel>> ImportUsersCsvAsync(
+        Guid actorUserId,
+        Guid organizationId,
+        byte[] csvBytes,
+        CancellationToken cancellationToken)
+    {
+        var actor = await _store.FindUserByIdAsync(actorUserId, cancellationToken);
+        if (actor is null)
+        {
+            return AdministrationResult<UserImportResponseModel>.Fail(AdministrationFailureReason.Forbidden);
+        }
+
+        var organization = await _store.FindOrganizationByIdAsync(organizationId, cancellationToken);
+        if (organization is null || organization.IsArchived)
+        {
+            return AdministrationResult<UserImportResponseModel>.Fail(AdministrationFailureReason.NotFound);
+        }
+
+        if (!CanAccessOrganization(actor, organizationId))
+        {
+            return AdministrationResult<UserImportResponseModel>.Fail(AdministrationFailureReason.Forbidden);
+        }
+
+        if (csvBytes.Length == 0 || csvBytes.Length > 5 * 1024 * 1024)
+        {
+            return AdministrationResult<UserImportResponseModel>.Fail(
+                AdministrationFailureReason.ValidationFailed,
+                new Dictionary<string, string[]>
+                {
+                    ["csvFile"] = new[] { "CSV file must be between 1 byte and 5 MB." }
+                });
+        }
+
+        string csvText;
+        try
+        {
+            csvText = Encoding.UTF8.GetString(csvBytes);
+        }
+        catch
+        {
+            return AdministrationResult<UserImportResponseModel>.Fail(
+                AdministrationFailureReason.ValidationFailed,
+                new Dictionary<string, string[]>
+                {
+                    ["csvFile"] = new[] { "CSV file must be UTF-8 encoded." }
+                });
+        }
+
+        using var reader = new StringReader(csvText);
+        var lineNumber = 0;
+        var headerLine = reader.ReadLine();
+        lineNumber++;
+
+        if (string.IsNullOrWhiteSpace(headerLine))
+        {
+            return AdministrationResult<UserImportResponseModel>.Fail(
+                AdministrationFailureReason.ValidationFailed,
+                new Dictionary<string, string[]>
+                {
+                    ["csvFile"] = new[] { "CSV header row is required." }
+                });
+        }
+
+        var header = ParseCsvLine(headerLine.TrimStart('\uFEFF'));
+        var expectedHeader = new[] { "firstName", "lastName", "email", "role", "status", "initialPassword" };
+        if (header.Count != expectedHeader.Length || !header.SequenceEqual(expectedHeader))
+        {
+            return AdministrationResult<UserImportResponseModel>.Fail(
+                AdministrationFailureReason.ValidationFailed,
+                new Dictionary<string, string[]>
+                {
+                    ["csvFile"] = new[] { "CSV header must be exactly: firstName,lastName,email,role,status,initialPassword" }
+                });
+        }
+
+        var parsedRows = new List<(int RowNumber, string FirstName, string LastName, string Email, string Role, string Status, string InitialPassword)>();
+        var errors = new Dictionary<string, string[]>();
+        var seenEmails = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        string? line;
+        while ((line = reader.ReadLine()) is not null)
+        {
+            lineNumber++;
+            if (string.IsNullOrWhiteSpace(line))
+            {
+                continue;
+            }
+
+            var cols = ParseCsvLine(line);
+            if (cols.Count == 1 && string.IsNullOrWhiteSpace(cols[0]))
+            {
+                continue;
+            }
+
+            if (cols.Count != expectedHeader.Length)
+            {
+                errors[$"rows[{lineNumber}].csv"] = new[] { "Row must contain exactly 6 columns." };
+                continue;
+            }
+
+            var firstName = cols[0].Trim();
+            var lastName = cols[1].Trim();
+            var email = cols[2].Trim();
+            var roleRaw = cols[3].Trim();
+            var statusRaw = cols[4].Trim();
+            var initialPassword = cols[5];
+
+            if (firstName.Length == 0)
+            {
+                errors[$"rows[{lineNumber}].firstName"] = new[] { "FirstName is required." };
+            }
+            else if (firstName.Length > 100)
+            {
+                errors[$"rows[{lineNumber}].firstName"] = new[] { "FirstName must be 100 characters or fewer." };
+            }
+
+            if (lastName.Length == 0)
+            {
+                errors[$"rows[{lineNumber}].lastName"] = new[] { "LastName is required." };
+            }
+            else if (lastName.Length > 100)
+            {
+                errors[$"rows[{lineNumber}].lastName"] = new[] { "LastName must be 100 characters or fewer." };
+            }
+
+            if (email.Length == 0)
+            {
+                errors[$"rows[{lineNumber}].email"] = new[] { "Email is required." };
+            }
+            else if (!new EmailAddressAttribute().IsValid(email))
+            {
+                errors[$"rows[{lineNumber}].email"] = new[] { "Email must be a valid email address." };
+            }
+            else if (!seenEmails.Add(email))
+            {
+                errors[$"rows[{lineNumber}].email"] = new[] { "Email must be unique within the import file." };
+            }
+
+            var role = TryParseRole(roleRaw);
+            if (role is null || role == UserRole.SiteAdmin)
+            {
+                errors[$"rows[{lineNumber}].role"] = new[] { "Role must be Org Admin, User, or Read Only." };
+            }
+
+            UserLifecycleStatus? status = string.IsNullOrWhiteSpace(statusRaw)
+                ? UserLifecycleStatus.Active
+                : TryParseStatus(statusRaw);
+            if (status is null)
+            {
+                errors[$"rows[{lineNumber}].status"] = new[] { "Status must be Active or Inactive." };
+            }
+
+            if (string.IsNullOrEmpty(initialPassword))
+            {
+                errors[$"rows[{lineNumber}].initialPassword"] = new[] { "InitialPassword is required." };
+            }
+            else
+            {
+                var passwordValidation = _passwordPolicyValidator.Validate(initialPassword);
+                if (!passwordValidation.IsValid)
+                {
+                    errors[$"rows[{lineNumber}].initialPassword"] = passwordValidation.Errors.ToArray();
+                }
+            }
+
+            parsedRows.Add((lineNumber, firstName, lastName, email, roleRaw, statusRaw, initialPassword));
+        }
+
+        if (parsedRows.Count == 0)
+        {
+            errors["csvFile"] = new[] { "CSV file must include at least one non-blank data row." };
+        }
+        else if (parsedRows.Count > 1000)
+        {
+            errors["csvFile"] = new[] { "CSV file cannot exceed 1,000 data rows." };
+        }
+
+        if (errors.Count > 0)
+        {
+            return AdministrationResult<UserImportResponseModel>.Fail(AdministrationFailureReason.ValidationFailed, errors);
+        }
+
+        // Validate against existing users before persisting any row.
+        var rowsToCreate = new List<User>(parsedRows.Count);
+        foreach (var row in parsedRows)
+        {
+            var existingUser = await _store.FindUserByEmailAsync(row.Email, cancellationToken);
+            if (existingUser is not null)
+            {
+                errors[$"rows[{row.RowNumber}].email"] = new[] { "Email must be globally unique." };
+                continue;
+            }
+
+            var parsedRole = TryParseRole(row.Role)!;
+            var parsedStatus = string.IsNullOrWhiteSpace(row.Status)
+                ? UserLifecycleStatus.Active
+                : TryParseStatus(row.Status)!.Value;
+
+            rowsToCreate.Add(new User
+            {
+                Id = Guid.NewGuid(),
+                OrganizationId = organizationId,
+                FirstName = row.FirstName,
+                LastName = row.LastName,
+                Email = row.Email,
+                PasswordHash = _passwordHasher.Hash(row.InitialPassword),
+                Role = parsedRole.Value,
+                Status = parsedStatus,
+                MustChangePassword = true
+            });
+        }
+
+        if (errors.Count > 0)
+        {
+            return AdministrationResult<UserImportResponseModel>.Fail(AdministrationFailureReason.ValidationFailed, errors);
+        }
+
+        foreach (var user in rowsToCreate)
+        {
+            await _store.AddUserAsync(user, cancellationToken);
+        }
+
+        await _store.SaveChangesAsync(cancellationToken);
+
+        foreach (var user in rowsToCreate)
+        {
+            await _auditWriter.WriteUserCreatedAsync(actor.Id, user, cancellationToken);
+        }
+
+        return AdministrationResult<UserImportResponseModel>.Success(new UserImportResponseModel
+        {
+            OrganizationId = organizationId,
+            CreatedCount = rowsToCreate.Count
+        });
+    }
+
     public async Task<AdministrationResult<UserDetailModel>> GetUserAsync(Guid actorUserId, Guid userId, CancellationToken cancellationToken)
     {
         var actor = await _store.FindUserByIdAsync(actorUserId, cancellationToken);
@@ -719,16 +990,68 @@ public sealed class OrganizationUserAdministrationService : IOrganizationUserAdm
 
     private static UserRole? TryParseRole(string? role)
     {
-        return Enum.TryParse<UserRole>(role, ignoreCase: true, out var value)
+        var normalized = NormalizeRoleValue(role);
+        return Enum.TryParse<UserRole>(normalized, ignoreCase: true, out var value)
             ? value
             : null;
     }
 
     private static UserLifecycleStatus? TryParseStatus(string? status)
     {
-        return Enum.TryParse<UserLifecycleStatus>(status, ignoreCase: true, out var value)
+        var normalized = status?.Trim();
+        return Enum.TryParse<UserLifecycleStatus>(normalized, ignoreCase: true, out var value)
             ? value
             : null;
+    }
+
+    private static string? NormalizeRoleValue(string? role)
+    {
+        if (string.IsNullOrWhiteSpace(role))
+        {
+            return role;
+        }
+
+        var normalized = role.Trim().Replace(" ", string.Empty).Replace("-", string.Empty);
+        return normalized;
+    }
+
+    private static List<string> ParseCsvLine(string line)
+    {
+        var columns = new List<string>();
+        var current = new StringBuilder();
+        var inQuotes = false;
+
+        for (var i = 0; i < line.Length; i++)
+        {
+            var ch = line[i];
+
+            if (ch == '"')
+            {
+                if (inQuotes && i + 1 < line.Length && line[i + 1] == '"')
+                {
+                    current.Append('"');
+                    i++;
+                }
+                else
+                {
+                    inQuotes = !inQuotes;
+                }
+
+                continue;
+            }
+
+            if (ch == ',' && !inQuotes)
+            {
+                columns.Add(current.ToString());
+                current.Clear();
+                continue;
+            }
+
+            current.Append(ch);
+        }
+
+        columns.Add(current.ToString());
+        return columns;
     }
 
     private static Dictionary<string, string[]> ValidateOrganizationRequest(OrganizationUpsertRequestModel request)

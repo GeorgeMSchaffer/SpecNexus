@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using SargentNexus.Application.Administration;
+using System.Text;
 
 namespace SargentNexus.API.Controllers;
 
@@ -64,6 +65,87 @@ public sealed class UsersController : ApiControllerBase
         return ToActionResult(
             result,
             onSuccess: model => Created($"/api/v1/users/{model.UserId}", model));
+    }
+
+    [HttpGet("/api/v1/organizations/{organizationId:guid}/users/import-template")]
+    [ProducesResponseType(typeof(FileContentResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> DownloadImportTemplate(Guid organizationId, CancellationToken cancellationToken)
+    {
+        var actorUserId = GetCurrentUserId();
+        if (!actorUserId.HasValue)
+        {
+            return Problem(
+                statusCode: StatusCodes.Status401Unauthorized,
+                title: "Authentication required.",
+                detail: "A valid bearer token is required.");
+        }
+
+        var result = await _service.GetUserImportTemplateAsync(actorUserId.Value, organizationId, cancellationToken);
+        return ToActionResult(
+            result,
+            onSuccess: csv => File(Encoding.UTF8.GetBytes(csv), "text/csv; charset=utf-8", "user-import-template.csv"));
+    }
+
+    [HttpPost("/api/v1/organizations/{organizationId:guid}/users/import")]
+    [Consumes("multipart/form-data")]
+    [ProducesResponseType(typeof(UserImportResponseModel), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> ImportUsers(
+        Guid organizationId,
+        [FromForm] IFormFile? csvFile,
+        CancellationToken cancellationToken)
+    {
+        var actorUserId = GetCurrentUserId();
+        if (!actorUserId.HasValue)
+        {
+            return Problem(
+                statusCode: StatusCodes.Status401Unauthorized,
+                title: "Authentication required.",
+                detail: "A valid bearer token is required.");
+        }
+
+        if (csvFile is null)
+        {
+            return BadRequest(new ValidationProblemDetails(new Dictionary<string, string[]>
+            {
+                ["csvFile"] = new[] { "CSV file is required." }
+            })
+            {
+                Status = StatusCodes.Status400BadRequest,
+                Title = "One or more validation errors occurred."
+            });
+        }
+
+        if (csvFile.Length <= 0 || csvFile.Length > 5 * 1024 * 1024)
+        {
+            return BadRequest(new ValidationProblemDetails(new Dictionary<string, string[]>
+            {
+                ["csvFile"] = new[] { "CSV file must be between 1 byte and 5 MB." }
+            })
+            {
+                Status = StatusCodes.Status400BadRequest,
+                Title = "One or more validation errors occurred."
+            });
+        }
+
+        byte[] bytes;
+        await using (var stream = csvFile.OpenReadStream())
+        {
+            using var memory = new MemoryStream();
+            await stream.CopyToAsync(memory, cancellationToken);
+            bytes = memory.ToArray();
+        }
+
+        var result = await _service.ImportUsersCsvAsync(actorUserId.Value, organizationId, bytes, cancellationToken);
+        return ToActionResult(
+            result,
+            onSuccess: model => Created($"/api/v1/organizations/{organizationId}/users/import", model));
     }
 
     [HttpGet("/api/v1/users/{userId:guid}")]

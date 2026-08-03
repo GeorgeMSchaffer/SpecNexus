@@ -79,6 +79,83 @@ public sealed class OrganizationUserAdministrationServiceTests
     }
 
     [Fact]
+    public async Task GivenAuthorizedActor_WhenGetUserImportTemplate_ThenReturnsCanonicalTemplate()
+    {
+        var organizationId = Guid.NewGuid();
+        var actor = TestUsers.CreateDefault();
+        actor.Role = UserRole.OrgAdmin;
+        actor.OrganizationId = organizationId;
+
+        var store = new FakeOrganizationUserAdministrationStore(
+            users: new[] { actor },
+            organizations: new[] { CreateOrganization(organizationId) });
+        var service = CreateService(store, new FakeOrganizationUserAuditWriter());
+
+        var result = await service.GetUserImportTemplateAsync(actor.Id, organizationId, CancellationToken.None);
+
+        Assert.True(result.Succeeded);
+        Assert.StartsWith("firstName,lastName,email,role,status,initialPassword", result.Value);
+    }
+
+    [Fact]
+    public async Task GivenValidImportCsv_WhenImportUsersCsv_ThenCreatesAllUsersAndAudits()
+    {
+        var organizationId = Guid.NewGuid();
+        var actor = TestUsers.CreateDefault();
+        actor.Role = UserRole.OrgAdmin;
+        actor.OrganizationId = organizationId;
+
+        var store = new FakeOrganizationUserAdministrationStore(
+            users: new[] { actor },
+            organizations: new[] { CreateOrganization(organizationId) });
+        var audit = new FakeOrganizationUserAuditWriter();
+        var service = CreateService(store, audit);
+
+        var csv = "firstName,lastName,email,role,status,initialPassword\n" +
+                  "Ada,Lovelace,ada@example.com,User,Active,Password1!\n" +
+                  "Alan,Turing,alan@example.com,Org Admin,Inactive,Password1!";
+
+        var result = await service.ImportUsersCsvAsync(
+            actor.Id,
+            organizationId,
+            System.Text.Encoding.UTF8.GetBytes(csv),
+            CancellationToken.None);
+
+        Assert.True(result.Succeeded);
+        Assert.Equal(2, result.Value!.CreatedCount);
+        Assert.Equal(2, audit.UserCreatedEvents.Count);
+    }
+
+    [Fact]
+    public async Task GivenDuplicateEmailInImportCsv_WhenImportUsersCsv_ThenValidationFailureAndNoUsersCreated()
+    {
+        var organizationId = Guid.NewGuid();
+        var actor = TestUsers.CreateDefault();
+        actor.Role = UserRole.OrgAdmin;
+        actor.OrganizationId = organizationId;
+
+        var store = new FakeOrganizationUserAdministrationStore(
+            users: new[] { actor },
+            organizations: new[] { CreateOrganization(organizationId) });
+        var audit = new FakeOrganizationUserAuditWriter();
+        var service = CreateService(store, audit);
+
+        var csv = "firstName,lastName,email,role,status,initialPassword\n" +
+                  "Ada,Lovelace,dup@example.com,User,Active,Password1!\n" +
+                  "Alan,Turing,dup@example.com,User,Active,Password1!";
+
+        var result = await service.ImportUsersCsvAsync(
+            actor.Id,
+            organizationId,
+            System.Text.Encoding.UTF8.GetBytes(csv),
+            CancellationToken.None);
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(AdministrationFailureReason.ValidationFailed, result.FailureReason);
+        Assert.Empty(audit.UserCreatedEvents);
+    }
+
+    [Fact]
     public async Task GivenDuplicateEmail_WhenCreateUser_ThenValidationError()
     {
         var actor = TestUsers.CreateDefault();

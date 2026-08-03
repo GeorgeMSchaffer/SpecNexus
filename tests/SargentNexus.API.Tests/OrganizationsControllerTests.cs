@@ -166,6 +166,16 @@ public sealed class OrganizationsControllerTests
                 : CreateUserAsyncHandler(actorUserId, organizationId, request, cancellationToken);
         }
 
+        public Task<AdministrationResult<string>> GetUserImportTemplateAsync(Guid actorUserId, Guid organizationId, CancellationToken cancellationToken)
+        {
+            return Task.FromResult(AdministrationResult<string>.Fail(AdministrationFailureReason.NotFound));
+        }
+
+        public Task<AdministrationResult<UserImportResponseModel>> ImportUsersCsvAsync(Guid actorUserId, Guid organizationId, byte[] csvBytes, CancellationToken cancellationToken)
+        {
+            return Task.FromResult(AdministrationResult<UserImportResponseModel>.Fail(AdministrationFailureReason.NotFound));
+        }
+
         public Task<AdministrationResult<OrganizationDetailModel>> GetOrganizationAsync(Guid actorUserId, Guid organizationId, CancellationToken cancellationToken)
         {
             return GetOrganizationAsyncHandler is null

@@ -227,6 +227,13 @@ public sealed class UserCreateResponseModel
     public string Status { get; init; } = string.Empty;
 }
 
+public sealed class UserImportResponseModel
+{
+    public Guid OrganizationId { get; init; }
+
+    public int CreatedCount { get; init; }
+}
+
 public sealed class UserUpdateRequestModel
 {
     [Required]

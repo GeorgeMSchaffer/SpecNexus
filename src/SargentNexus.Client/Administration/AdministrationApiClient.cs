@@ -253,6 +253,51 @@ public sealed class AdministrationApiClient
        throw await CreateExceptionAsync(response, cancellationToken);
     }
 
+    public async Task<string> DownloadUserImportTemplateAsync(
+       string accessToken,
+       Guid organizationId,
+       CancellationToken cancellationToken)
+    {
+       using var request = new HttpRequestMessage(HttpMethod.Get, $"api/v1/organizations/{organizationId}/users/import-template");
+       request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+
+       using var response = await _httpClient.SendAsync(request, cancellationToken);
+       if (response.IsSuccessStatusCode)
+       {
+           return await response.Content.ReadAsStringAsync(cancellationToken);
+       }
+
+       throw await CreateExceptionAsync(response, cancellationToken);
+    }
+
+    public async Task<UserImportResponseDto> ImportUsersCsvAsync(
+       string accessToken,
+       Guid organizationId,
+       string fileName,
+       byte[] fileBytes,
+       CancellationToken cancellationToken)
+    {
+       using var content = new MultipartFormDataContent();
+       var fileContent = new ByteArrayContent(fileBytes);
+       fileContent.Headers.ContentType = new MediaTypeHeaderValue("text/csv");
+       content.Add(fileContent, "csvFile", fileName);
+
+       using var request = new HttpRequestMessage(HttpMethod.Post, $"api/v1/organizations/{organizationId}/users/import")
+       {
+           Content = content
+       };
+       request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+
+       using var response = await _httpClient.SendAsync(request, cancellationToken);
+       if (response.StatusCode == HttpStatusCode.Created)
+       {
+           return await response.Content.ReadFromJsonAsync<UserImportResponseDto>(cancellationToken: cancellationToken)
+               ?? new UserImportResponseDto();
+       }
+
+       throw await CreateExceptionAsync(response, cancellationToken);
+    }
+
     private static async Task<AuthApiException> CreateExceptionAsync(HttpResponseMessage response, CancellationToken cancellationToken)
     {
         var problem = await response.Content.ReadFromJsonAsync<ProblemDetailsDto>(cancellationToken: cancellationToken);

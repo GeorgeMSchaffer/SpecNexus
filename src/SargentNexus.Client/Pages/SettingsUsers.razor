@@ -2,6 +2,7 @@
 @inject IAuthSessionService AuthSessionService
 @inject IClientErrorMessageService ErrorMessageService
 @inject AdministrationApiClient AdministrationApiClient
+@inject IJSRuntime JSRuntime
 
 <PageTitle>Users — Settings</PageTitle>
 
@@ -14,8 +15,9 @@
             </div>
             <div class="d-flex gap-2">
                 <NavLink class="btn btn-sm btn-outline-secondary" href="/settings">← Settings</NavLink>
-                @if (_view == PageView.List && CanManageUsers)
+                @if (_view == PageView.List && CanManageUsers && CurrentOrgId.HasValue)
                 {
+                    <button class="btn btn-outline-secondary" @onclick="DownloadTemplateAsync">Download CSV template</button>
                     <button class="btn btn-primary" @onclick="StartCreate">Create user</button>
                 }
             </div>
@@ -98,6 +100,19 @@
                 <div class="alert alert-danger" role="alert">@_errorMessage</div>
             }
 
+            @if (!string.IsNullOrWhiteSpace(_importSummaryMessage))
+            {
+                <div class="alert alert-success" role="alert">@_importSummaryMessage</div>
+            }
+
+            @if (CurrentOrgId.HasValue)
+            {
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Import CSV</label>
+                    <InputFile OnChange="ImportCsvAsync" accept=".csv,text/csv" class="form-control" />
+                </div>
+            }
+
             <SearchPaginationBar @bind-SearchText="_search"
                                  @bind-PageSize="_pageSize"
                                  OnSearch="HandleSearchAsync" />
@@ -175,6 +190,7 @@
     private bool _isLoading;
     private bool _isSubmitting;
     private string? _errorMessage;
+    private string? _importSummaryMessage;
     private int _page = 1;
     private int _pageSize = 25;
     private int _totalCount;
@@ -250,6 +266,86 @@
         finally
         {
             _isLoading = false;
+        }
+    }
+
+    private async Task DownloadTemplateAsync()
+    {
+        if (string.IsNullOrWhiteSpace(AuthSessionService.AccessToken) || !CurrentOrgId.HasValue)
+        {
+            return;
+        }
+
+        _errorMessage = null;
+        _importSummaryMessage = null;
+
+        try
+        {
+            var content = await AdministrationApiClient.DownloadUserImportTemplateAsync(
+                AuthSessionService.AccessToken!,
+                CurrentOrgId.Value,
+                CancellationToken.None);
+
+            await JSRuntime.InvokeVoidAsync(
+                "sargentNexus.downloadTextFile",
+                "user-import-template.csv",
+                content,
+                "text/csv;charset=utf-8");
+        }
+        catch (AuthApiException ex)
+        {
+            _errorMessage = ErrorMessageService.GetDisplayMessage(ex.Title, ex.Detail, ex);
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = ErrorMessageService.GetDisplayMessage(null, null, ex);
+        }
+    }
+
+    private async Task ImportCsvAsync(InputFileChangeEventArgs args)
+    {
+        if (string.IsNullOrWhiteSpace(AuthSessionService.AccessToken) || !CurrentOrgId.HasValue)
+        {
+            return;
+        }
+
+        var file = args.File;
+        if (file is null)
+        {
+            return;
+        }
+
+        _errorMessage = null;
+        _importSummaryMessage = null;
+
+        try
+        {
+            await using var stream = file.OpenReadStream(maxAllowedSize: 5 * 1024 * 1024);
+            using var ms = new MemoryStream();
+            await stream.CopyToAsync(ms);
+
+            var result = await AdministrationApiClient.ImportUsersCsvAsync(
+                AuthSessionService.AccessToken!,
+                CurrentOrgId.Value,
+                file.Name,
+                ms.ToArray(),
+                CancellationToken.None);
+
+            _importSummaryMessage = $"{result.CreatedCount} users imported successfully.";
+            _page = 1;
+            await LoadUsersAsync();
+        }
+        catch (AuthValidationException ex)
+        {
+            _errorMessage = ErrorMessageService.GetDisplayMessage(ex.Title, ex.Detail, ex);
+        }
+        catch (AuthApiException ex)
+        {
+            _errorMessage = ErrorMessageService.GetDisplayMessage(ex.Title, ex.Detail, ex);
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = ErrorMessageService.GetDisplayMessage(null, null, ex);
         }
     }
 

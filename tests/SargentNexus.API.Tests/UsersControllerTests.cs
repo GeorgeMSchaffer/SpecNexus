@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using System.Text;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using SargentNexus.API.Controllers;
@@ -101,6 +102,53 @@ public sealed class UsersControllerTests
         Assert.Equal("Not found.", problem.Title);
     }
 
+    [Fact]
+    public async Task DownloadImportTemplate_WhenServiceSucceeds_ReturnsCsvFile()
+    {
+        var organizationId = Guid.NewGuid();
+        const string csv = "firstName,lastName,email,role,status,initialPassword\nJane,Doe,jane@example.com,User,Active,Password1!";
+
+        var service = new StubService
+        {
+            GetUserImportTemplateAsyncHandler = (_, _, _) =>
+                Task.FromResult(AdministrationResult<string>.Success(csv))
+        };
+
+        var controller = CreateController(service, Guid.NewGuid());
+        var result = await controller.DownloadImportTemplate(organizationId, CancellationToken.None);
+
+        var file = Assert.IsType<FileContentResult>(result);
+        Assert.Equal("text/csv; charset=utf-8", file.ContentType);
+        Assert.Equal("user-import-template.csv", file.FileDownloadName);
+        Assert.Equal(csv, Encoding.UTF8.GetString(file.FileContents));
+    }
+
+    [Fact]
+    public async Task ImportUsers_WhenServiceSucceeds_ReturnsCreated()
+    {
+        var organizationId = Guid.NewGuid();
+        var response = new UserImportResponseModel
+        {
+            OrganizationId = organizationId,
+            CreatedCount = 2
+        };
+
+        var service = new StubService
+        {
+            ImportUsersCsvAsyncHandler = (_, _, _, _) =>
+                Task.FromResult(AdministrationResult<UserImportResponseModel>.Success(response))
+        };
+
+        var controller = CreateController(service, Guid.NewGuid());
+        var formFile = new FormFile(new MemoryStream(Encoding.UTF8.GetBytes("firstName,lastName,email,role,status,initialPassword")), 0, 57, "csvFile", "users.csv");
+
+        var result = await controller.ImportUsers(organizationId, formFile, CancellationToken.None);
+
+        var created = Assert.IsType<CreatedResult>(result);
+        Assert.Equal(StatusCodes.Status201Created, created.StatusCode);
+        Assert.Same(response, created.Value);
+    }
+
     private static UsersController CreateController(IOrganizationUserAdministrationService service, Guid? actorUserId = null)
     {
         var controller = new UsersController(service)
@@ -144,6 +192,10 @@ public sealed class UsersControllerTests
         public Func<Guid, Guid, OrganizationUsersListQueryModel, CancellationToken, Task<AdministrationResult<PagedResultModel<UserSummaryModel>>>>? ListUsersAsyncHandler { get; init; }
 
         public Func<Guid, Guid, UserCreateRequestModel, CancellationToken, Task<AdministrationResult<UserCreateResponseModel>>>? CreateUserAsyncHandler { get; init; }
+
+        public Func<Guid, Guid, CancellationToken, Task<AdministrationResult<string>>>? GetUserImportTemplateAsyncHandler { get; init; }
+
+        public Func<Guid, Guid, byte[], CancellationToken, Task<AdministrationResult<UserImportResponseModel>>>? ImportUsersCsvAsyncHandler { get; init; }
 
         public Func<Guid, Guid, CancellationToken, Task<AdministrationResult<UserDetailModel>>>? GetUserAsyncHandler { get; init; }
 
@@ -199,6 +251,20 @@ public sealed class UsersControllerTests
             return CreateUserAsyncHandler is null
                 ? Task.FromResult(AdministrationResult<UserCreateResponseModel>.Fail(AdministrationFailureReason.Forbidden))
                 : CreateUserAsyncHandler(actorUserId, organizationId, request, cancellationToken);
+        }
+
+        public Task<AdministrationResult<string>> GetUserImportTemplateAsync(Guid actorUserId, Guid organizationId, CancellationToken cancellationToken)
+        {
+            return GetUserImportTemplateAsyncHandler is null
+                ? Task.FromResult(AdministrationResult<string>.Fail(AdministrationFailureReason.Forbidden))
+                : GetUserImportTemplateAsyncHandler(actorUserId, organizationId, cancellationToken);
+        }
+
+        public Task<AdministrationResult<UserImportResponseModel>> ImportUsersCsvAsync(Guid actorUserId, Guid organizationId, byte[] csvBytes, CancellationToken cancellationToken)
+        {
+            return ImportUsersCsvAsyncHandler is null
+                ? Task.FromResult(AdministrationResult<UserImportResponseModel>.Fail(AdministrationFailureReason.Forbidden))
+                : ImportUsersCsvAsyncHandler(actorUserId, organizationId, csvBytes, cancellationToken);
         }
 
         public Task<AdministrationResult<UserDetailModel>> GetUserAsync(Guid actorUserId, Guid userId, CancellationToken cancellationToken)

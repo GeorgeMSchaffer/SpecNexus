@@ -166,6 +166,13 @@ public sealed class UserCreateResponseDto
     public string Status { get; set; } = string.Empty;
 }
 
+public sealed class UserImportResponseDto
+{
+    public Guid OrganizationId { get; set; }
+
+    public int CreatedCount { get; set; }
+}
+
 public sealed class UserUpdateRequestDto
 {
     public string FirstName { get; set; } = string.Empty;
