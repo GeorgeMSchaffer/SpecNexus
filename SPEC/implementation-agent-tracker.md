@@ -4,10 +4,10 @@
 Track implementation work that Copilot-driven implementation agents should complete, what is currently active, and what has already been finished.
 
 ## Current Status
-- Current implementation slice: Epic B (Notification Events T037–T039) + Epic C Client UI Revisions
+- Current implementation slice: Epic 8 Hardening (T049 Contract tests)
 - Current owner: main session
 - Current state: In Progress
-- Last updated: 2026-07-31
+- Last updated: 2026-08-03
 
 ## Completed
 - T001 Create the solution structure and project references.
@@ -35,17 +35,12 @@ Track implementation work that Copilot-driven implementation agents should compl
 - C2 Rewrite MainLayout.razor with dark header `rgb(33,37,41)`, gear icon (→ `/settings`), sign-out icon, white username, horizontal nav (Home/Workflow/Ideas). NavMenu.razor removed.
 - C5 Simplify Workflow.razor to boards-only list (Name, Board Type, Open).
 - Domain-additions Add `Board.IsArchived` (bool) and `Status.Color/SortOrder/IsDefault` to domain + EF config + seed. Migration `AddBoardIsArchived` generated.
+- T037–T039 Complete notification event wiring and coverage (idea/comment mentions, comment-added, status-changed), canonical `/ideas/{ideaId}/edit` links, self-notification suppression, and deferred-email DI guard coverage.
 
 ## In Progress
-- Cleanup commit: delete NavMenu.razor, add header CSS to app.css, build+test, commit C1/C2/C5 + domain additions.
+- T049 Contract tests for schema and problem-details error behavior.
 
 ## Ready Next
-- T037–T039 Epic B: Notification events (`INotificationWriter`, `NotificationWriter`, wire into `WorkflowManagementService`).
-- C3 Settings rename: Admin→Settings, route update, My Profile + change-password section.
-- C4 Admin-style list/form pattern (depends on C3).
-- C6 My Ideas page at `/ideas` (depends on C3/C4).
-- C7 Uniform search + pagination (depends on C4).
-- T049 Contract tests (after Epic B + C).
 - T050 End-to-end seed verification (after T049).
 
 ## Progress Notes

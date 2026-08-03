@@ -607,6 +607,28 @@ public sealed class WorkflowManagementServiceTests
     }
 
     [Fact]
+    public async Task CreateIdea_WhenMentionEmailMatchesActor_DoesNotWriteSelfNotificationEvent()
+    {
+        var fixture = new WorkflowFixture();
+        var board = fixture.CreateBoardWithTwoSwimlanes();
+
+        var result = await fixture.Service.CreateIdeaAsync(
+            fixture.OrgAdminActor,
+            board.Id,
+            new IdeaWriteRequestModel
+            {
+                Title = "Self mention",
+                Description = "No self notification",
+                Priority = "Medium",
+                MentionEmails = new[] { fixture.OrgAdminUser.Email }
+            },
+            CancellationToken.None);
+
+        Assert.True(result.Succeeded);
+        Assert.Empty(fixture.NotificationWriter.Events);
+    }
+
+    [Fact]
     public async Task MoveIdeaStatus_WhenStatusChanges_WritesStatusChangeNotificationEvent()
     {
         var fixture = new WorkflowFixture();
@@ -624,6 +646,28 @@ public sealed class WorkflowManagementServiceTests
         Assert.Equal("IdeaStatusChanged", notification.EventType);
         Assert.Equal(fixture.StandardUser.Id, notification.RecipientUserId);
         Assert.Equal($"/ideas/{idea.Id}/edit", notification.IdeaLink);
+    }
+
+    [Fact]
+    public async Task MoveIdeaStatus_WhenAuthorAndAssigneeAreDifferent_WritesTwoStatusChangeNotifications()
+    {
+        var fixture = new WorkflowFixture();
+        var board = fixture.CreateBoardWithTwoSwimlanes();
+        var idea = fixture.CreateIdeaWithAuthor(fixture.StandardUser, board);
+        idea.AssigneeUserId = fixture.ReadOnlyUser.Id;
+
+        var result = await fixture.Service.MoveIdeaStatusAsync(
+            fixture.OrgAdminActor,
+            idea.Id,
+            new MoveIdeaStatusRequestModel { StatusId = fixture.StatusTwo.Id },
+            CancellationToken.None);
+
+        Assert.True(result.Succeeded);
+        var notifications = fixture.NotificationWriter.Events.Where(item => item.EventType == "IdeaStatusChanged").ToArray();
+        Assert.Equal(2, notifications.Length);
+        Assert.Contains(notifications, item => item.RecipientUserId == fixture.StandardUser.Id);
+        Assert.Contains(notifications, item => item.RecipientUserId == fixture.ReadOnlyUser.Id);
+        Assert.All(notifications, item => Assert.Equal($"/ideas/{idea.Id}/edit", item.IdeaLink));
     }
 
     [Fact]
@@ -659,6 +703,44 @@ public sealed class WorkflowManagementServiceTests
 
         Assert.True(result.Succeeded);
         Assert.Contains(fixture.NotificationWriter.Events, item => item.EventType == "CommentMention");
+    }
+
+    [Fact]
+    public async Task CreateComment_WhenMentionTargetsActor_DoesNotWriteSelfNotificationEvents()
+    {
+        var fixture = new WorkflowFixture();
+        var idea = fixture.CreateIdeaWithAuthor(fixture.OrgAdminUser);
+
+        var result = await fixture.Service.CreateCommentAsync(
+            fixture.OrgAdminActor,
+            idea.Id,
+            new CommentWriteRequestModel { Body = $"Self mention @{fixture.OrgAdminUser.Email}" },
+            CancellationToken.None);
+
+        Assert.True(result.Succeeded);
+        Assert.Empty(fixture.NotificationWriter.Events);
+    }
+
+    [Fact]
+    public async Task CreateComment_WhenAuthorAndAssigneeAreDifferent_WritesTwoCommentAddedNotifications()
+    {
+        var fixture = new WorkflowFixture();
+        var board = fixture.CreateBoardWithTwoSwimlanes();
+        var idea = fixture.CreateIdeaWithAuthor(fixture.StandardUser, board);
+        idea.AssigneeUserId = fixture.ReadOnlyUser.Id;
+
+        var result = await fixture.Service.CreateCommentAsync(
+            fixture.OrgAdminActor,
+            idea.Id,
+            new CommentWriteRequestModel { Body = "New collaboration comment" },
+            CancellationToken.None);
+
+        Assert.True(result.Succeeded);
+        var notifications = fixture.NotificationWriter.Events.Where(item => item.EventType == "CommentAdded").ToArray();
+        Assert.Equal(2, notifications.Length);
+        Assert.Contains(notifications, item => item.RecipientUserId == fixture.StandardUser.Id);
+        Assert.Contains(notifications, item => item.RecipientUserId == fixture.ReadOnlyUser.Id);
+        Assert.All(notifications, item => Assert.Equal($"/ideas/{idea.Id}/edit", item.IdeaLink));
     }
 
     [Fact]
