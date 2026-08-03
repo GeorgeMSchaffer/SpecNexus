@@ -29,7 +29,7 @@ Additional context:
 - Project brief: [SPEC/00-project-brief.md](SPEC/00-project-brief.md)
 - Feature-level specs: All specs are labeled 20-{spec-name}.md such as:
 [SPEC/20-feature-auth.md](SPEC/20-feature-auth.md), [SPEC/20-feature-organizations-and-users.md](SPEC/20-feature-organizations-and-users.md), [SPEC/20-feature-boards-and-statuses.md](SPEC/20-feature-boards-and-statuses.md), [SPEC/20-feature-ideas-and-engagement.md](SPEC/20-feature-ideas-and-engagement.md), [SPEC/20-feature-notifications.md](SPEC/20-feature-notifications.md)
-- Team implementation standards: [SPEC/copilot-instructions.md](SPEC/copilot-instructions.md)
+- Team implementation standards: [.github/copilot-instructions.md](.github/copilot-instructions.md)
 
 ## Solution Structure
 
@@ -49,8 +49,8 @@ Additional context:
 	- Infrastructure implements Application/Domain abstractions.
 	- Domain must not depend on API, Client, or Infrastructure.
 - Follow .NET coding style guidance: https://github.com/dotnet/runtime/blob/main/docs/coding-guidelines/coding-style.md
-- Follow SQL standards from [SPEC/copilot-instructions.md](SPEC/copilot-instructions.md): uppercase SQL keywords, lowercase table/column names, explicit column selection, and readable formatting.
-- Follow test standards from [SPEC/copilot-instructions.md](SPEC/copilot-instructions.md): Arrange/Act/Assert, clear test naming, boundary and invalid-state coverage, and isolated tests without external dependencies.
+- Follow SQL standards from [.github/copilot-instructions.md](.github/copilot-instructions.md): uppercase SQL keywords, lowercase table/column names, explicit column selection, and readable formatting.
+- Follow test standards from [.github/copilot-instructions.md](.github/copilot-instructions.md): Arrange/Act/Assert, clear test naming, boundary and invalid-state coverage, and isolated tests without external dependencies.
 - Do not add new packages without approval.
 
 ## Build
