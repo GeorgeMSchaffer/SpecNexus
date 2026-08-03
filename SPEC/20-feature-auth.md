@@ -24,6 +24,9 @@ Users can securely access the application using organization-scoped accounts.
 14. "Remember this device" is out of scope for MVP.
 15. Inactive user accounts cannot authenticate.
 16. Successful and failed authentication events, password changes, and password resets must be audited.
+17. Invited users can self-register through a dedicated Register page (`/register`) using a valid organization invite code.
+18. Logout is handled via a dedicated Logout route (`/logout`) that clears the session and redirects to Login.
+19. Unauthenticated or unauthorized shells expose only `Login` and `Register` entry points; protected navigation is hidden until authentication succeeds.
 
 ## Acceptance Criteria
 - [ ] Valid credentials allow login
@@ -38,3 +41,6 @@ Users can securely access the application using organization-scoped accounts.
 - [ ] Admin-issued temporary password reset is implemented in P1
 - [ ] Temporary passwords are one-time display, expire after 24 hours, and force password change on first use
 - [ ] Authentication outcomes and password-related actions generate audit events
+- [ ] Invited users can self-register from `/register` using invite code + profile + password inputs
+- [ ] `/logout` clears the active session and redirects to `/login`
+- [ ] Unauthenticated/unauthorized users do not see protected navigation links

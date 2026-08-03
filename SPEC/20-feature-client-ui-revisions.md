@@ -4,6 +4,12 @@
 
 Defines a batch of client UI bug fixes and structural revisions covering layout, navigation, the Settings (formerly Admin) area, list-page conventions, and removal of template placeholder code. Decisions were captured via QA interviews on 2026-07-30 and 2026-07-31.
 
+## Decision Log Addendum (2026-08-03)
+
+- Decision D1: Home dashboard scope is locked to **MVP summary dashboard** (welcome + quick links + counts) for this implementation slice.
+- Decision D2: Logout interaction is route-based (`/logout`) to keep sign-out behavior explicit and testable.
+- Decision D3: Unauthenticated shell is restricted to `Login` and `Register` links only.
+
 ## Bug Fixes
 
 ### BUG-1: Errant `else {` on Change Password screen
@@ -23,12 +29,28 @@ Defines a batch of client UI bug fixes and structural revisions covering layout,
 - The signed-in Username in the header renders in white.
 - Sign Out is an icon button placed immediately to the LEFT of the Username display.
 - A gear icon in the header navigates to the Settings area (see below). The gear is visible to all authenticated users.
+- The Sign Out icon navigates to `/logout`, where logout is executed and the user is returned to `/login`.
+- When unauthenticated (or otherwise not authorized for protected UI), the header shows only `Login` and `Register` links. No protected navigation links are shown.
 
 ### Menu
 - The primary menu is horizontal and sits directly under the main header (no vertical sidebar nav).
-- Menu items: Home, Workflow, Ideas.
+- Menu items: Home, Workflows, Ideas.
 - Admin functionality is NOT in the horizontal menu; it is reached only via the header gear icon.
 - Change Password is NOT in the menu; it is accessible only from Settings → My Profile.
+- The protected menu is shown only for authenticated users with access to protected routes.
+- Menu links navigate to list-entry pages: Home (`/`), Workflows (`/workflow`), Ideas (`/ideas`).
+
+### Unauthenticated and Unauthorized Shell
+- Unauthenticated users can access `/login` and `/register`.
+- Unauthenticated users attempting protected routes are redirected to `/login`.
+- Unauthorized users (authenticated but lacking permission for a specific feature) receive an explicit Forbidden/Not Found experience per existing API/UI policy; they do not receive admin links as a substitute for authorization.
+
+### Mockup Alignment
+- Client layout and interaction details should align to the mockup set in `SPEC/mockups`:
+  - `01-login-and-org-selection.svg` for login/register baseline structure (while using invite-code self-registration behavior from current auth contracts).
+  - `02-admin-organizations.svg`, `03-admin-users.svg`, and `06-status-management.svg` for settings administration list/form rhythm.
+  - `04-board-overview.svg`, `05-idea-detail-panel.svg`, and `12-idea-card-and-overlay.svg` for board and idea interaction patterns.
+  - `10-board-empty-state-guided-setup.svg` for guided empty-state behavior.
 
 ## Settings Area (formerly "Admin")
 
@@ -114,6 +136,16 @@ Applies to Settings pages for Organizations, Users, and Boards & Statuses.
 - Clicking **Details** on a row navigates to `/ideas/{id}/edit` (dedicated route, not inline swap).
 - The Edit Idea form at `/ideas/{id}/edit` has a Back button returning to `/ideas`.
 
+## Home Page Dashboard (authenticated users)
+
+- The Home page becomes a lightweight authenticated dashboard rather than placeholder template content.
+- Initial MVP dashboard sections:
+  - Welcome summary (user name + role).
+  - Quick actions: Workflows, Ideas, Settings.
+  - At-a-glance counts: accessible boards, ideas created by me, ideas assigned to me.
+- Dashboard data should use existing list/service endpoints where possible and degrade gracefully to zero/empty messaging when data is unavailable.
+- Dashboard follows the same role-aware visibility conventions as the rest of the authenticated shell.
+
 ## Uniform List Conventions (all list pages)
 
 Applies to Organizations, Users, Ideas, Boards, and any future entity list page.
@@ -129,7 +161,9 @@ Applies to Organizations, Users, Ideas, Boards, and any future entity list page.
 - [ ] Change Password page renders no stray `else {` or `else {}` text.
 - [ ] Weather and Counter pages, links, and code are fully removed.
 - [ ] Header uses `rgb(33, 37, 41)`; Username is white; Sign Out icon sits left of the Username.
-- [ ] Horizontal menu under the header shows Home, Workflow, Ideas only.
+- [ ] Sign Out icon routes through `/logout` and returns the user to `/login`.
+- [ ] Unauthenticated shell shows only Login and Register links.
+- [ ] Horizontal menu under the header shows Home, Workflows, Ideas only for authenticated users.
 - [ ] Change Password is accessible only from Settings → My Profile (embedded section); no standalone nav link exists.
 - [ ] Gear icon navigates to `/settings`; area is titled "Settings" everywhere; old `/admin` routes return 404.
 - [ ] Settings landing shows My Profile for all users and role-correct admin links (Site Admin: Orgs/Users/Boards & Statuses; Org Admin: Users/Boards & Statuses own-org; Member: none).
@@ -140,4 +174,4 @@ Applies to Organizations, Users, Ideas, Boards, and any future entity list page.
 - [ ] Boards & Statuses Settings page shows boards list (Name/Board Type/Status) and statuses list (Name/Color/Sort Order/Is Default) — pending domain additions for `Board.IsArchived`, `Status.Color`, `Status.SortOrder`, `Status.IsDefault`.
 - [ ] Ideas page (`/ideas`) lists combined created-by/assigned-to ideas with All/Created/Assigned filter and Title/Created By/Assigned To/Status/Created Date columns; Details navigates to `/ideas/{id}/edit`.
 - [ ] All list pages have a uniform search bar and server-side pagination with 25/50/100/250 page sizes (default 25).
-
+- [ ] Home page is an authenticated dashboard with welcome summary, quick actions, and boards/my-ideas/assigned-ideas counts.
