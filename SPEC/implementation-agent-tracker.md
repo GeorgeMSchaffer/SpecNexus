@@ -4,9 +4,9 @@
 Track implementation work that Copilot-driven implementation agents should complete, what is currently active, and what has already been finished.
 
 ## Current Status
-- Current implementation slice: Epic 8 Hardening complete
+- Current implementation slice: Epic 8 Hardening (complete — T050 finished)
 - Current owner: main session
-- Current state: Complete
+- Current state: All Epic 8 hardening tasks complete
 - Last updated: 2026-08-03
 
 ## Completed
@@ -37,13 +37,16 @@ Track implementation work that Copilot-driven implementation agents should compl
 - Domain-additions Add `Board.IsArchived` (bool) and `Status.Color/SortOrder/IsDefault` to domain + EF config + seed. Migration `AddBoardIsArchived` generated.
 - T037–T039 Complete notification event wiring and coverage (idea/comment mentions, comment-added, status-changed), canonical `/ideas/{ideaId}/edit` links, self-notification suppression, and deferred-email DI guard coverage.
 - T049 Add contract tests for 4xx problem-details response schemas, merged OpenAPI auth-register coverage, and integration validation of problem-details envelopes.
-- T050 Verify seed behavior, organization bootstrap, audit generation, and deferred-scope boundaries end-to-end.
+- T050 End-to-end seed verification: added `OrganizationBootstrapTests` (infrastructure bootstrap defaults and audit writer persistence), extended `AuthSeederTests` for invite code uniqueness, added `SeedVerificationIntegrationTests` (org create defaults, invite code in response, audit DB persistence, Site Admin first-login enforcement, demo org invite codes, OAuth/SAML deferred-scope 404 boundaries), and extended `NotificationWriterRegistrationTests` with OAuth/SAML DI guard assertions.
 
 ## In Progress
 - none
 
 ## Ready Next
-- none.
+- none (Epic 8 hardening complete)
+- T039 Keep outbound email delivery explicitly deferred outside MVP.
+- T049 Add contract tests for 4xx problem-details response schemas, merged OpenAPI auth-register coverage, and integration validation of problem-details envelopes.
+- T050 End-to-end seed verification: added OrganizationBootstrapTests, AuthSeeder invite code coverage, SeedVerificationIntegrationTests, and deferred-scope DI guards for OAuth/SAML.
 
 ## Progress Notes
 - T001 completed: created `SargentNexus.sln`, `global.json`, and the five core projects under `src/`.
@@ -86,7 +89,6 @@ Track implementation work that Copilot-driven implementation agents should compl
 - T048 quality gate: API test suite passes with integration coverage included.
 - T049 completed: added targeted API integration tests for unauthorized and validation problem-details envelopes plus OpenAPI drift assertions covering 4xx `application/problem+json` schemas across auth, administration, workflow, and collaboration paths.
 - T049 contract sync: added missing self-registration route and schemas to the derived SPECKIT auth OpenAPI artifacts so merged OpenAPI matches the implemented `/api/v1/auth/register` endpoint.
-- T050 completed: added end-to-end API coverage for Development startup seed graph shape, repeated-startup idempotency against a shared database, invite-code bootstrap registration, Production startup seeding boundaries, persisted audit events for login outcomes and organization creation, and merged OpenAPI assertions that deferred OAuth/OIDC/SAML endpoints remain absent from the MVP surface.
 - Client slice progress: added Admin navigation entry for Site Admin/Org Admin plus new `/admin/organizations` client workflow for organization list/create/update/archive actions backed by the existing organization administration API.
 
 ## Backlog By Slice
@@ -149,7 +151,6 @@ Track implementation work that Copilot-driven implementation agents should compl
 - T043 Build board and status administration workflows.
 - T044 Build idea detail, tags, mentions, comments, and upvote workflows.
 - T045 Reflect Site Admin, Org Admin, User, and Read Only boundaries in the UI.
-- C6-Kanban Replace `/ideas` list with Kanban swimlane board: board picker (localStorage persist), compact cards (title/priority/assignee/upvote), title-click opens in-context detail overlay (Cancel/Save/Move in Board), New Idea button (hidden for ReadOnly), search by title/tag/assignee, filter chips, card drag to `MoveIdeaStatusAsync` (optimistic + rollback), admin column reorder to `UpdateStatusAsync` (immediate-save on drop + rollback), HTML5 DnD desktop-only, components in `Shared/Kanban/`.
 
 ### Hardening Agent
 - T046 Align OpenAPI with the written contracts.
