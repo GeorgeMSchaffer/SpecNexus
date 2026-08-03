@@ -119,6 +119,28 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/ProblemDetails'
+  /api/v1/auth/register:
+    post:
+      summary: Self-register a user with an organization invite code
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SelfRegistrationRequest'
+      responses:
+        '201':
+          description: User account created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SelfRegistrationResponse'
+        '400':
+          description: Invalid invite code, malformed request body, or validation failure
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
 components:
   parameters:
     UserId:
@@ -195,6 +217,41 @@ components:
           type: string
         mustChangePassword:
           type: boolean
+    SelfRegistrationRequest:
+      type: object
+      required: [inviteCode, firstName, lastName, email, password]
+      properties:
+        inviteCode:
+          type: string
+          maxLength: 16
+        firstName:
+          type: string
+          maxLength: 100
+        lastName:
+          type: string
+          maxLength: 100
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+    SelfRegistrationResponse:
+      type: object
+      required: [userId, organizationId, email, role, status]
+      properties:
+        userId:
+          type: string
+          format: uuid
+        organizationId:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        role:
+          type: string
+        status:
+          type: string
     UserSummary:
       type: object
       required: [userId, role, firstName, lastName, email, status]

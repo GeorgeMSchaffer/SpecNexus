@@ -85,3 +85,25 @@ paths:
             application/problem+json:
               schema:
                 $ref: ../components/schemas/common.yaml#/ProblemDetails
+  /api/v1/auth/register:
+    post:
+      summary: Self-register a user with an organization invite code
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/auth.yaml#/SelfRegistrationRequest
+      responses:
+        '201':
+          description: User account created
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/auth.yaml#/SelfRegistrationResponse
+        '400':
+          description: Invalid invite code, malformed request body, or validation failure
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ValidationProblemDetails

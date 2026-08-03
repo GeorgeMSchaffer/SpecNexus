@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -104,6 +105,52 @@ public sealed class ApiIntegrationTests
         var response = await client.GetAsync("/api/v1/organizations?page=1&pageSize=10");
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task ProtectedOrganizationsEndpoint_WithoutToken_ReturnsProblemDetailsContract()
+    {
+        await using var factory = new IntegrationApiFactory();
+        using var client = factory.CreateClient();
+
+        var response = await client.GetAsync("/api/v1/organizations?page=1&pageSize=10");
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
+
+        var problem = await response.Content.ReadFromJsonAsync<ProblemDetails>();
+        Assert.NotNull(problem);
+        Assert.Equal(StatusCodes.Status401Unauthorized, problem!.Status);
+        Assert.Equal("Authentication required.", problem.Title);
+        Assert.Equal("A valid bearer token is required.", problem.Detail);
+    }
+
+    [Fact]
+    public async Task Register_WithMissingRequiredFields_ReturnsValidationProblemDetailsContract()
+    {
+        await using var factory = new IntegrationApiFactory();
+        using var client = factory.CreateClient();
+
+        var response = await client.PostAsJsonAsync("/api/v1/auth/register", new
+        {
+            inviteCode = "",
+            firstName = "",
+            lastName = "",
+            email = "",
+            password = ""
+        });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
+
+        var problem = await response.Content.ReadFromJsonAsync<ValidationProblemDetails>();
+        Assert.NotNull(problem);
+        Assert.Equal(StatusCodes.Status400BadRequest, problem!.Status);
+        Assert.Equal("One or more validation errors occurred.", problem.Title);
+        Assert.NotEmpty(problem.Errors);
+        Assert.Contains(problem.Errors.Keys, key => string.Equals(key, "InviteCode", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(problem.Errors.Keys, key => string.Equals(key, "Email", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(problem.Errors.Keys, key => string.Equals(key, "Password", StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]

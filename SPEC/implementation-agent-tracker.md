@@ -4,9 +4,9 @@
 Track implementation work that Copilot-driven implementation agents should complete, what is currently active, and what has already been finished.
 
 ## Current Status
-- Current implementation slice: Epic 8 Hardening (T049 Contract tests)
+- Current implementation slice: Epic 8 Hardening (T050 Seed verification)
 - Current owner: main session
-- Current state: In Progress
+- Current state: Ready Next
 - Last updated: 2026-08-03
 
 ## Completed
@@ -36,9 +36,10 @@ Track implementation work that Copilot-driven implementation agents should compl
 - C5 Simplify Workflow.razor to boards-only list (Name, Board Type, Open).
 - Domain-additions Add `Board.IsArchived` (bool) and `Status.Color/SortOrder/IsDefault` to domain + EF config + seed. Migration `AddBoardIsArchived` generated.
 - T037–T039 Complete notification event wiring and coverage (idea/comment mentions, comment-added, status-changed), canonical `/ideas/{ideaId}/edit` links, self-notification suppression, and deferred-email DI guard coverage.
+- T049 Add contract tests for 4xx problem-details response schemas, merged OpenAPI auth-register coverage, and integration validation of problem-details envelopes.
 
 ## In Progress
-- T049 Contract tests for schema and problem-details error behavior.
+- none
 
 ## Ready Next
 - T050 End-to-end seed verification (after T049).
@@ -82,6 +83,8 @@ Track implementation work that Copilot-driven implementation agents should compl
 - T047 quality gate: application tests now cover both failing and passing mention-resolution paths; API/Application/Infrastructure suites pass.
 - T048 completed: added in-process API integration tests using `WebApplicationFactory` plus in-memory EF startup seeding to validate auth success/failure/lockout branches, unauthenticated protected-route rejection, and org-admin organization-scope collaboration read flows.
 - T048 quality gate: API test suite passes with integration coverage included.
+- T049 completed: added targeted API integration tests for unauthorized and validation problem-details envelopes plus OpenAPI drift assertions covering 4xx `application/problem+json` schemas across auth, administration, workflow, and collaboration paths.
+- T049 contract sync: added missing self-registration route and schemas to the derived SPECKIT auth OpenAPI artifacts so merged OpenAPI matches the implemented `/api/v1/auth/register` endpoint.
 - Client slice progress: added Admin navigation entry for Site Admin/Org Admin plus new `/admin/organizations` client workflow for organization list/create/update/archive actions backed by the existing organization administration API.
 
 ## Backlog By Slice

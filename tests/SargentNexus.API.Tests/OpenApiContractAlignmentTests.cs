@@ -62,6 +62,36 @@ public sealed class OpenApiContractAlignmentTests
 	}
 
 	[Fact]
+	public void MergedPaths_Expected4xxProblemResponses_IncludeProblemJsonSchemas()
+	{
+		var authPaths = ReadRepoFile("SPEC", "SPECKIT", "openapi", "paths", "auth.yaml");
+		AssertResponseHasProblemJsonSchema(authPaths, "/api/v1/auth/login", "post", "401", "ProblemDetails");
+		AssertResponseHasProblemJsonSchema(authPaths, "/api/v1/auth/login", "post", "403", "ProblemDetails");
+		AssertResponseHasProblemJsonSchema(authPaths, "/api/v1/auth/login", "post", "429", "ProblemDetails");
+		AssertResponseHasProblemJsonSchema(authPaths, "/api/v1/auth/change-password", "post", "400", "ValidationProblemDetails");
+		AssertResponseHasProblemJsonSchema(authPaths, "/api/v1/auth/change-password", "post", "401", "ProblemDetails");
+		AssertResponseHasProblemJsonSchema(authPaths, "/api/v1/auth/register", "post", "400", "ValidationProblemDetails");
+
+		var organizationsUsersPaths = ReadRepoFile("SPEC", "SPECKIT", "openapi", "paths", "organizations-users.yaml");
+		AssertResponseHasProblemJsonSchema(organizationsUsersPaths, "/api/v1/organizations", "get", "401", "ProblemDetails");
+		AssertResponseHasProblemJsonSchema(organizationsUsersPaths, "/api/v1/organizations", "get", "403", "ProblemDetails");
+		AssertResponseHasProblemJsonSchema(organizationsUsersPaths, "/api/v1/organizations", "post", "400", "ValidationProblemDetails");
+		AssertResponseHasProblemJsonSchema(organizationsUsersPaths, "/api/v1/organizations/{organizationId}", "put", "404", "ProblemDetails");
+		AssertResponseHasProblemJsonSchema(organizationsUsersPaths, "/api/v1/users/{userId}", "put", "404", "ProblemDetails");
+
+		var boardsStatusesPaths = ReadRepoFile("SPEC", "SPECKIT", "openapi", "paths", "boards-statuses.yaml");
+		AssertResponseHasProblemJsonSchema(boardsStatusesPaths, "/api/v1/organizations/{organizationId}/statuses", "post", "400", "ValidationProblemDetails");
+		AssertResponseHasProblemJsonSchema(boardsStatusesPaths, "/api/v1/organizations/{organizationId}/boards", "post", "400", "ValidationProblemDetails");
+		AssertResponseHasProblemJsonSchema(boardsStatusesPaths, "/api/v1/boards/{boardId}", "get", "404", "ProblemDetails");
+
+		var ideasEngagementPaths = ReadRepoFile("SPEC", "SPECKIT", "openapi", "paths", "ideas-engagement.yaml");
+		AssertResponseHasProblemJsonSchema(ideasEngagementPaths, "/api/v1/organizations/{organizationId}/tags", "get", "400", "ValidationProblemDetails");
+		AssertResponseHasProblemJsonSchema(ideasEngagementPaths, "/api/v1/boards/{boardId}/ideas", "post", "404", "ProblemDetails");
+		AssertResponseHasProblemJsonSchema(ideasEngagementPaths, "/api/v1/ideas/{ideaId}/comments", "post", "400", "ValidationProblemDetails");
+		AssertResponseHasProblemJsonSchema(ideasEngagementPaths, "/api/v1/ideas/{ideaId}/upvote/toggle", "post", "404", "ProblemDetails");
+	}
+
+	[Fact]
 	public void Feature005_IdeaSchemas_MatchRequiredContractShape()
 	{
 		var featureContract = ReadRepoFile("SPEC", "SPECKIT", "specs", "005-ideas-and-engagement", "contracts", "openapi.yaml");
@@ -100,6 +130,22 @@ public sealed class OpenApiContractAlignmentTests
 
 		Assert.Contains("application/json:", responseBlock, StringComparison.Ordinal);
 		Assert.Contains("schema:", responseBlock, StringComparison.Ordinal);
+	}
+
+	private static void AssertResponseHasProblemJsonSchema(
+		string yaml,
+		string path,
+		string method,
+		string statusCode,
+		string schemaName)
+	{
+		var pathBlock = ExtractPathBlock(yaml, path);
+		var methodBlock = ExtractMethodBlock(pathBlock, method);
+		var responseBlock = ExtractResponseBlock(methodBlock, statusCode);
+
+		Assert.Contains("application/problem+json:", responseBlock, StringComparison.Ordinal);
+		Assert.Contains("schema:", responseBlock, StringComparison.Ordinal);
+		Assert.Contains(schemaName, responseBlock, StringComparison.Ordinal);
 	}
 
 	private static string ExtractPathBlock(string yaml, string path)
