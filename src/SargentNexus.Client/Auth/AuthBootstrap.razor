@@ -1,14 +1,28 @@
+﻿@implements IDisposable
 @inject IAuthSessionService AuthSessionService
 @inject NavigationManager NavigationManager
 
 @code {
+    private static readonly string[] PublicRoutes = { "login", "register", "logout" };
+
     protected override async Task OnInitializedAsync()
     {
-        await AuthSessionService.InitializeAsync();
+        NavigationManager.LocationChanged += HandleLocationChanged;
 
+        await AuthSessionService.InitializeAsync();
+        EnforceRouteAccess(redirectAuthenticatedAwayFromLogin: true);
+    }
+
+    private void HandleLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+    {
+        EnforceRouteAccess(redirectAuthenticatedAwayFromLogin: false);
+    }
+
+    private void EnforceRouteAccess(bool redirectAuthenticatedAwayFromLogin)
+    {
         var relative = NavigationManager.ToBaseRelativePath(NavigationManager.Uri);
         var path = relative.Split('?', '#')[0].Trim('/').ToLowerInvariant();
-        var isPublicRoute = path is "login" or "register";
+        var isPublicRoute = PublicRoutes.Contains(path);
 
         if (!AuthSessionService.IsAuthenticated)
         {
@@ -20,15 +34,20 @@
             return;
         }
 
-        if (AuthSessionService.RequiresPasswordChange && path != "change-password")
+        if (AuthSessionService.RequiresPasswordChange && path != "change-password" && path != "logout")
         {
             NavigationManager.NavigateTo("/change-password", forceLoad: false);
             return;
         }
 
-        if (path is "" or "login")
+        if (redirectAuthenticatedAwayFromLogin && path is "" or "login")
         {
             NavigationManager.NavigateTo("/workflow", forceLoad: false);
         }
+    }
+
+    public void Dispose()
+    {
+        NavigationManager.LocationChanged -= HandleLocationChanged;
     }
 }
