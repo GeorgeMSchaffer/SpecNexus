@@ -225,10 +225,16 @@ Tasks:
 - restrict the Workflow page to a board list only (remove all non-list content)
 - clicking a board navigates to that board's swimlane/kanban view
 
-**Ideas page (new):**
-- build `/ideas` page listing ideas created by or assigned to the current user
-- include All / Created by me / Assigned to me filter; changing filter resets to page 1
-- inline list-to-form swap when clicking Details; saving or cancelling returns to list
+**Ideas page (Kanban board):**
+- build `/ideas` page as a Kanban swimlane board
+- add board picker dropdown in page header; default to first board; persist selection in `localStorage` (key: `ideas-board-id`)
+- render one column per status on the selected board, ordered by `Status.SortOrder`; horizontal scroll on overflow
+- render idea cards showing title (2-line truncation), assignee, relative date, upvote count, and first 2 tags
+- clicking a card navigates to `/ideas/{ideaId}/edit`
+- add filter chips (All / Created by me / Assigned to me) and title search above the board; filtering is client-side
+- implement card drag-and-drop: optimistic column move, call `POST /api/v1/ideas/{ideaId}/status`, revert on failure with error toast
+- implement column reorder drag for SiteAdmin and OrgAdmin: optimistic reorder, call `PUT /api/v1/boards/{boardId}/statuses/{statusId}` per changed status, revert all on failure with error toast
+- implement components in `src/SargentNexus.Client/Shared/Kanban/`: `IdeaKanbanBoard.razor`, `KanbanColumn.razor`, `IdeaCard.razor`
 
 **Uniform list conventions (all list pages):**
 - add a uniform search bar above every entity list
@@ -247,7 +253,7 @@ Exit criteria:
 - all bug fixes from SPEC/20-feature-client-ui-revisions.md verified as resolved
 - header, horizontal menu, gear icon, and Settings area match the approved layout spec
 - Workflow page shows only a board list; clicking opens the swimlane view
-- Ideas page with filter and inline form is functional
+- Ideas page Kanban board is functional: board picker, swimlane columns by status, card drag-to-move with rollback, filter chips and search, column reorder for admins
 - all list pages have uniform search bar and server-side pagination with correct page sizes
 - no Admin-labeled routes, titles, or text remain
 

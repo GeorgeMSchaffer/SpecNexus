@@ -147,6 +147,7 @@ Track implementation work that Copilot-driven implementation agents should compl
 - T043 Build board and status administration workflows.
 - T044 Build idea detail, tags, mentions, comments, and upvote workflows.
 - T045 Reflect Site Admin, Org Admin, User, and Read Only boundaries in the UI.
+- C6-Kanban Replace `/ideas` list with Kanban swimlane board: board picker, card drag (`MoveIdeaStatusAsync`), admin column reorder (`UpdateStatusAsync`), filter chips, search, HTML5 DnD desktop-only.
 
 ### Hardening Agent
 - T046 Align OpenAPI with the written contracts.
