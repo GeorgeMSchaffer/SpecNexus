@@ -1,0 +1,58 @@
+<div class="d-flex gap-2 align-items-center mb-3 flex-wrap">
+    <input type="search" class="form-control" style="max-width:300px" placeholder="Search..."
+           value="@SearchText"
+           @oninput="HandleInput"
+           @onkeydown="HandleKeyDown" />
+    <select class="form-select" style="width:auto" @bind="PageSize" @bind:after="OnPageSizeChanged">
+        @foreach (var size in PageSizes)
+        {
+            <option value="@size">@size per page</option>
+        }
+    </select>
+    <button class="btn btn-outline-secondary" @onclick="HandleSearch">Search</button>
+</div>
+
+@code {
+    [Parameter]
+    public string SearchText { get; set; } = string.Empty;
+
+    [Parameter]
+    public EventCallback<string> SearchTextChanged { get; set; }
+
+    [Parameter]
+    public int PageSize { get; set; } = 25;
+
+    [Parameter]
+    public EventCallback<int> PageSizeChanged { get; set; }
+
+    [Parameter]
+    public EventCallback OnSearch { get; set; }
+
+    [Parameter]
+    public int[] PageSizes { get; set; } = new[] { 25, 50, 100, 250 };
+
+    private async Task HandleInput(ChangeEventArgs e)
+    {
+        SearchText = e.Value?.ToString() ?? string.Empty;
+        await SearchTextChanged.InvokeAsync(SearchText);
+    }
+
+    private async Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await HandleSearch();
+        }
+    }
+
+    private async Task HandleSearch()
+    {
+        await OnSearch.InvokeAsync();
+    }
+
+    private async Task OnPageSizeChanged()
+    {
+        await PageSizeChanged.InvokeAsync(PageSize);
+        await OnSearch.InvokeAsync();
+    }
+}

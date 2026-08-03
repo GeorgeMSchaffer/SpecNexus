@@ -161,3 +161,22 @@ public sealed class MoveIdeaStatusRequestDto
 {
     public Guid StatusId { get; set; }
 }
+
+public sealed class UpdateBoardRequestDto
+{
+    public string Name { get; set; } = string.Empty;
+
+    public IReadOnlyList<Guid> StatusIds { get; set; } = Array.Empty<Guid>();
+
+    public bool AllowUserStatusUpdate { get; set; }
+}
+
+public sealed class CreateStatusRequestDto
+{
+    public string Name { get; set; } = string.Empty;
+}
+
+public sealed class UpdateStatusRequestDto
+{
+    public string Name { get; set; } = string.Empty;
+}

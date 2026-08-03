@@ -85,3 +85,19 @@ Layered architecture with strict boundaries — business rules live in Domain an
 
 - Never leave temporary files, scratch code, or logs in the repository (e.g., `*.log`, `tmp-*.cs`, throwaway test projects). Use a location outside the repo for scratch work and clean up before committing.
 - Commit with clear, descriptive messages after a feature is implemented and tested.
+
+## NuGet Packages
+
+You **may** install NuGet packages when needed to fix build errors or implement features — but **always check with the user first** before adding a new package dependency.
+
+When proposing a new package:
+- State the package name and version
+- Explain why it's needed
+- Wait for approval before running `dotnet add package`
+
+## General Guidelines
+
+- Follow existing code style and patterns in the repo
+- Prefer surgical, minimal changes over sweeping rewrites
+- Do not modify test projects unless adding a new API endpoint that needs a stub
+- Do not commit secrets or sensitive data

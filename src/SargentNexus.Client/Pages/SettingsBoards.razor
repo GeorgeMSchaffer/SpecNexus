@@ -1,0 +1,422 @@
+@page "/settings/boards"
+@inject IAuthSessionService AuthSessionService
+@inject IClientErrorMessageService ErrorMessageService
+@inject WorkflowApiClient WorkflowApiClient
+
+<PageTitle>Boards &amp; Statuses — Settings</PageTitle>
+
+<AuthGate>
+    <div class="container py-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div>
+                <h1 class="h3 mb-1">Boards &amp; Statuses</h1>
+                <p class="text-muted mb-0">Configure boards, statuses, and swimlanes.</p>
+            </div>
+            <div class="d-flex gap-2">
+                <NavLink class="btn btn-sm btn-outline-secondary" href="/settings">← Settings</NavLink>
+            </div>
+        </div>
+
+        @if (!CanManageBoards)
+        {
+            <div class="alert alert-warning" role="alert">You do not have permission to manage boards and statuses.</div>
+        }
+        else
+        {
+            @if (!string.IsNullOrWhiteSpace(_errorMessage))
+            {
+                <div class="alert alert-danger" role="alert">@_errorMessage</div>
+            }
+
+            <h2 class="h5 mb-3">Boards</h2>
+
+            @if (_boardView == FormView.Form)
+            {
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <h3 class="h6">@(_boardEditTarget is not null ? "Edit board" : "Create board")</h3>
+                        <EditForm Model="_boardForm" OnValidSubmit="SaveBoardAsync">
+                            <DataAnnotationsValidator />
+                            <div class="row g-3">
+                                <div class="col-md-8">
+                                    <label class="form-label">Board name <span class="text-danger">*</span></label>
+                                    <InputText class="form-control" @bind-Value="_boardForm.Name" />
+                                    <ValidationMessage For="() => _boardForm.Name" />
+                                </div>
+                                <div class="col-md-12">
+                                    <div class="form-check">
+                                        <InputCheckbox class="form-check-input" id="allowUserStatusUpdate" @bind-Value="_boardForm.AllowUserStatusUpdate" />
+                                        <label class="form-check-label" for="allowUserStatusUpdate">Allow user status update (User-managed)</label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mt-3 d-flex gap-2">
+                                <button class="btn btn-primary" type="submit" disabled="@_isSubmitting">@(_isSubmitting ? "Saving..." : "Save")</button>
+                                <button class="btn btn-outline-secondary" type="button" @onclick="() => _boardView = FormView.List">Cancel</button>
+                            </div>
+                        </EditForm>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div class="mb-3">
+                    <button class="btn btn-outline-primary btn-sm" @onclick="StartCreateBoard">Create board</button>
+                </div>
+
+                @if (_isLoadingBoards)
+                {
+                    <div class="alert alert-info">Loading boards...</div>
+                }
+                else if (_boards.Count == 0)
+                {
+                    <div class="alert alert-secondary">No boards found.</div>
+                }
+                else
+                {
+                    <div class="table-responsive mb-4">
+                        <table class="table table-striped align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Type</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var board in _boards)
+                                {
+                                    <tr>
+                                        <td>@board.Name</td>
+                                        <td>@(board.AllowUserStatusUpdate ? "User-managed" : "Admin-managed")</td>
+                                        <td class="text-end">
+                                            <button class="btn btn-sm btn-outline-primary" @onclick="() => StartEditBoard(board)">Edit</button>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            }
+
+            <hr />
+
+            <h2 class="h5 mb-3 mt-4">Statuses</h2>
+
+            @if (_statusView == FormView.Form)
+            {
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <h3 class="h6">@(_statusEditTarget is not null ? "Edit status" : "Create status")</h3>
+                        <EditForm Model="_statusForm" OnValidSubmit="SaveStatusAsync">
+                            <DataAnnotationsValidator />
+                            <div class="row g-3">
+                                <div class="col-md-8">
+                                    <label class="form-label">Status name <span class="text-danger">*</span></label>
+                                    <InputText class="form-control" @bind-Value="_statusForm.Name" />
+                                    <ValidationMessage For="() => _statusForm.Name" />
+                                </div>
+                            </div>
+                            <div class="mt-3 d-flex gap-2">
+                                <button class="btn btn-primary" type="submit" disabled="@_isSubmitting">@(_isSubmitting ? "Saving..." : "Save")</button>
+                                <button class="btn btn-outline-secondary" type="button" @onclick="() => _statusView = FormView.List">Cancel</button>
+                            </div>
+                        </EditForm>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div class="mb-3">
+                    <button class="btn btn-outline-primary btn-sm" @onclick="StartCreateStatus">Create status</button>
+                </div>
+
+                @if (_isLoadingStatuses)
+                {
+                    <div class="alert alert-info">Loading statuses...</div>
+                }
+                else if (_statuses.Count == 0)
+                {
+                    <div class="alert alert-secondary">No statuses found.</div>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table table-striped align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>State</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var status in _statuses)
+                                {
+                                    <tr>
+                                        <td>@status.Name</td>
+                                        <td>
+                                            @if (status.IsDeleted)
+                                            {
+                                                <span class="badge text-bg-secondary">Deleted</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge text-bg-success">Active</span>
+                                            }
+                                        </td>
+                                        <td class="text-end">
+                                            @if (!status.IsDeleted)
+                                            {
+                                                <button class="btn btn-sm btn-outline-primary" @onclick="() => StartEditStatus(status)">Edit</button>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            }
+        }
+    </div>
+</AuthGate>
+
+@code {
+    private enum FormView { List, Form }
+
+    private readonly List<BoardSummaryDto> _boards = new();
+    private readonly List<StatusSummaryDto> _statuses = new();
+
+    private FormView _boardView = FormView.List;
+    private FormView _statusView = FormView.List;
+
+    private BoardSummaryDto? _boardEditTarget;
+    private StatusSummaryDto? _statusEditTarget;
+
+    private BoardFormModel _boardForm = new();
+    private StatusFormModel _statusForm = new();
+
+    private bool _isLoadingBoards;
+    private bool _isLoadingStatuses;
+    private bool _isSubmitting;
+    private string? _errorMessage;
+
+    private bool IsSiteAdmin => string.Equals(AuthSessionService.User?.Role, "SiteAdmin", StringComparison.OrdinalIgnoreCase);
+    private bool IsOrgAdmin => string.Equals(AuthSessionService.User?.Role, "OrgAdmin", StringComparison.OrdinalIgnoreCase);
+    private bool CanManageBoards => IsSiteAdmin || IsOrgAdmin;
+    private Guid? CurrentOrgId => AuthSessionService.User?.OrganizationId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!CanManageBoards || !CurrentOrgId.HasValue)
+        {
+            return;
+        }
+
+        await Task.WhenAll(LoadBoardsAsync(), LoadStatusesAsync());
+    }
+
+    private async Task LoadBoardsAsync()
+    {
+        if (!CurrentOrgId.HasValue || string.IsNullOrWhiteSpace(AuthSessionService.AccessToken))
+        {
+            return;
+        }
+
+        _isLoadingBoards = true;
+
+        try
+        {
+            _boards.Clear();
+            var boards = await WorkflowApiClient.ListBoardsAsync(AuthSessionService.AccessToken!, CurrentOrgId.Value, CancellationToken.None);
+            _boards.AddRange(boards);
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = ErrorMessageService.GetDisplayMessage(null, null, ex);
+        }
+        finally
+        {
+            _isLoadingBoards = false;
+        }
+    }
+
+    private async Task LoadStatusesAsync()
+    {
+        if (!CurrentOrgId.HasValue || string.IsNullOrWhiteSpace(AuthSessionService.AccessToken))
+        {
+            return;
+        }
+
+        _isLoadingStatuses = true;
+
+        try
+        {
+            _statuses.Clear();
+            var statuses = await WorkflowApiClient.ListStatusesAsync(AuthSessionService.AccessToken!, CurrentOrgId.Value, CancellationToken.None);
+            _statuses.AddRange(statuses);
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = ErrorMessageService.GetDisplayMessage(null, null, ex);
+        }
+        finally
+        {
+            _isLoadingStatuses = false;
+        }
+    }
+
+    private void StartCreateBoard()
+    {
+        _boardEditTarget = null;
+        _boardForm = new BoardFormModel();
+        _boardView = FormView.Form;
+    }
+
+    private void StartEditBoard(BoardSummaryDto board)
+    {
+        _boardEditTarget = board;
+        _boardForm = new BoardFormModel
+        {
+            Name = board.Name,
+            AllowUserStatusUpdate = board.AllowUserStatusUpdate
+        };
+        _boardView = FormView.Form;
+    }
+
+    private async Task SaveBoardAsync()
+    {
+        if (string.IsNullOrWhiteSpace(AuthSessionService.AccessToken))
+        {
+            return;
+        }
+
+        _isSubmitting = true;
+        _errorMessage = null;
+
+        try
+        {
+            if (_boardEditTarget is not null)
+            {
+                var statusIds = _boardEditTarget.Swimlanes
+                    .Where(s => !s.IsDeletedStatus)
+                    .Select(s => s.StatusId)
+                    .ToList();
+
+                await WorkflowApiClient.UpdateBoardAsync(
+                    AuthSessionService.AccessToken!,
+                    _boardEditTarget.BoardId,
+                    new UpdateBoardRequestDto
+                    {
+                        Name = _boardForm.Name.Trim(),
+                        AllowUserStatusUpdate = _boardForm.AllowUserStatusUpdate,
+                        StatusIds = statusIds
+                    },
+                    CancellationToken.None);
+            }
+            else if (CurrentOrgId.HasValue)
+            {
+                var statuses = await WorkflowApiClient.ListStatusesAsync(AuthSessionService.AccessToken!, CurrentOrgId.Value, CancellationToken.None);
+                var statusIds = statuses.Where(s => !s.IsDeleted).Select(s => s.StatusId).ToList();
+
+                await WorkflowApiClient.CreateBoardAsync(
+                    AuthSessionService.AccessToken!,
+                    CurrentOrgId.Value,
+                    new CreateBoardRequestDto
+                    {
+                        Name = _boardForm.Name.Trim(),
+                        AllowUserStatusUpdate = _boardForm.AllowUserStatusUpdate,
+                        StatusIds = statusIds
+                    },
+                    CancellationToken.None);
+            }
+
+            _boardView = FormView.List;
+            _boardEditTarget = null;
+            await LoadBoardsAsync();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = ErrorMessageService.GetDisplayMessage(null, null, ex);
+        }
+        finally
+        {
+            _isSubmitting = false;
+        }
+    }
+
+    private void StartCreateStatus()
+    {
+        _statusEditTarget = null;
+        _statusForm = new StatusFormModel();
+        _statusView = FormView.Form;
+    }
+
+    private void StartEditStatus(StatusSummaryDto status)
+    {
+        _statusEditTarget = status;
+        _statusForm = new StatusFormModel { Name = status.Name };
+        _statusView = FormView.Form;
+    }
+
+    private async Task SaveStatusAsync()
+    {
+        if (string.IsNullOrWhiteSpace(AuthSessionService.AccessToken))
+        {
+            return;
+        }
+
+        _isSubmitting = true;
+        _errorMessage = null;
+
+        try
+        {
+            if (_statusEditTarget is not null)
+            {
+                await WorkflowApiClient.UpdateStatusAsync(
+                    AuthSessionService.AccessToken!,
+                    _statusEditTarget.StatusId,
+                    new UpdateStatusRequestDto { Name = _statusForm.Name.Trim() },
+                    CancellationToken.None);
+            }
+            else if (CurrentOrgId.HasValue)
+            {
+                await WorkflowApiClient.CreateStatusAsync(
+                    AuthSessionService.AccessToken!,
+                    CurrentOrgId.Value,
+                    new CreateStatusRequestDto { Name = _statusForm.Name.Trim() },
+                    CancellationToken.None);
+            }
+
+            _statusView = FormView.List;
+            _statusEditTarget = null;
+            await LoadStatusesAsync();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = ErrorMessageService.GetDisplayMessage(null, null, ex);
+        }
+        finally
+        {
+            _isSubmitting = false;
+        }
+    }
+
+    private sealed class BoardFormModel
+    {
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.StringLength(150)]
+        public string Name { get; set; } = string.Empty;
+
+        public bool AllowUserStatusUpdate { get; set; }
+    }
+
+    private sealed class StatusFormModel
+    {
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.StringLength(100)]
+        public string Name { get; set; } = string.Empty;
+    }
+}

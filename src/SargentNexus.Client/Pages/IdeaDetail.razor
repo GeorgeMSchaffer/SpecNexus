@@ -1,4 +1,5 @@
 @page "/ideas/{IdeaId:guid}"
+@page "/ideas/{IdeaId:guid}/edit"
 @inject IAuthSessionService AuthSessionService
 @inject IClientErrorMessageService ErrorMessageService
 @inject NavigationManager NavigationManager
@@ -8,7 +9,10 @@
 
 <AuthGate>
     <div class="container py-4">
-        <a class="btn btn-outline-secondary btn-sm mb-3" href="/workflow">← Back to workflow</a>
+        <div class="d-flex gap-2 mb-3">
+            <a class="btn btn-outline-secondary btn-sm" href="/ideas">← My Ideas</a>
+            <a class="btn btn-outline-secondary btn-sm" href="/workflow">← Workflow</a>
+        </div>
 
         @if (_loading)
         {

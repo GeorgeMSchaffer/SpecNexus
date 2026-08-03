@@ -1,29 +1,41 @@
-﻿@inherits LayoutComponentBase
+@inherits LayoutComponentBase
 @inject IAuthSessionService AuthSessionService
 @inject NavigationManager NavigationManager
 
-<div class="app-header">
-    <span class="navbar-brand text-white fw-bold">SargentNexus</span>
-    <div class="d-flex align-items-center gap-2">
-        @if (AuthSessionService.IsAuthenticated)
-        {
-            @if (AuthSessionService.RequiresPasswordChange)
-            {
-                <a href="/change-password" class="text-warning small fw-semibold">Password update required</a>
-            }
-            <button class="btn-icon" title="Settings" @onclick='() => NavigationManager.NavigateTo("/settings")'>
-                <i class="bi bi-gear-fill"></i>
-            </button>
-            <button class="btn-icon" title="Sign out" @onclick="HandleLogoutAsync">
-                <i class="bi bi-box-arrow-right"></i>
-            </button>
-            <span class="username">@DisplayName</span>
-        }
-        else
-        {
-            <a href="/login" class="text-white">Sign in</a>
-        }
+<div class="page">
+    <div class="sidebar">
+        <NavMenu />
     </div>
+
+    <main>
+        <div class="app-header">
+            <span class="navbar-brand text-white fw-bold">SargentNexus</span>
+            <div class="d-flex align-items-center gap-2">
+                @if (AuthSessionService.IsAuthenticated)
+                {
+                    @if (AuthSessionService.RequiresPasswordChange)
+                    {
+                        <a href="/change-password" class="text-warning small fw-semibold">Password update required</a>
+                    }
+                    <button class="btn-icon" title="Settings" @onclick='() => NavigationManager.NavigateTo("/settings")'>
+                        <i class="bi bi-gear-fill"></i>
+                    </button>
+                    <button class="btn-icon" title="Sign out" @onclick="HandleLogoutAsync">
+                        <i class="bi bi-box-arrow-right"></i>
+                    </button>
+                    <span class="username">@DisplayName</span>
+                }
+                else
+                {
+                    <a href="/login" class="text-white">Sign in</a>
+                }
+            </div>
+        </div>
+
+        <article class="content px-4">
+            @Body
+        </article>
+    </main>
 </div>
 
 @if (AuthSessionService.IsAuthenticated)

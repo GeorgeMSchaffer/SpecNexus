@@ -143,18 +143,114 @@ public sealed class AdministrationApiClient
 
     public async Task<InviteCodeResponseDto> RegenerateInviteCodeAsync(string accessToken, Guid organizationId, CancellationToken cancellationToken)
     {
-        using var request = new HttpRequestMessage(HttpMethod.Post, $"api/v1/organizations/{organizationId}/invite-code/regenerate");
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+       using var request = new HttpRequestMessage(HttpMethod.Post, $"api/v1/organizations/{organizationId}/invite-code/regenerate");
+       request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
 
-        using var response = await _httpClient.SendAsync(request, cancellationToken);
+       using var response = await _httpClient.SendAsync(request, cancellationToken);
 
-        if (response.IsSuccessStatusCode)
+       if (response.IsSuccessStatusCode)
+       {
+           return await response.Content.ReadFromJsonAsync<InviteCodeResponseDto>(cancellationToken: cancellationToken)
+               ?? throw new InvalidOperationException("The API did not return an invite code payload.");
+       }
+
+       throw await CreateExceptionAsync(response, cancellationToken);
+    }
+
+    public async Task<PagedResultDto<UserListItemDto>> ListUsersAsync(
+       string accessToken,
+       Guid organizationId,
+       int page,
+       int pageSize,
+       string? search,
+       CancellationToken cancellationToken)
+    {
+       var query = new List<string> { $"page={page}", $"pageSize={pageSize}" };
+
+       if (!string.IsNullOrWhiteSpace(search))
         {
-            return await response.Content.ReadFromJsonAsync<InviteCodeResponseDto>(cancellationToken: cancellationToken)
-                ?? throw new InvalidOperationException("The API did not return an invite code payload.");
-        }
+           query.Add($"search={Uri.EscapeDataString(search.Trim())}");
+       }
 
-        throw await CreateExceptionAsync(response, cancellationToken);
+       using var request = new HttpRequestMessage(HttpMethod.Get, $"api/v1/organizations/{organizationId}/users?{string.Join("&", query)}");
+       request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+
+       using var response = await _httpClient.SendAsync(request, cancellationToken);
+
+       if (response.IsSuccessStatusCode)
+       {
+           return await response.Content.ReadFromJsonAsync<PagedResultDto<UserListItemDto>>(cancellationToken: cancellationToken)
+               ?? new PagedResultDto<UserListItemDto>();
+       }
+
+       throw await CreateExceptionAsync(response, cancellationToken);
+    }
+
+    public async Task<UserDetailDto> GetUserAsync(
+       string accessToken,
+       Guid userId,
+       CancellationToken cancellationToken)
+    {
+       using var request = new HttpRequestMessage(HttpMethod.Get, $"api/v1/users/{userId}");
+       request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+
+       using var response = await _httpClient.SendAsync(request, cancellationToken);
+
+       if (response.IsSuccessStatusCode)
+       {
+           return await response.Content.ReadFromJsonAsync<UserDetailDto>(cancellationToken: cancellationToken)
+               ?? throw new InvalidOperationException("The API did not return a user payload.");
+       }
+
+       throw await CreateExceptionAsync(response, cancellationToken);
+    }
+
+    public async Task<UserCreateResponseDto> CreateUserAsync(
+       string accessToken,
+       Guid organizationId,
+       UserCreateRequestDto request,
+       CancellationToken cancellationToken)
+    {
+       using var message = new HttpRequestMessage(HttpMethod.Post, $"api/v1/organizations/{organizationId}/users")
+       {
+           Content = JsonContent.Create(request)
+       };
+
+       message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+
+       using var response = await _httpClient.SendAsync(message, cancellationToken);
+
+       if (response.StatusCode == HttpStatusCode.Created)
+       {
+           return await response.Content.ReadFromJsonAsync<UserCreateResponseDto>(cancellationToken: cancellationToken)
+               ?? throw new InvalidOperationException("The API did not return a user payload.");
+       }
+
+       throw await CreateExceptionAsync(response, cancellationToken);
+    }
+
+    public async Task<UserDetailDto> UpdateUserAsync(
+       string accessToken,
+       Guid userId,
+       UserUpdateRequestDto request,
+       CancellationToken cancellationToken)
+    {
+       using var message = new HttpRequestMessage(HttpMethod.Put, $"api/v1/users/{userId}")
+       {
+           Content = JsonContent.Create(request)
+       };
+
+       message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+
+       using var response = await _httpClient.SendAsync(message, cancellationToken);
+
+       if (response.IsSuccessStatusCode)
+       {
+           return await response.Content.ReadFromJsonAsync<UserDetailDto>(cancellationToken: cancellationToken)
+               ?? throw new InvalidOperationException("The API did not return a user payload.");
+       }
+
+       throw await CreateExceptionAsync(response, cancellationToken);
     }
 
     private static async Task<AuthApiException> CreateExceptionAsync(HttpResponseMessage response, CancellationToken cancellationToken)

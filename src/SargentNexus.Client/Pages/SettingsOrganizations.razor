@@ -1,0 +1,453 @@
+@page "/settings/organizations"
+@inject IAuthSessionService AuthSessionService
+@inject IClientErrorMessageService ErrorMessageService
+@inject AdministrationApiClient AdministrationApiClient
+
+<PageTitle>Organizations — Settings</PageTitle>
+
+<AuthGate>
+    <div class="container py-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div>
+                <h1 class="h3 mb-1">Organizations</h1>
+                <p class="text-muted mb-0">Create, update, and archive tenant organizations.</p>
+            </div>
+            <div class="d-flex gap-2">
+                <NavLink class="btn btn-sm btn-outline-secondary" href="/settings">← Settings</NavLink>
+                @if (_view == PageView.List && IsSiteAdmin)
+                {
+                    <button class="btn btn-primary" @onclick="StartCreate">Create organization</button>
+                }
+            </div>
+        </div>
+
+        @if (!CanAccessOrganizations)
+        {
+            <div class="alert alert-warning" role="alert">You do not have permission to view organizations.</div>
+        }
+        else if (_view == PageView.Form)
+        {
+            <div class="card mb-3">
+                <div class="card-body">
+                    <h2 class="h5">@(_editTarget is not null ? "Edit organization" : "Create organization")</h2>
+
+                    @if (!string.IsNullOrWhiteSpace(_errorMessage))
+                    {
+                        <div class="alert alert-danger" role="alert">@_errorMessage</div>
+                    }
+
+                    <EditForm Model="_form" OnValidSubmit="SaveAsync">
+                        <DataAnnotationsValidator />
+
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Company name <span class="text-danger">*</span></label>
+                                <InputText class="form-control" @bind-Value="_form.CompanyName" />
+                                <ValidationMessage For="() => _form.CompanyName" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Phone</label>
+                                <InputText class="form-control" @bind-Value="_form.Phone" />
+                                <ValidationMessage For="() => _form.Phone" />
+                            </div>
+                            <div class="col-md-12">
+                                <label class="form-label">Address</label>
+                                <InputText class="form-control" @bind-Value="_form.Address" />
+                                <ValidationMessage For="() => _form.Address" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">City</label>
+                                <InputText class="form-control" @bind-Value="_form.City" />
+                                <ValidationMessage For="() => _form.City" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">State</label>
+                                <InputText class="form-control" @bind-Value="_form.State" />
+                                <ValidationMessage For="() => _form.State" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Zip</label>
+                                <InputText class="form-control" @bind-Value="_form.Zip" />
+                                <ValidationMessage For="() => _form.Zip" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Primary contact first name</label>
+                                <InputText class="form-control" @bind-Value="_form.PrimaryContactFirstName" />
+                                <ValidationMessage For="() => _form.PrimaryContactFirstName" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Primary contact last name</label>
+                                <InputText class="form-control" @bind-Value="_form.PrimaryContactLastName" />
+                                <ValidationMessage For="() => _form.PrimaryContactLastName" />
+                            </div>
+                            @if (_editTarget is not null)
+                            {
+                                <div class="col-md-12">
+                                    <div class="form-check">
+                                        <InputCheckbox class="form-check-input" id="isArchivedOrg" @bind-Value="_form.IsArchived" />
+                                        <label class="form-check-label" for="isArchivedOrg">Archived</label>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+
+                        <div class="mt-3 d-flex gap-2">
+                            <button class="btn btn-primary" type="submit" disabled="@_isSubmitting">@(_isSubmitting ? "Saving..." : "Save")</button>
+                            <button class="btn btn-outline-secondary" type="button" @onclick="CancelForm">Cancel</button>
+                        </div>
+                    </EditForm>
+                </div>
+            </div>
+        }
+        else
+        {
+            @if (!string.IsNullOrWhiteSpace(_errorMessage))
+            {
+                <div class="alert alert-danger" role="alert">@_errorMessage</div>
+            }
+
+            <SearchPaginationBar @bind-SearchText="_search"
+                                 @bind-PageSize="_pageSize"
+                                 OnSearch="HandleSearchAsync" />
+
+            @if (IsSiteAdmin)
+            {
+                <div class="mb-3">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="includeArchivedOrg"
+                               @bind="_includeArchived" @bind:after="HandleSearchAsync" />
+                        <label class="form-check-label" for="includeArchivedOrg">Include archived</label>
+                    </div>
+                </div>
+            }
+
+            @if (_isLoading)
+            {
+                <div class="alert alert-info">Loading organizations...</div>
+            }
+            else if (_organizations.Count == 0)
+            {
+                <div class="alert alert-secondary">No organizations found.</div>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-striped align-middle">
+                        <thead>
+                            <tr>
+                                <th>Company</th>
+                                <th>City</th>
+                                <th>State</th>
+                                <th>Phone</th>
+                                <th>Status</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var item in _organizations)
+                            {
+                                <tr>
+                                    <td>@item.CompanyName</td>
+                                    <td>@item.City</td>
+                                    <td>@item.State</td>
+                                    <td>@item.Phone</td>
+                                    <td>
+                                        @if (item.IsArchived)
+                                        {
+                                            <span class="badge text-bg-secondary">Archived</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge text-bg-success">Active</span>
+                                        }
+                                    </td>
+                                    <td class="text-end">
+                                        <button class="btn btn-sm btn-outline-primary" @onclick="() => StartEditAsync(item.OrganizationId)">Edit</button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="d-flex justify-content-between align-items-center mt-2">
+                    <span class="text-muted small">
+                        Showing @((_page - 1) * _pageSize + 1)–@Math.Min(_page * _pageSize, _totalCount) of @_totalCount
+                    </span>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-sm btn-outline-secondary" @onclick="PrevPage" disabled="@(_page <= 1)">← Prev</button>
+                        <span class="align-self-center small">Page @_page</span>
+                        <button class="btn btn-sm btn-outline-secondary" @onclick="NextPage" disabled="@(_page * _pageSize >= _totalCount)">Next →</button>
+                    </div>
+                </div>
+            }
+        }
+    </div>
+</AuthGate>
+
+@code {
+    private enum PageView { List, Form }
+
+    private readonly List<OrganizationListItemDto> _organizations = new();
+    private PageView _view = PageView.List;
+    private OrganizationDetailDto? _editTarget;
+    private OrganizationFormModel _form = new();
+    private string _search = string.Empty;
+    private bool _includeArchived;
+    private bool _isLoading;
+    private bool _isSubmitting;
+    private string? _errorMessage;
+    private int _page = 1;
+    private int _pageSize = 25;
+    private int _totalCount;
+
+    private bool IsSiteAdmin => string.Equals(AuthSessionService.User?.Role, "SiteAdmin", StringComparison.OrdinalIgnoreCase);
+    private bool IsOrgAdmin => string.Equals(AuthSessionService.User?.Role, "OrgAdmin", StringComparison.OrdinalIgnoreCase);
+    private bool CanAccessOrganizations => IsSiteAdmin || IsOrgAdmin;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadOrganizationsAsync();
+    }
+
+    private async Task HandleSearchAsync()
+    {
+        _page = 1;
+        await LoadOrganizationsAsync();
+    }
+
+    private async Task PrevPage()
+    {
+        if (_page > 1)
+        {
+            _page--;
+            await LoadOrganizationsAsync();
+        }
+    }
+
+    private async Task NextPage()
+    {
+        if (_page * _pageSize < _totalCount)
+        {
+            _page++;
+            await LoadOrganizationsAsync();
+        }
+    }
+
+    private async Task LoadOrganizationsAsync()
+    {
+        if (!CanAccessOrganizations || string.IsNullOrWhiteSpace(AuthSessionService.AccessToken))
+        {
+            return;
+        }
+
+        _isLoading = true;
+        _errorMessage = null;
+
+        try
+        {
+            _organizations.Clear();
+
+            if (IsSiteAdmin)
+            {
+                var result = await AdministrationApiClient.ListOrganizationsAsync(
+                    AuthSessionService.AccessToken!,
+                    page: _page,
+                    pageSize: _pageSize,
+                    search: _search,
+                    includeArchived: _includeArchived,
+                    sortBy: "companyName",
+                    sortDirection: "asc",
+                    CancellationToken.None);
+
+                _organizations.AddRange(result.Items);
+                _totalCount = result.TotalCount;
+                return;
+            }
+
+            var organizationId = AuthSessionService.User?.OrganizationId;
+            if (organizationId.HasValue)
+            {
+                var detail = await AdministrationApiClient.GetOrganizationAsync(AuthSessionService.AccessToken!, organizationId.Value, CancellationToken.None);
+                _organizations.Add(ToListItem(detail));
+                _totalCount = 1;
+            }
+        }
+        catch (AuthApiException ex)
+        {
+            _errorMessage = ErrorMessageService.GetDisplayMessage(ex.Title, ex.Detail, ex);
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = ErrorMessageService.GetDisplayMessage(null, null, ex);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void StartCreate()
+    {
+        _editTarget = null;
+        _form = new OrganizationFormModel();
+        _view = PageView.Form;
+    }
+
+    private async Task StartEditAsync(Guid organizationId)
+    {
+        if (string.IsNullOrWhiteSpace(AuthSessionService.AccessToken))
+        {
+            return;
+        }
+
+        _errorMessage = null;
+
+        try
+        {
+            var detail = await AdministrationApiClient.GetOrganizationAsync(AuthSessionService.AccessToken!, organizationId, CancellationToken.None);
+            _editTarget = detail;
+            _form = new OrganizationFormModel
+            {
+                CompanyName = detail.CompanyName,
+                Address = detail.Address,
+                City = detail.City,
+                State = detail.State,
+                Zip = detail.Zip,
+                Phone = detail.Phone,
+                PrimaryContactFirstName = detail.PrimaryContactFirstName,
+                PrimaryContactLastName = detail.PrimaryContactLastName,
+                IsArchived = detail.IsArchived
+            };
+            _view = PageView.Form;
+        }
+        catch (AuthApiException ex)
+        {
+            _errorMessage = ErrorMessageService.GetDisplayMessage(ex.Title, ex.Detail, ex);
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = ErrorMessageService.GetDisplayMessage(null, null, ex);
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        if (string.IsNullOrWhiteSpace(AuthSessionService.AccessToken))
+        {
+            return;
+        }
+
+        _isSubmitting = true;
+        _errorMessage = null;
+
+        try
+        {
+            var request = new OrganizationUpsertRequestDto
+            {
+                CompanyName = _form.CompanyName.Trim(),
+                Address = _form.Address.Trim(),
+                City = _form.City.Trim(),
+                State = _form.State.Trim(),
+                Zip = _form.Zip.Trim(),
+                Phone = _form.Phone.Trim(),
+                PrimaryContactFirstName = _form.PrimaryContactFirstName.Trim(),
+                PrimaryContactLastName = _form.PrimaryContactLastName.Trim()
+            };
+
+            if (_editTarget is not null)
+            {
+                await AdministrationApiClient.UpdateOrganizationAsync(
+                    AuthSessionService.AccessToken!,
+                    _editTarget.OrganizationId,
+                    request,
+                    CancellationToken.None);
+
+                if (_form.IsArchived && !_editTarget.IsArchived && IsSiteAdmin)
+                {
+                    await AdministrationApiClient.ArchiveOrganizationAsync(
+                        AuthSessionService.AccessToken!,
+                        _editTarget.OrganizationId,
+                        CancellationToken.None);
+                }
+            }
+            else
+            {
+                await AdministrationApiClient.CreateOrganizationAsync(
+                    AuthSessionService.AccessToken!,
+                    request,
+                    CancellationToken.None);
+            }
+
+            _view = PageView.List;
+            _editTarget = null;
+            await LoadOrganizationsAsync();
+        }
+        catch (AuthValidationException ex)
+        {
+            _errorMessage = ErrorMessageService.GetDisplayMessage(ex.Title, ex.Detail, ex);
+        }
+        catch (AuthApiException ex)
+        {
+            _errorMessage = ErrorMessageService.GetDisplayMessage(ex.Title, ex.Detail, ex);
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = ErrorMessageService.GetDisplayMessage(null, null, ex);
+        }
+        finally
+        {
+            _isSubmitting = false;
+        }
+    }
+
+    private void CancelForm()
+    {
+        _view = PageView.List;
+        _editTarget = null;
+    }
+
+    private static OrganizationListItemDto ToListItem(OrganizationDetailDto detail)
+    {
+        return new OrganizationListItemDto
+        {
+            OrganizationId = detail.OrganizationId,
+            CompanyName = detail.CompanyName,
+            City = detail.City,
+            State = detail.State,
+            Phone = detail.Phone,
+            LogoThumbnailUrl = detail.LogoThumbnailUrl,
+            IsArchived = detail.IsArchived
+        };
+    }
+
+    private sealed class OrganizationFormModel
+    {
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.MaxLength(200)]
+        public string CompanyName { get; set; } = string.Empty;
+
+        [System.ComponentModel.DataAnnotations.MaxLength(200)]
+        public string Address { get; set; } = string.Empty;
+
+        [System.ComponentModel.DataAnnotations.MaxLength(100)]
+        public string City { get; set; } = string.Empty;
+
+        [System.ComponentModel.DataAnnotations.MaxLength(50)]
+        public string State { get; set; } = string.Empty;
+
+        [System.ComponentModel.DataAnnotations.MaxLength(20)]
+        public string Zip { get; set; } = string.Empty;
+
+        [System.ComponentModel.DataAnnotations.MaxLength(25)]
+        public string Phone { get; set; } = string.Empty;
+
+        [System.ComponentModel.DataAnnotations.MaxLength(100)]
+        public string PrimaryContactFirstName { get; set; } = string.Empty;
+
+        [System.ComponentModel.DataAnnotations.MaxLength(100)]
+        public string PrimaryContactLastName { get; set; } = string.Empty;
+
+        public bool IsArchived { get; set; }
+    }
+}
