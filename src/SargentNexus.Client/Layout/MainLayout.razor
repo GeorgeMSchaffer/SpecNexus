@@ -13,13 +13,16 @@
                     {
                         <a href="/change-password" class="text-warning small fw-semibold">Password update required</a>
                     }
-                    <button class="btn-icon" title="Settings" @onclick='() => NavigationManager.NavigateTo("/settings")'>
+                    <div class="user-meta">
+                        <span class="user-role">@DisplayRole</span>
+                        <span class="username">@DisplayName</span>
+                    </div>
+                    <a class="btn-icon" href="/settings" title="Settings" aria-label="Settings">
                         <i class="bi bi-gear-fill"></i>
-                    </button>
+                    </a>
                     <button class="btn-icon" title="Sign out" @onclick="HandleLogoutAsync">
                         <i class="bi bi-box-arrow-right"></i>
                     </button>
-                    <span class="username">@DisplayName</span>
                 }
                 else
                 {
@@ -54,6 +57,11 @@
 </div>
 
 @code {
+    private string DisplayRole =>
+        string.IsNullOrWhiteSpace(AuthSessionService.User?.Role)
+            ? "User"
+            : AuthSessionService.User!.Role;
+
     private string DisplayName =>
         AuthSessionService.User is null
             ? "Authenticated user"

@@ -117,6 +117,19 @@ code {
     font-weight: 500;
 }
 
+.app-header .user-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.app-header .user-role {
+    color: rgba(255, 255, 255, 0.75);
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
 .app-header .btn-icon {
     background: none;
     border: none;
@@ -125,6 +138,7 @@ code {
     padding: 0.25rem 0.5rem;
     cursor: pointer;
     line-height: 1;
+    text-decoration: none;
 }
 
 .app-header .btn-icon:hover {
