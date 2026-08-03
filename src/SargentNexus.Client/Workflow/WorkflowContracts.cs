@@ -143,6 +143,10 @@ public sealed class IdeaWriteRequestDto
 
     public DateOnly? DueDate { get; set; }
 
+    public Guid? AssigneeUserId { get; set; }
+
+    public Guid? StatusId { get; set; }
+
     public IReadOnlyList<string> TagNames { get; set; } = Array.Empty<string>();
 
     public IReadOnlyList<string> MentionEmails { get; set; } = Array.Empty<string>();

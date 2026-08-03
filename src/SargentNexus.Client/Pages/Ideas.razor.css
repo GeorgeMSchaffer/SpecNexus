@@ -163,8 +163,23 @@
     margin-top: 1.25rem;
 }
 
+.ideas-page__overlay-action-group {
+    display: flex;
+    justify-content: end;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
 @media (max-width: 991.98px) {
     .ideas-page__overlay-grid {
         grid-template-columns: 1fr;
+    }
+
+    .ideas-page__overlay-actions {
+        flex-direction: column;
+    }
+
+    .ideas-page__overlay-action-group {
+        justify-content: start;
     }
 }

@@ -1,4 +1,5 @@
-﻿using System.Net.Http.Headers;
+﻿using System.Net;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using SargentNexus.Client.Auth;
 
@@ -73,7 +74,28 @@ public sealed class WorkflowApiClient
         requestMessage.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
 
         using var response = await _httpClient.SendAsync(requestMessage, cancellationToken);
-        response.EnsureSuccessStatusCode();
+        if (!response.IsSuccessStatusCode)
+        {
+            throw await CreateExceptionAsync(response, cancellationToken);
+        }
+
+        return await response.Content.ReadFromJsonAsync<IdeaDetailDto>(cancellationToken: cancellationToken)
+            ?? throw new InvalidOperationException("The API did not return an idea payload.");
+    }
+
+    public async Task<IdeaDetailDto> UpdateIdeaAsync(string accessToken, Guid ideaId, IdeaWriteRequestDto request, CancellationToken cancellationToken)
+    {
+        using var requestMessage = new HttpRequestMessage(HttpMethod.Put, $"api/v1/ideas/{ideaId}")
+        {
+            Content = JsonContent.Create(request)
+        };
+        requestMessage.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+
+        using var response = await _httpClient.SendAsync(requestMessage, cancellationToken);
+        if (!response.IsSuccessStatusCode)
+        {
+            throw await CreateExceptionAsync(response, cancellationToken);
+        }
 
         return await response.Content.ReadFromJsonAsync<IdeaDetailDto>(cancellationToken: cancellationToken)
             ?? throw new InvalidOperationException("The API did not return an idea payload.");
@@ -139,7 +161,10 @@ public sealed class WorkflowApiClient
         requestMessage.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
 
         using var response = await _httpClient.SendAsync(requestMessage, cancellationToken);
-        response.EnsureSuccessStatusCode();
+        if (response.StatusCode != HttpStatusCode.NoContent)
+        {
+            throw await CreateExceptionAsync(response, cancellationToken);
+        }
     }
 
     public async Task<BoardSummaryDto> UpdateBoardAsync(string accessToken, Guid boardId, UpdateBoardRequestDto request, CancellationToken cancellationToken)
@@ -264,5 +289,27 @@ public sealed class WorkflowApiClient
         }
 
         return allIdeas;
+    }
+
+    private static async Task<AuthApiException> CreateExceptionAsync(HttpResponseMessage response, CancellationToken cancellationToken)
+    {
+        var problem = await response.Content.ReadFromJsonAsync<ProblemDetailsDto>(cancellationToken: cancellationToken);
+
+        if (response.StatusCode == HttpStatusCode.BadRequest)
+        {
+            var validationProblem = await response.Content.ReadFromJsonAsync<ValidationProblemDetailsDto>(cancellationToken: cancellationToken);
+            if (validationProblem?.Errors is { Count: > 0 })
+            {
+                return new AuthValidationException(
+                    validationProblem.Title ?? "Validation failed.",
+                    validationProblem.Detail ?? "One or more validation errors occurred.",
+                    validationProblem.Errors);
+            }
+        }
+
+        return new AuthApiException(
+            (int)response.StatusCode,
+            problem?.Title ?? "Workflow error",
+            problem?.Detail ?? "A workflow API error occurred.");
     }
 }

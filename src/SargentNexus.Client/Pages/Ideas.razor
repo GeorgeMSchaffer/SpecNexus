@@ -1,5 +1,7 @@
 ﻿@page "/ideas"
+@using SargentNexus.Client.Administration
 @inject IAuthSessionService AuthSessionService
+@inject AdministrationApiClient AdministrationApiClient
 @inject IClientErrorMessageService ErrorMessageService
 @inject IJSRuntime JSRuntime
 @inject NavigationManager NavigationManager
@@ -40,7 +42,7 @@
 
                     @if (CanCreateIdeas)
                     {
-                        <button class="btn btn-primary" @onclick="OpenCreateDialog" disabled="@(_selectedBoard is null)">New Idea</button>
+                        <button class="btn btn-primary" @onclick="OpenCreatePanelAsync" disabled="@(_selectedBoard is null)">New Idea</button>
                     }
                 </div>
             }
@@ -93,73 +95,16 @@
     </div>
 </AuthGate>
 
-@if (_showCreateDialog)
-{
-    <div class="modal d-block" tabindex="-1" style="background: rgba(15,23,42,.35);">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h2 class="modal-title h5 mb-0">New Idea</h2>
-                    <button type="button" class="btn-close" @onclick="CloseCreateDialog" disabled="@_isSubmitting"></button>
-                </div>
-                <div class="modal-body">
-                    <EditForm Model="_createModel" OnValidSubmit="HandleCreateAsync">
-                        <DataAnnotationsValidator />
-
-                        <div class="mb-3">
-                            <label class="form-label">Title</label>
-                            <InputText class="form-control" @bind-Value="_createModel.Title" />
-                            <ValidationMessage For="() => _createModel.Title" />
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="form-label">Description</label>
-                            <InputTextArea class="form-control" rows="4" @bind-Value="_createModel.Description" />
-                            <ValidationMessage For="() => _createModel.Description" />
-                        </div>
-
-                        <div class="row g-3">
-                            <div class="col-md-6">
-                                <label class="form-label">Priority</label>
-                                <InputSelect class="form-select" @bind-Value="_createModel.Priority">
-                                    <option value="Low">Low</option>
-                                    <option value="Medium">Medium</option>
-                                    <option value="High">High</option>
-                                    <option value="Critical">Critical</option>
-                                </InputSelect>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Due date</label>
-                                <InputDate class="form-control" @bind-Value="_createModel.DueDate" />
-                            </div>
-                        </div>
-
-                        <div class="mt-3 mb-3">
-                            <label class="form-label">Tags</label>
-                            <InputText class="form-control" @bind-Value="_createModel.TagText" placeholder="comma separated tags" />
-                        </div>
-
-                        <div class="d-flex justify-content-end gap-2">
-                            <button class="btn btn-outline-secondary" type="button" @onclick="CloseCreateDialog" disabled="@_isSubmitting">Cancel</button>
-                            <button class="btn btn-primary" type="submit" disabled="@_isSubmitting">@(_isSubmitting ? "Saving..." : "Save Idea")</button>
-                        </div>
-                    </EditForm>
-                </div>
-            </div>
-        </div>
-    </div>
-}
-
 @if (_showIdeaPanel)
 {
     <div class="ideas-page__overlay-backdrop" @onclick="CloseIdeaPanel"></div>
     <aside class="ideas-page__overlay-panel" aria-label="Idea detail panel">
         <div class="ideas-page__overlay-header">
             <div>
-                <h2 class="ideas-page__overlay-title">Idea Details</h2>
-                <p class="ideas-page__overlay-subtitle">Opened in context from the board title link.</p>
+                <h2 class="ideas-page__overlay-title">@OverlayTitle</h2>
+                <p class="ideas-page__overlay-subtitle">@OverlaySubtitle</p>
             </div>
-            <button type="button" class="btn-close" @onclick="CloseIdeaPanel"></button>
+            <button type="button" class="btn-close" @onclick="CloseIdeaPanel" disabled="@_isSubmitting"></button>
         </div>
 
         @if (_loadingIdeaPanel)
@@ -172,98 +117,292 @@
         }
         else if (_selectedIdeaDetail is not null)
         {
-            <div class="ideas-page__overlay-grid">
-                <div class="ideas-page__overlay-field ideas-page__overlay-field--full">
-                    <span class="ideas-page__overlay-label">Title</span>
-                    <div class="ideas-page__overlay-value fw-semibold">@_selectedIdeaDetail.Title</div>
-                </div>
+            @if (IsOverlayEditable)
+            {
+                <EditForm Model="_ideaForm" OnValidSubmit="HandleIdeaSaveAsync">
+                    <DataAnnotationsValidator />
 
-                <div class="ideas-page__overlay-field">
-                    <span class="ideas-page__overlay-label">Priority</span>
-                    <div class="ideas-page__overlay-value">@_selectedIdeaDetail.Priority</div>
-                </div>
+                    <div class="ideas-page__overlay-grid">
+                        <div class="ideas-page__overlay-field ideas-page__overlay-field--full">
+                            <label class="ideas-page__overlay-label" for="idea-overlay-title">Title</label>
+                            <InputText id="idea-overlay-title" class="form-control" @bind-Value="_ideaForm.Title" />
+                            <ValidationMessage For="() => _ideaForm.Title" />
+                        </div>
 
-                <div class="ideas-page__overlay-field">
-                    <span class="ideas-page__overlay-label">Status</span>
-                    <div class="ideas-page__overlay-value">@_selectedIdeaDetail.StatusName</div>
-                </div>
+                        <div class="ideas-page__overlay-field">
+                            <label class="ideas-page__overlay-label" for="idea-overlay-priority">Priority</label>
+                            <InputSelect id="idea-overlay-priority" class="form-select" @bind-Value="_ideaForm.Priority">
+                                <option value="Low">Low</option>
+                                <option value="Medium">Medium</option>
+                                <option value="High">High</option>
+                                <option value="Critical">Critical</option>
+                            </InputSelect>
+                        </div>
 
-                <div class="ideas-page__overlay-field">
-                    <span class="ideas-page__overlay-label">Assigned To</span>
-                    <div class="ideas-page__overlay-value">@(_selectedIdeaDetail.AssigneeDisplayName ?? "Unassigned")</div>
-                </div>
+                        <div class="ideas-page__overlay-field">
+                            <label class="ideas-page__overlay-label" for="idea-overlay-due-date">Due Date</label>
+                            <InputDate id="idea-overlay-due-date" class="form-control" @bind-Value="_ideaForm.DueDate" />
+                        </div>
 
-                <div class="ideas-page__overlay-field">
-                    <span class="ideas-page__overlay-label">Upvotes</span>
-                    <div class="ideas-page__overlay-value">@_selectedIdeaDetail.UpvoteCount</div>
-                </div>
+                        <div class="ideas-page__overlay-field">
+                            <label class="ideas-page__overlay-label" for="idea-overlay-status">Status</label>
+                            <InputSelect id="idea-overlay-status" class="form-select" @bind-Value="_ideaForm.StatusIdText">
+                                @foreach (var swimlane in OrderedSwimlanes)
+                                {
+                                    <option value="@swimlane.StatusId">@swimlane.StatusName</option>
+                                }
+                            </InputSelect>
+                        </div>
 
-                <div class="ideas-page__overlay-field">
-                    <span class="ideas-page__overlay-label">Due Date</span>
-                    <div class="ideas-page__overlay-value">@(_selectedIdeaDetail.DueDate?.ToString("d") ?? "None")</div>
-                </div>
+                        <div class="ideas-page__overlay-field">
+                            <label class="ideas-page__overlay-label" for="idea-overlay-assignee">Assigned To</label>
+                            <InputSelect id="idea-overlay-assignee" class="form-select" @bind-Value="_ideaForm.AssigneeUserIdText">
+                                <option value="">Unassigned</option>
+                                @foreach (var user in _assigneeOptions)
+                                {
+                                    <option value="@user.UserId">@user.DisplayName</option>
+                                }
+                            </InputSelect>
+                        </div>
 
-                <div class="ideas-page__overlay-field">
-                    <span class="ideas-page__overlay-label">Mentions</span>
-                    <div class="ideas-page__overlay-value">
-                        @if (_selectedIdeaDetail.Mentions.Count == 0)
+                        <div class="ideas-page__overlay-field ideas-page__overlay-field--full">
+                            <label class="ideas-page__overlay-label" for="idea-overlay-description">Description</label>
+                            <InputTextArea id="idea-overlay-description" class="form-control" rows="5" @bind-Value="_ideaForm.Description" />
+                            <ValidationMessage For="() => _ideaForm.Description" />
+                        </div>
+
+                        <div class="ideas-page__overlay-field">
+                            <label class="ideas-page__overlay-label" for="idea-overlay-tags">Tags</label>
+                            <InputText id="idea-overlay-tags" class="form-control" @bind-Value="_ideaForm.TagText" placeholder="comma separated tags" />
+                        </div>
+
+                        <div class="ideas-page__overlay-field">
+                            <label class="ideas-page__overlay-label" for="idea-overlay-mentions">Mentions</label>
+                            <InputText id="idea-overlay-mentions" class="form-control" @bind-Value="_ideaForm.MentionText" placeholder="comma separated emails" />
+                        </div>
+
+                        @if (_overlayMode == IdeaOverlayMode.Edit)
                         {
-                            <span>None</span>
+                            <div class="ideas-page__overlay-field">
+                                <span class="ideas-page__overlay-label">Upvotes</span>
+                                <div class="ideas-page__overlay-value">@_selectedIdeaDetail.UpvoteCount</div>
+                            </div>
+                        }
+
+                        <div class="ideas-page__overlay-field ideas-page__overlay-field--full">
+                            <span class="ideas-page__overlay-label">Comments</span>
+                            @if (_selectedIdeaDetail.Comments.Count == 0)
+                            {
+                                <div class="ideas-page__overlay-value">No comments yet.</div>
+                            }
+                            else
+                            {
+                                <div class="ideas-page__overlay-comments">
+                                    @foreach (var comment in _selectedIdeaDetail.Comments)
+                                    {
+                                        <div class="ideas-page__overlay-comment">
+                                            <div class="ideas-page__overlay-comment-meta">@comment.CreatedAtUtc.ToLocalTime().ToString("g")</div>
+                                            <div>@comment.Body</div>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    </div>
+
+                    <div class="ideas-page__overlay-actions">
+                        <button class="btn btn-outline-secondary" type="button" @onclick="CloseIdeaPanel" disabled="@_isSubmitting">Cancel</button>
+                        <div class="ideas-page__overlay-action-group">
+                            <button class="btn btn-primary" type="submit" disabled="@(_isSubmitting || !HasValidSelectedStatus)">
+                                @(_isSubmitting ? "Saving..." : "Save Idea")
+                            </button>
+                            @if (CanShowMoveButton)
+                            {
+                                <button class="btn btn-outline-secondary"
+                                        type="button"
+                                        @onclick="HandleMoveIdeaFromOverlayAsync"
+                                        disabled="@(_isSubmitting || !CanMoveToSelectedStatus)">
+                                    Move in Board
+                                </button>
+                            }
+                        </div>
+                    </div>
+                </EditForm>
+            }
+            else
+            {
+                <div class="ideas-page__overlay-grid">
+                    <div class="ideas-page__overlay-field ideas-page__overlay-field--full">
+                        <span class="ideas-page__overlay-label">Title</span>
+                        <div class="ideas-page__overlay-value fw-semibold">@_selectedIdeaDetail.Title</div>
+                    </div>
+
+                    <div class="ideas-page__overlay-field">
+                        <span class="ideas-page__overlay-label">Priority</span>
+                        <div class="ideas-page__overlay-value">@_selectedIdeaDetail.Priority</div>
+                    </div>
+
+                    <div class="ideas-page__overlay-field">
+                        <span class="ideas-page__overlay-label">Status</span>
+                        <div class="ideas-page__overlay-value">@_selectedIdeaDetail.StatusName</div>
+                    </div>
+
+                    <div class="ideas-page__overlay-field">
+                        <span class="ideas-page__overlay-label">Assigned To</span>
+                        <div class="ideas-page__overlay-value">@(_selectedIdeaDetail.AssigneeDisplayName ?? "Unassigned")</div>
+                    </div>
+
+                    <div class="ideas-page__overlay-field">
+                        <span class="ideas-page__overlay-label">Upvotes</span>
+                        <div class="ideas-page__overlay-value">@_selectedIdeaDetail.UpvoteCount</div>
+                    </div>
+
+                    <div class="ideas-page__overlay-field">
+                        <span class="ideas-page__overlay-label">Due Date</span>
+                        <div class="ideas-page__overlay-value">@(_selectedIdeaDetail.DueDate?.ToString("d") ?? "None")</div>
+                    </div>
+
+                    <div class="ideas-page__overlay-field">
+                        <span class="ideas-page__overlay-label">Mentions</span>
+                        <div class="ideas-page__overlay-value">
+                            @if (_selectedIdeaDetail.Mentions.Count == 0)
+                            {
+                                <span>None</span>
+                            }
+                            else
+                            {
+                                @string.Join(", ", _selectedIdeaDetail.Mentions)
+                            }
+                        </div>
+                    </div>
+
+                    <div class="ideas-page__overlay-field ideas-page__overlay-field--full">
+                        <span class="ideas-page__overlay-label">Description</span>
+                        <div class="ideas-page__overlay-value">@_selectedIdeaDetail.Description</div>
+                    </div>
+
+                    <div class="ideas-page__overlay-field ideas-page__overlay-field--full">
+                        <span class="ideas-page__overlay-label">Tags</span>
+                        @if (_selectedIdeaDetail.TagNames.Count == 0)
+                        {
+                            <div class="ideas-page__overlay-value">No tags</div>
                         }
                         else
                         {
-                            @string.Join(", ", _selectedIdeaDetail.Mentions)
+                            <div class="ideas-page__overlay-tags">
+                                @foreach (var tag in _selectedIdeaDetail.TagNames)
+                                {
+                                    <span class="ideas-page__overlay-tag">@tag</span>
+                                }
+                            </div>
+                        }
+                    </div>
+
+                    <div class="ideas-page__overlay-field ideas-page__overlay-field--full">
+                        <span class="ideas-page__overlay-label">Comments</span>
+                        @if (_selectedIdeaDetail.Comments.Count == 0)
+                        {
+                            <div class="ideas-page__overlay-value">No comments yet.</div>
+                        }
+                        else
+                        {
+                            <div class="ideas-page__overlay-comments">
+                                @foreach (var comment in _selectedIdeaDetail.Comments)
+                                {
+                                    <div class="ideas-page__overlay-comment">
+                                        <div class="ideas-page__overlay-comment-meta">@comment.CreatedAtUtc.ToLocalTime().ToString("g")</div>
+                                        <div>@comment.Body</div>
+                                    </div>
+                                }
+                            </div>
                         }
                     </div>
                 </div>
 
-                <div class="ideas-page__overlay-field ideas-page__overlay-field--full">
-                    <span class="ideas-page__overlay-label">Description</span>
-                    <div class="ideas-page__overlay-value">@_selectedIdeaDetail.Description</div>
+                <div class="ideas-page__overlay-actions">
+                    <button class="btn btn-outline-secondary" type="button" @onclick="CloseIdeaPanel">Close</button>
                 </div>
+            }
+        }
+        else if (_overlayMode == IdeaOverlayMode.Create && IsOverlayEditable)
+        {
+            <EditForm Model="_ideaForm" OnValidSubmit="HandleIdeaSaveAsync">
+                <DataAnnotationsValidator />
 
-                <div class="ideas-page__overlay-field ideas-page__overlay-field--full">
-                    <span class="ideas-page__overlay-label">Tags</span>
-                    @if (_selectedIdeaDetail.TagNames.Count == 0)
-                    {
-                        <div class="ideas-page__overlay-value">No tags</div>
-                    }
-                    else
-                    {
-                        <div class="ideas-page__overlay-tags">
-                            @foreach (var tag in _selectedIdeaDetail.TagNames)
+                <div class="ideas-page__overlay-grid">
+                    <div class="ideas-page__overlay-field ideas-page__overlay-field--full">
+                        <label class="ideas-page__overlay-label" for="idea-overlay-title-new">Title</label>
+                        <InputText id="idea-overlay-title-new" class="form-control" @bind-Value="_ideaForm.Title" />
+                        <ValidationMessage For="() => _ideaForm.Title" />
+                    </div>
+
+                    <div class="ideas-page__overlay-field">
+                        <label class="ideas-page__overlay-label" for="idea-overlay-priority-new">Priority</label>
+                        <InputSelect id="idea-overlay-priority-new" class="form-select" @bind-Value="_ideaForm.Priority">
+                            <option value="Low">Low</option>
+                            <option value="Medium">Medium</option>
+                            <option value="High">High</option>
+                            <option value="Critical">Critical</option>
+                        </InputSelect>
+                    </div>
+
+                    <div class="ideas-page__overlay-field">
+                        <label class="ideas-page__overlay-label" for="idea-overlay-due-date-new">Due Date</label>
+                        <InputDate id="idea-overlay-due-date-new" class="form-control" @bind-Value="_ideaForm.DueDate" />
+                    </div>
+
+                    <div class="ideas-page__overlay-field">
+                        <label class="ideas-page__overlay-label" for="idea-overlay-status-new">Status</label>
+                        <InputSelect id="idea-overlay-status-new" class="form-select" @bind-Value="_ideaForm.StatusIdText">
+                            @foreach (var swimlane in OrderedSwimlanes)
                             {
-                                <span class="ideas-page__overlay-tag">@tag</span>
+                                <option value="@swimlane.StatusId">@swimlane.StatusName</option>
                             }
-                        </div>
-                    }
-                </div>
+                        </InputSelect>
+                    </div>
 
-                <div class="ideas-page__overlay-field ideas-page__overlay-field--full">
-                    <span class="ideas-page__overlay-label">Comments</span>
-                    @if (_selectedIdeaDetail.Comments.Count == 0)
-                    {
-                        <div class="ideas-page__overlay-value">No comments yet.</div>
-                    }
-                    else
-                    {
-                        <div class="ideas-page__overlay-comments">
-                            @foreach (var comment in _selectedIdeaDetail.Comments)
+                    <div class="ideas-page__overlay-field">
+                        <label class="ideas-page__overlay-label" for="idea-overlay-assignee-new">Assigned To</label>
+                        <InputSelect id="idea-overlay-assignee-new" class="form-select" @bind-Value="_ideaForm.AssigneeUserIdText">
+                            <option value="">Unassigned</option>
+                            @foreach (var user in _assigneeOptions)
                             {
-                                <div class="ideas-page__overlay-comment">
-                                    <div class="ideas-page__overlay-comment-meta">@comment.CreatedAtUtc.ToLocalTime().ToString("g")</div>
-                                    <div>@comment.Body</div>
-                                </div>
+                                <option value="@user.UserId">@user.DisplayName</option>
                             }
-                        </div>
-                    }
-                </div>
-            </div>
+                        </InputSelect>
+                    </div>
 
-            <div class="ideas-page__overlay-actions">
-                <button class="btn btn-outline-secondary" type="button" @onclick="CloseIdeaPanel">Close</button>
-                <button class="btn btn-primary" type="button" @onclick="OpenIdeaPage">Open full edit page</button>
-            </div>
+                    <div class="ideas-page__overlay-field ideas-page__overlay-field--full">
+                        <label class="ideas-page__overlay-label" for="idea-overlay-description-new">Description</label>
+                        <InputTextArea id="idea-overlay-description-new" class="form-control" rows="5" @bind-Value="_ideaForm.Description" />
+                        <ValidationMessage For="() => _ideaForm.Description" />
+                    </div>
+
+                    <div class="ideas-page__overlay-field">
+                        <label class="ideas-page__overlay-label" for="idea-overlay-tags-new">Tags</label>
+                        <InputText id="idea-overlay-tags-new" class="form-control" @bind-Value="_ideaForm.TagText" placeholder="comma separated tags" />
+                    </div>
+
+                    <div class="ideas-page__overlay-field">
+                        <label class="ideas-page__overlay-label" for="idea-overlay-mentions-new">Mentions</label>
+                        <InputText id="idea-overlay-mentions-new" class="form-control" @bind-Value="_ideaForm.MentionText" placeholder="comma separated emails" />
+                    </div>
+
+                    <div class="ideas-page__overlay-field ideas-page__overlay-field--full">
+                        <span class="ideas-page__overlay-label">Comments</span>
+                        <div class="ideas-page__overlay-value">Comments are available after the idea is created.</div>
+                    </div>
+                </div>
+
+                <div class="ideas-page__overlay-actions">
+                    <button class="btn btn-outline-secondary" type="button" @onclick="CloseIdeaPanel" disabled="@_isSubmitting">Cancel</button>
+                    <div class="ideas-page__overlay-action-group">
+                        <button class="btn btn-primary" type="submit" disabled="@(_isSubmitting || !HasValidSelectedStatus)">
+                            @(_isSubmitting ? "Saving..." : "Save Idea")
+                        </button>
+                    </div>
+                </div>
+            </EditForm>
         }
     </aside>
 }
@@ -290,28 +429,64 @@
         AssignedToMe
     }
 
+    private enum IdeaOverlayMode
+    {
+        Create,
+        Edit,
+        ReadOnly
+    }
+
     private readonly List<BoardSummaryDto> _boards = new();
+    private readonly List<AssigneeOption> _assigneeOptions = new();
     private IReadOnlyList<KanbanIdeaCardModel> _ideas = Array.Empty<KanbanIdeaCardModel>();
     private IdeaFilter _filter = IdeaFilter.All;
+    private IdeaOverlayMode _overlayMode = IdeaOverlayMode.ReadOnly;
     private string _search = string.Empty;
     private bool _loading = true;
     private bool _loadingBoardIdeas;
     private bool _loadingIdeaPanel;
-    private bool _showCreateDialog;
     private bool _showIdeaPanel;
     private bool _isSubmitting;
+    private bool _assigneeOptionsLoaded;
     private string? _errorMessage;
     private string? _ideaPanelErrorMessage;
     private BoardSummaryDto? _selectedBoard;
     private IdeaDetailDto? _selectedIdeaDetail;
-    private CreateIdeaFormModel _createModel = new();
+    private IdeaOverlayFormModel _ideaForm = new();
 
     private Guid? CurrentUserId => AuthSessionService.User?.UserId;
     private string? CurrentUserRole => AuthSessionService.User?.Role;
+    private bool IsReadOnlyUser => string.Equals(CurrentUserRole, "ReadOnly", StringComparison.OrdinalIgnoreCase);
     private bool CanReorderColumns => CurrentUserRole is "SiteAdmin" or "OrgAdmin";
-    private bool CanCreateIdeas => !string.Equals(CurrentUserRole, "ReadOnly", StringComparison.OrdinalIgnoreCase);
+    private bool CanCreateIdeas => !IsReadOnlyUser;
+    private bool CanEditIdeas => !IsReadOnlyUser;
+    private bool CanMoveIdeas => !IsReadOnlyUser &&
+                                 (CurrentUserRole is "SiteAdmin" or "OrgAdmin" ||
+                                  _selectedBoard?.AllowUserStatusUpdate == true);
+    private bool IsOverlayEditable => _overlayMode is IdeaOverlayMode.Create or IdeaOverlayMode.Edit;
+    private bool CanShowMoveButton => _overlayMode == IdeaOverlayMode.Edit && CanMoveIdeas;
+    private bool HasValidSelectedStatus => Guid.TryParse(_ideaForm.StatusIdText, out _);
+    private bool CanMoveToSelectedStatus =>
+        CanShowMoveButton &&
+        _selectedIdeaDetail is not null &&
+        Guid.TryParse(_ideaForm.StatusIdText, out var selectedStatusId) &&
+        selectedStatusId != _selectedIdeaDetail.StatusId;
+    private string OverlayTitle => _overlayMode switch
+    {
+        IdeaOverlayMode.Create => "New Idea",
+        IdeaOverlayMode.Edit => "Edit Idea",
+        _ => "Idea Details"
+    };
+    private string OverlaySubtitle => _overlayMode switch
+    {
+        IdeaOverlayMode.Create => "Create an idea in context and return directly to the board.",
+        IdeaOverlayMode.Edit => "Update the idea in context without leaving the board.",
+        _ => "Opened in context from the board title link."
+    };
 
     private string SelectedBoardIdText => _selectedBoard?.BoardId.ToString() ?? string.Empty;
+    private IReadOnlyList<SwimlaneDto> OrderedSwimlanes => _selectedBoard?.Swimlanes.OrderBy(swimlane => swimlane.Order).ToArray()
+        ?? Array.Empty<SwimlaneDto>();
 
     private IReadOnlyList<KanbanColumnModel> VisibleColumns
     {
@@ -537,6 +712,8 @@
         {
             _selectedIdeaDetail.StatusId = targetStatusId;
             _selectedIdeaDetail.StatusName = targetColumn.StatusName;
+            _ideaForm.StatusIdText = targetStatusId.ToString();
+            _ideaPanelErrorMessage = null;
         }
 
         try
@@ -556,9 +733,14 @@
                 var originalColumn = _selectedBoard.Swimlanes.FirstOrDefault(swimlane => swimlane.StatusId == previousStatusId);
                 _selectedIdeaDetail.StatusId = previousStatusId;
                 _selectedIdeaDetail.StatusName = originalColumn?.StatusName ?? _selectedIdeaDetail.StatusName;
+                _ideaForm.StatusIdText = previousStatusId.ToString();
             }
 
             _errorMessage = ErrorMessageService.GetDisplayMessage("Could not move idea.", null, ex);
+            if (_selectedIdeaDetail?.IdeaId == ideaId)
+            {
+                _ideaPanelErrorMessage = _errorMessage;
+            }
         }
     }
 
@@ -611,54 +793,96 @@
         _filter = filter;
     }
 
-    private void OpenCreateDialog()
-    {
-        _showCreateDialog = true;
-    }
-
-    private void CloseCreateDialog()
-    {
-        if (_isSubmitting)
-        {
-            return;
-        }
-
-        _showCreateDialog = false;
-    }
-
-    private async Task HandleCreateAsync()
+    private async Task OpenCreatePanelAsync()
     {
         if (_selectedBoard is null)
         {
             return;
         }
 
-        _isSubmitting = true;
+        _showIdeaPanel = true;
+        _loadingIdeaPanel = true;
+        _ideaPanelErrorMessage = null;
+        _selectedIdeaDetail = null;
+        _overlayMode = IdeaOverlayMode.Create;
 
         try
         {
-            var createdIdea = await WorkflowApiClient.CreateIdeaAsync(
-                AuthSessionService.AccessToken!,
-                _selectedBoard.BoardId,
-                new IdeaWriteRequestDto
-                {
-                    Title = _createModel.Title.Trim(),
-                    Description = _createModel.Description.Trim(),
-                    Priority = _createModel.Priority,
-                    DueDate = _createModel.DueDate,
-                    TagNames = _createModel.TagText.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries),
-                    MentionEmails = Array.Empty<string>()
-                },
-                CancellationToken.None);
-
-            _createModel = new CreateIdeaFormModel();
-            _showCreateDialog = false;
-            await LoadBoardIdeasAsync();
-            await OpenIdeaPanelAsync(createdIdea.IdeaId);
+            await EnsureAssigneeOptionsLoadedAsync();
+            _ideaForm = CreateEmptyIdeaForm();
         }
         catch (Exception ex)
         {
-            _errorMessage = ErrorMessageService.GetDisplayMessage(null, null, ex);
+            _ideaPanelErrorMessage = ErrorMessageService.GetDisplayMessage(null, null, ex);
+        }
+        finally
+        {
+            _loadingIdeaPanel = false;
+        }
+    }
+
+    private async Task HandleIdeaSaveAsync()
+    {
+        if (_selectedBoard is null)
+        {
+            return;
+        }
+
+        if (!TryCreateIdeaWriteRequest(out var request))
+        {
+            _ideaPanelErrorMessage = "Select a valid board status before saving.";
+            return;
+        }
+
+        _isSubmitting = true;
+        _ideaPanelErrorMessage = null;
+
+        try
+        {
+            if (_overlayMode == IdeaOverlayMode.Create)
+            {
+                await WorkflowApiClient.CreateIdeaAsync(
+                    AuthSessionService.AccessToken!,
+                    _selectedBoard.BoardId,
+                    request,
+                    CancellationToken.None);
+            }
+            else if (_selectedIdeaDetail is not null)
+            {
+                _selectedIdeaDetail = await WorkflowApiClient.UpdateIdeaAsync(
+                    AuthSessionService.AccessToken!,
+                    _selectedIdeaDetail.IdeaId,
+                    request,
+                    CancellationToken.None);
+            }
+
+            await LoadBoardIdeasAsync();
+            _isSubmitting = false;
+            CloseIdeaPanel();
+        }
+        catch (Exception ex)
+        {
+            _ideaPanelErrorMessage = ErrorMessageService.GetDisplayMessage(null, null, ex);
+        }
+        finally
+        {
+            _isSubmitting = false;
+        }
+    }
+
+    private async Task HandleMoveIdeaFromOverlayAsync()
+    {
+        if (_selectedIdeaDetail is null || !Guid.TryParse(_ideaForm.StatusIdText, out var targetStatusId))
+        {
+            return;
+        }
+
+        _isSubmitting = true;
+        _ideaPanelErrorMessage = null;
+
+        try
+        {
+            await HandleIdeaMovedAsync((_selectedIdeaDetail.IdeaId, targetStatusId));
         }
         finally
         {
@@ -672,10 +896,21 @@
         _loadingIdeaPanel = true;
         _ideaPanelErrorMessage = null;
         _selectedIdeaDetail = null;
+        _overlayMode = CanEditIdeas ? IdeaOverlayMode.Edit : IdeaOverlayMode.ReadOnly;
 
         try
         {
+            if (_overlayMode == IdeaOverlayMode.Edit)
+            {
+                await EnsureAssigneeOptionsLoadedAsync();
+            }
+
             _selectedIdeaDetail = await WorkflowApiClient.GetIdeaDetailAsync(AuthSessionService.AccessToken!, ideaId, CancellationToken.None);
+
+            if (_overlayMode == IdeaOverlayMode.Edit)
+            {
+                _ideaForm = CreateIdeaForm(_selectedIdeaDetail);
+            }
         }
         catch (Exception ex)
         {
@@ -689,25 +924,179 @@
 
     private void CloseIdeaPanel()
     {
-        _showIdeaPanel = false;
-        _loadingIdeaPanel = false;
-        _ideaPanelErrorMessage = null;
-        _selectedIdeaDetail = null;
-    }
-
-    private void OpenIdeaPage()
-    {
-        if (_selectedIdeaDetail is null)
+        if (_isSubmitting)
         {
             return;
         }
 
-        NavigationManager.NavigateTo($"/ideas/{_selectedIdeaDetail.IdeaId}/edit");
+        _showIdeaPanel = false;
+        _loadingIdeaPanel = false;
+        _ideaPanelErrorMessage = null;
+        _selectedIdeaDetail = null;
+        _overlayMode = IdeaOverlayMode.ReadOnly;
+        _ideaForm = new IdeaOverlayFormModel
+        {
+            Priority = "Medium"
+        };
+    }
+
+    private async Task EnsureAssigneeOptionsLoadedAsync()
+    {
+        if (_assigneeOptionsLoaded)
+        {
+            return;
+        }
+
+        var organizationId = AuthSessionService.User?.OrganizationId;
+        if (!organizationId.HasValue || organizationId.Value == Guid.Empty)
+        {
+            _assigneeOptionsLoaded = true;
+            return;
+        }
+
+        const int PageSize = 100;
+        var page = 1;
+        var users = new List<AssigneeOption>();
+
+        while (true)
+        {
+            var result = await AdministrationApiClient.ListUsersAsync(
+                AuthSessionService.AccessToken!,
+                organizationId.Value,
+                page,
+                PageSize,
+                null,
+                CancellationToken.None);
+
+            users.AddRange(result.Items.Select(user => new AssigneeOption
+            {
+                UserId = user.UserId,
+                DisplayName = GetAssigneeDisplayName(user)
+            }));
+
+            if (users.Count >= result.TotalCount || result.Items.Count < result.PageSize)
+            {
+                break;
+            }
+
+            page++;
+        }
+
+        _assigneeOptions.Clear();
+        _assigneeOptions.AddRange(users.OrderBy(user => user.DisplayName, StringComparer.OrdinalIgnoreCase));
+        _assigneeOptionsLoaded = true;
+    }
+
+    private IdeaOverlayFormModel CreateEmptyIdeaForm()
+    {
+        return new IdeaOverlayFormModel
+        {
+            Priority = "Medium",
+            StatusIdText = OrderedSwimlanes.FirstOrDefault()?.StatusId.ToString() ?? string.Empty
+        };
+    }
+
+    private static IdeaOverlayFormModel CreateIdeaForm(IdeaDetailDto detail)
+    {
+        return new IdeaOverlayFormModel
+        {
+            Title = detail.Title,
+            Description = detail.Description,
+            Priority = detail.Priority,
+            DueDate = detail.DueDate,
+            AssigneeUserIdText = detail.AssigneeUserId?.ToString() ?? string.Empty,
+            StatusIdText = detail.StatusId.ToString(),
+            TagText = string.Join(", ", detail.TagNames),
+            MentionText = string.Join(", ", detail.Mentions)
+        };
+    }
+
+    private bool TryCreateIdeaWriteRequest(out IdeaWriteRequestDto request)
+    {
+        request = new IdeaWriteRequestDto();
+
+        if (!Guid.TryParse(_ideaForm.StatusIdText, out var statusId))
+        {
+            return false;
+        }
+
+        request = new IdeaWriteRequestDto
+        {
+            Title = _ideaForm.Title.Trim(),
+            Description = _ideaForm.Description.Trim(),
+            Priority = _ideaForm.Priority,
+            DueDate = _ideaForm.DueDate,
+            AssigneeUserId = Guid.TryParse(_ideaForm.AssigneeUserIdText, out var assigneeUserId)
+                ? assigneeUserId
+                : null,
+            StatusId = statusId,
+            TagNames = ParseCommaSeparated(_ideaForm.TagText),
+            MentionEmails = ParseMentionEmails(_ideaForm.MentionText)
+        };
+
+        return true;
+    }
+
+    private static IReadOnlyList<string> ParseCommaSeparated(string input)
+    {
+        return input
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+    }
+
+    private static IReadOnlyList<string> ParseMentionEmails(string input)
+    {
+        return input
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(value => value.Trim().TrimStart('@'))
+            .Where(value => !string.IsNullOrWhiteSpace(value))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+    }
+
+    private static string GetAssigneeDisplayName(UserListItemDto user)
+    {
+        var fullName = $"{user.FirstName} {user.LastName}".Trim();
+        return string.IsNullOrWhiteSpace(fullName) ? user.Email : $"{fullName} ({user.Email})";
     }
 
     private string GetFilterButtonClass(IdeaFilter filter)
     {
         return _filter == filter ? "btn btn-primary btn-sm" : "btn btn-outline-secondary btn-sm";
+    }
+
+    private sealed class AssigneeOption
+    {
+        public Guid UserId { get; set; }
+
+        public string DisplayName { get; set; } = string.Empty;
+    }
+
+    private sealed class IdeaOverlayFormModel
+    {
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.StringLength(150)]
+        public string Title { get; set; } = string.Empty;
+
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.StringLength(4000)]
+        public string Description { get; set; } = string.Empty;
+
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.RegularExpression("Low|Medium|High|Critical")]
+        public string Priority { get; set; } = "Medium";
+
+        [System.ComponentModel.DataAnnotations.Required]
+        public string StatusIdText { get; set; } = string.Empty;
+
+        public DateOnly? DueDate { get; set; }
+
+        public string AssigneeUserIdText { get; set; } = string.Empty;
+
+        public string TagText { get; set; } = string.Empty;
+
+        public string MentionText { get; set; } = string.Empty;
     }
 
     private static bool MatchesSearch(KanbanIdeaCardModel idea, string term)
@@ -831,25 +1220,4 @@
         await JSRuntime.InvokeVoidAsync("localStorage.removeItem", BoardStorageKey);
     }
 
-    private sealed class CreateIdeaFormModel
-    {
-        [System.ComponentModel.DataAnnotations.Required]
-        [System.ComponentModel.DataAnnotations.StringLength(150)]
-        public string Title { get; set; } = string.Empty;
-
-        [System.ComponentModel.DataAnnotations.Required]
-        [System.ComponentModel.DataAnnotations.StringLength(4000)]
-        public string Description { get; set; } = string.Empty;
-
-        public string Priority { get; set; } = "Medium";
-
-        public DateOnly? DueDate { get; set; }
-
-        public string TagText { get; set; } = string.Empty;
-    }
 }
-
-
-
-
-
