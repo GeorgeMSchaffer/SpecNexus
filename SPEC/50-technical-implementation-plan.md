@@ -596,3 +596,158 @@ Validation gate:
 - Use admin-issued temporary password reset instead of self-service email reset in the current scope.
 - Defer OAuth and SAML implementation until their post-MVP phases begin; defer reporting, guaranteed email delivery, event query endpoints, and remember-this-device outside MVP.
 - Treat the original `SPEC` documents as the authoritative source and the Spec Kit port as an execution aid when there is any mismatch.
+
+---
+
+## Post-MVP Feature: User-Defined Fields (UDFs) for Ideas
+
+> Full feature spec: `SPEC/20-feature-user-defined-fields.md`
+
+### Feature Summary
+
+Organization admins can define custom fields (UDFs) on ideas. Field definitions are org-scoped and shared across all boards. All organization members can fill in UDF values on idea forms. UDF values participate in filtering, search, audit, and CSV export/import.
+
+### Domain Model Changes
+
+New entities added to `SargentNexus.Domain`:
+
+| Entity | Base Class | Purpose |
+|---|---|---|
+| `FieldDefinition` | `AuditableEntityBase` | Org-scoped field schema entry; soft-deletable |
+| `FieldDefinitionOption` | `EntityBase` | Option labels for Dropdown/MultiSelect types |
+| `IdeaFieldValue` | `AuditableEntityBase` | One value per (idea, field definition); value stored as string |
+
+New enum: `FieldType` (`Text=1`, `Number=2`, `Date=3`, `Boolean=4`, `Dropdown=5`, `MultiSelect=6`, `Url=7`)
+
+`Idea` gains: `ICollection<IdeaFieldValue> FieldValues`
+
+### New Tables
+
+```
+field_definitions
+  - id uniqueidentifier PK
+  - organization_id uniqueidentifier FK → organizations
+  - name nvarchar(100)
+  - description nvarchar(500) nullable
+  - field_type int (FieldType enum)
+  - is_required bit
+  - display_order int
+  - is_deleted bit
+  - deleted_at_utc datetime2 nullable
+  - deleted_by_user_id uniqueidentifier nullable
+  - created_at_utc, updated_at_utc datetime2
+
+field_definition_options
+  - id uniqueidentifier PK
+  - field_definition_id uniqueidentifier FK → field_definitions (cascade delete)
+  - label nvarchar(200)
+  - display_order int
+
+idea_field_values
+  - id uniqueidentifier PK
+  - idea_id uniqueidentifier FK → ideas (cascade delete)
+  - field_definition_id uniqueidentifier FK → field_definitions
+  - value nvarchar(4000) nullable
+  - created_at_utc, updated_at_utc datetime2
+
+Unique index: field_definitions (organization_id, name) WHERE is_deleted = 0
+Unique index: idea_field_values (idea_id, field_definition_id)
+Index:        idea_field_values (field_definition_id, value)
+```
+
+EF Core migration name: `AddUserDefinedFields`
+
+### New API Endpoints
+
+All under `FieldDefinitionsController` at `/api/v1/organizations/{orgId}/field-definitions`:
+
+| Method | Route | Auth | Description |
+|---|---|---|---|
+| `GET` | `.../field-definitions` | OrgAdmin, SiteAdmin | List active definitions (`?includeDeleted=true` for archived) |
+| `POST` | `.../field-definitions` | OrgAdmin, SiteAdmin | Create definition |
+| `GET` | `.../field-definitions/{id}` | OrgAdmin, SiteAdmin | Get single definition |
+| `PUT` | `.../field-definitions/{id}` | OrgAdmin, SiteAdmin | Update definition |
+| `DELETE` | `.../field-definitions/{id}` | OrgAdmin, SiteAdmin | Soft-delete |
+| `PUT` | `.../field-definitions/reorder` | OrgAdmin, SiteAdmin | Reorder all |
+
+Idea endpoints extended:
+- `POST /api/v1/boards/{boardId}/ideas` and `PUT /api/v1/ideas/{ideaId}` accept `fieldValues[]` in the request body
+- `GET /api/v1/ideas/{ideaId}` returns `fieldValues[]` in `IdeaDetailModel`
+- `GET /api/v1/boards/{boardId}/ideas` accepts `fieldFilters[<id>]=<value>` query parameters
+
+### Endpoint to Service Mapping (UDF additions)
+
+```
+GET    .../field-definitions           → FieldDefinitionService
+POST   .../field-definitions           → FieldDefinitionService, AuditEventWriter
+GET    .../field-definitions/{id}      → FieldDefinitionService
+PUT    .../field-definitions/{id}      → FieldDefinitionService, AuditEventWriter
+DELETE .../field-definitions/{id}      → FieldDefinitionService, AuditEventWriter
+PUT    .../field-definitions/reorder   → FieldDefinitionService, AuditEventWriter
+POST   .../ideas (extended)            → IdeaService (calls UdfValidationService), AuditEventWriter
+PUT    .../ideas/{id} (extended)       → IdeaService (calls UdfValidationService), AuditEventWriter
+```
+
+### Application Services
+
+New service: `IFieldDefinitionService` (in `SargentNexus.Application/FieldDefinitions/`)
+- CRUD for field definitions including soft-delete and reorder
+- Authorization enforced: OrgAdmin and SiteAdmin only for writes
+
+New service: `IUdfValidationService` (called from `IdeaService` during create/update)
+- Validates `FieldValueWriteModel[]` against the org's active field definitions
+- Enforces required-field rule, type format rules, and option-ID validity
+- Returns structured errors keyed by field name matching API validation message format
+
+Existing `IdeaService` extended:
+- Accept and persist `FieldValueWriteModel[]` on create and update
+- Emit `IdeaFieldValueChanged` audit events for each changed, added, or cleared UDF value
+
+### Data Model Outline Addition
+
+Add to the existing Data Model Outline:
+- `FieldDefinition`
+- `FieldDefinitionOption`
+- `IdeaFieldValue`
+
+Add to the Persistence Design / Core Tables:
+- `field_definitions`
+- `field_definition_options`
+- `idea_field_values`
+
+### Client Components
+
+| Component | Location | Purpose |
+|---|---|---|
+| `FieldDefinitionList.razor` | Admin → Org Settings → Custom Fields | List, reorder, edit, archive definitions |
+| `FieldDefinitionEditor.razor` | Admin → Org Settings | Create/edit dialog with type selector and options sub-editor |
+| `FieldOptionEditor.razor` | Embedded in editor | Manage Dropdown/MultiSelect option labels |
+| `IdeaUdfFields.razor` | Idea create dialog + detail overlay | Dynamic rendering of UDF fields by type |
+| `UdfFilterPanel.razor` | Ideas list filter panel | Per-type filter controls for UDF fields |
+
+New client service: `IFieldDefinitionApiClient` + `FieldDefinitionCacheService` (scoped, avoids repeated fetches)
+
+### CSV Export / Import Integration
+
+- `IdeaCsvExportService` extended to append one column per active `FieldDefinition` (ordered by `DisplayOrder`); column header = field name
+- `IdeaCsvImportService` extended to match incoming column headers by field name (case-insensitive) to active field definitions; values validated through `IUdfValidationService`; per-row errors reported in the import summary
+
+### Migration Strategy
+
+- Single EF Core migration `AddUserDefinedFields` creates the three new tables with no backfill
+- Existing ideas receive null/empty UDF values; this is the correct post-migration state and requires no data migration
+
+### Effort Sizing
+
+| Layer | Estimated Effort |
+|---|---|
+| Domain + EF Core migration | 0.5–1 day |
+| Application (`FieldDefinitionService`, `UdfValidationService`, idea service extensions, audit) | 2–3 days |
+| API (`FieldDefinitionsController`, model extensions, filter query) | 1–1.5 days |
+| Client admin UI (field definition editor + reorder) | 2 days |
+| Client idea form (dynamic UDF rendering, 7 types) | 2–3 days |
+| Client filter panel | 1–1.5 days |
+| Client API client + cache service | 0.5 day |
+| CSV export/import extensions | 1 day |
+| Tests | 2 days |
+| **Total** | **~12–16 dev-days** |
