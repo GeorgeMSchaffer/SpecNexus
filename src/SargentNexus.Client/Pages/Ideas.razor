@@ -10,9 +10,42 @@
     <div class="container py-4">
         <div class="d-flex justify-content-between align-items-center mb-3">
             <div>
+<<<<<<< HEAD
                 <h1 class="h3 mb-1">My Ideas</h1>
                 <p class="text-muted mb-0">Ideas you created or are assigned to.</p>
             </div>
+=======
+                <h1 class="h3 mb-1">Ideas</h1>
+                <p class="text-muted mb-0">Compact board overview for the selected workflow board.</p>
+            </div>
+
+            @if (_boards.Count > 0)
+            {
+                <div class="ideas-page__header-actions">
+                    <div class="ideas-page__board-picker">
+                        <label class="form-label small text-muted mb-1" for="ideas-board-picker">Board</label>
+                        <select id="ideas-board-picker" class="form-select" value="@SelectedBoardIdText" @onchange="HandleBoardChangeAsync">
+                            @foreach (var board in _boards)
+                            {
+                                <option value="@board.BoardId">@board.Name</option>
+                            }
+                        </select>
+                    </div>
+
+                    <div class="ideas-page__header-search">
+                        <label class="visually-hidden" for="ideas-search">Search ideas</label>
+                        <input id="ideas-search"
+                               class="form-control"
+                               type="search"
+                               placeholder="Search title, tag, assignee"
+                               @bind="_search"
+                               @bind:event="oninput" />
+                    </div>
+
+                    <button class="btn btn-primary" @onclick="OpenCreateDialog" disabled="@(_selectedBoard is null)">New Idea</button>
+                </div>
+            }
+>>>>>>> 7aedab1 (Refine ideas board to mockups)
         </div>
 
         @if (_loading)
@@ -25,6 +58,7 @@
         }
         else
         {
+<<<<<<< HEAD
             <div class="mb-3 d-flex gap-2">
                 <button class="@FilterBtnClass(IdeaFilter.All)" @onclick="() => SetFilter(IdeaFilter.All)">All</button>
                 <button class="@FilterBtnClass(IdeaFilter.CreatedByMe)" @onclick="() => SetFilter(IdeaFilter.CreatedByMe)">Created by me</button>
@@ -81,13 +115,209 @@
                     </div>
                 </div>
             }
+=======
+            <div class="ideas-page__toolbar">
+                <div class="ideas-page__filters" role="group" aria-label="Idea filters">
+                    <button class="@GetFilterButtonClass(IdeaFilter.All)" @onclick="() => SetFilter(IdeaFilter.All)">All</button>
+                    <button class="@GetFilterButtonClass(IdeaFilter.CreatedByMe)" @onclick="() => SetFilter(IdeaFilter.CreatedByMe)">Created by me</button>
+                    <button class="@GetFilterButtonClass(IdeaFilter.AssignedToMe)" @onclick="() => SetFilter(IdeaFilter.AssignedToMe)">Assigned to me</button>
+                </div>
+            </div>
+
+            <div class="ideas-page__board-shell">
+                @if (_loadingBoardIdeas)
+                {
+                    <div class="alert alert-info">Loading board ideas…</div>
+                }
+                else
+                {
+                    <IdeaKanbanBoard Columns="VisibleColumns" OnCardSelected="OpenIdeaPanelAsync" />
+                }
+            </div>
+>>>>>>> 7aedab1 (Refine ideas board to mockups)
         }
     </div>
 </AuthGate>
 
+@if (_showCreateDialog)
+{
+    <div class="modal d-block" tabindex="-1" style="background: rgba(15,23,42,.35);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 class="modal-title h5 mb-0">New Idea</h2>
+                    <button type="button" class="btn-close" @onclick="CloseCreateDialog" disabled="@_isSubmitting"></button>
+                </div>
+                <div class="modal-body">
+                    <EditForm Model="_createModel" OnValidSubmit="HandleCreateAsync">
+                        <DataAnnotationsValidator />
+
+                        <div class="mb-3">
+                            <label class="form-label">Title</label>
+                            <InputText class="form-control" @bind-Value="_createModel.Title" />
+                            <ValidationMessage For="() => _createModel.Title" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Description</label>
+                            <InputTextArea class="form-control" rows="4" @bind-Value="_createModel.Description" />
+                            <ValidationMessage For="() => _createModel.Description" />
+                        </div>
+
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Priority</label>
+                                <InputSelect class="form-select" @bind-Value="_createModel.Priority">
+                                    <option value="Low">Low</option>
+                                    <option value="Medium">Medium</option>
+                                    <option value="High">High</option>
+                                    <option value="Critical">Critical</option>
+                                </InputSelect>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Due date</label>
+                                <InputDate class="form-control" @bind-Value="_createModel.DueDate" />
+                            </div>
+                        </div>
+
+                        <div class="mt-3 mb-3">
+                            <label class="form-label">Tags</label>
+                            <InputText class="form-control" @bind-Value="_createModel.TagText" placeholder="comma separated tags" />
+                        </div>
+
+                        <div class="d-flex justify-content-end gap-2">
+                            <button class="btn btn-outline-secondary" type="button" @onclick="CloseCreateDialog" disabled="@_isSubmitting">Cancel</button>
+                            <button class="btn btn-primary" type="submit" disabled="@_isSubmitting">@(_isSubmitting ? "Saving..." : "Save Idea")</button>
+                        </div>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@if (_showIdeaPanel)
+{
+    <div class="ideas-page__overlay-backdrop" @onclick="CloseIdeaPanel"></div>
+    <aside class="ideas-page__overlay-panel" aria-label="Idea detail panel">
+        <div class="ideas-page__overlay-header">
+            <div>
+                <h2 class="ideas-page__overlay-title">Idea Details</h2>
+                <p class="ideas-page__overlay-subtitle">Opened in context from the board title link.</p>
+            </div>
+            <button type="button" class="btn-close" @onclick="CloseIdeaPanel"></button>
+        </div>
+
+        @if (_loadingIdeaPanel)
+        {
+            <div class="alert alert-info">Loading idea details…</div>
+        }
+        else if (_ideaPanelErrorMessage is not null)
+        {
+            <div class="alert alert-danger">@_ideaPanelErrorMessage</div>
+        }
+        else if (_selectedIdeaDetail is not null)
+        {
+            <div class="ideas-page__overlay-grid">
+                <div class="ideas-page__overlay-field ideas-page__overlay-field--full">
+                    <span class="ideas-page__overlay-label">Title</span>
+                    <div class="ideas-page__overlay-value fw-semibold">@_selectedIdeaDetail.Title</div>
+                </div>
+
+                <div class="ideas-page__overlay-field">
+                    <span class="ideas-page__overlay-label">Priority</span>
+                    <div class="ideas-page__overlay-value">@_selectedIdeaDetail.Priority</div>
+                </div>
+
+                <div class="ideas-page__overlay-field">
+                    <span class="ideas-page__overlay-label">Status</span>
+                    <div class="ideas-page__overlay-value">@_selectedIdeaDetail.StatusName</div>
+                </div>
+
+                <div class="ideas-page__overlay-field">
+                    <span class="ideas-page__overlay-label">Assigned To</span>
+                    <div class="ideas-page__overlay-value">@(_selectedIdeaDetail.AssigneeDisplayName ?? "Unassigned")</div>
+                </div>
+
+                <div class="ideas-page__overlay-field">
+                    <span class="ideas-page__overlay-label">Upvotes</span>
+                    <div class="ideas-page__overlay-value">@_selectedIdeaDetail.UpvoteCount</div>
+                </div>
+
+                <div class="ideas-page__overlay-field">
+                    <span class="ideas-page__overlay-label">Due Date</span>
+                    <div class="ideas-page__overlay-value">@(_selectedIdeaDetail.DueDate?.ToString("d") ?? "None")</div>
+                </div>
+
+                <div class="ideas-page__overlay-field">
+                    <span class="ideas-page__overlay-label">Mentions</span>
+                    <div class="ideas-page__overlay-value">
+                        @if (_selectedIdeaDetail.Mentions.Count == 0)
+                        {
+                            <span>None</span>
+                        }
+                        else
+                        {
+                            @string.Join(", ", _selectedIdeaDetail.Mentions)
+                        }
+                    </div>
+                </div>
+
+                <div class="ideas-page__overlay-field ideas-page__overlay-field--full">
+                    <span class="ideas-page__overlay-label">Description</span>
+                    <div class="ideas-page__overlay-value">@_selectedIdeaDetail.Description</div>
+                </div>
+
+                <div class="ideas-page__overlay-field ideas-page__overlay-field--full">
+                    <span class="ideas-page__overlay-label">Tags</span>
+                    @if (_selectedIdeaDetail.TagNames.Count == 0)
+                    {
+                        <div class="ideas-page__overlay-value">No tags</div>
+                    }
+                    else
+                    {
+                        <div class="ideas-page__overlay-tags">
+                            @foreach (var tag in _selectedIdeaDetail.TagNames)
+                            {
+                                <span class="ideas-page__overlay-tag">@tag</span>
+                            }
+                        </div>
+                    }
+                </div>
+
+                <div class="ideas-page__overlay-field ideas-page__overlay-field--full">
+                    <span class="ideas-page__overlay-label">Comments</span>
+                    @if (_selectedIdeaDetail.Comments.Count == 0)
+                    {
+                        <div class="ideas-page__overlay-value">No comments yet.</div>
+                    }
+                    else
+                    {
+                        <div class="ideas-page__overlay-comments">
+                            @foreach (var comment in _selectedIdeaDetail.Comments)
+                            {
+                                <div class="ideas-page__overlay-comment">
+                                    <div class="ideas-page__overlay-comment-meta">@comment.CreatedAtUtc.ToLocalTime().ToString("g")</div>
+                                    <div>@comment.Body</div>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <div class="ideas-page__overlay-actions">
+                <button class="btn btn-outline-secondary" type="button" @onclick="CloseIdeaPanel">Close</button>
+                <button class="btn btn-primary" type="button" @onclick="OpenIdeaPage">Open full edit page</button>
+            </div>
+        }
+    </aside>
+}
+
 @code {
     private enum IdeaFilter { All, CreatedByMe, AssignedToMe }
 
+<<<<<<< HEAD
     private IReadOnlyList<IdeaListItemDto> _allIdeas = Array.Empty<IdeaListItemDto>();
     private IdeaFilter _filter = IdeaFilter.All;
     private string _search = string.Empty;
@@ -95,6 +325,42 @@
     private string? _errorMessage;
     private int _page = 1;
     private int _pageSize = 25;
+=======
+    private static readonly string[] StatusColorPalette =
+    [
+        "#0f6cbd",
+        "#4f46e5",
+        "#7c3aed",
+        "#be185d",
+        "#c2410c",
+        "#0f766e",
+        "#2563eb",
+        "#1d4ed8"
+    ];
+
+    private enum IdeaFilter
+    {
+        All,
+        CreatedByMe,
+        AssignedToMe
+    }
+
+    private readonly List<BoardSummaryDto> _boards = new();
+    private IReadOnlyList<KanbanIdeaCardModel> _ideas = Array.Empty<KanbanIdeaCardModel>();
+    private IdeaFilter _filter = IdeaFilter.All;
+    private string _search = string.Empty;
+    private bool _loading = true;
+    private bool _loadingBoardIdeas;
+    private bool _loadingIdeaPanel;
+    private bool _showCreateDialog;
+    private bool _showIdeaPanel;
+    private bool _isSubmitting;
+    private string? _errorMessage;
+    private string? _ideaPanelErrorMessage;
+    private BoardSummaryDto? _selectedBoard;
+    private IdeaDetailDto? _selectedIdeaDetail;
+    private CreateIdeaFormModel _createModel = new();
+>>>>>>> 7aedab1 (Refine ideas board to mockups)
 
     private Guid? CurrentUserId => AuthSessionService.User?.UserId;
 
@@ -116,10 +382,15 @@
 
             if (!string.IsNullOrWhiteSpace(_search))
             {
+<<<<<<< HEAD
                 var term = _search.Trim().ToLowerInvariant();
                 ideas = ideas.Where(i =>
                     i.Title.ToLowerInvariant().Contains(term) ||
                     i.StatusName.ToLowerInvariant().Contains(term));
+=======
+                var term = _search.Trim();
+                ideas = ideas.Where(idea => MatchesSearch(idea, term));
+>>>>>>> 7aedab1 (Refine ideas board to mockups)
             }
 
             return ideas.ToList();
@@ -168,7 +439,100 @@
         }
     }
 
+<<<<<<< HEAD
     private void ViewIdea(Guid ideaId) => NavigationManager.NavigateTo($"/ideas/{ideaId}/edit");
+=======
+    private async Task<BoardSummaryDto?> ResolveSelectedBoardAsync()
+    {
+        if (_boards.Count == 0)
+        {
+            return null;
+        }
+
+        var storedBoardId = await ReadStoredBoardIdAsync();
+        if (storedBoardId.HasValue)
+        {
+            var storedBoard = _boards.FirstOrDefault(board => board.BoardId == storedBoardId.Value);
+            if (storedBoard is not null)
+            {
+                return storedBoard;
+            }
+        }
+
+        return _boards[0];
+    }
+
+    private async Task LoadBoardIdeasAsync()
+    {
+        if (_selectedBoard is null)
+        {
+            _ideas = Array.Empty<KanbanIdeaCardModel>();
+            return;
+        }
+
+        _loadingBoardIdeas = true;
+        _errorMessage = null;
+
+        try
+        {
+            var listItems = await WorkflowApiClient.ListAllIdeasForBoardAsync(
+                AuthSessionService.AccessToken!,
+                _selectedBoard.BoardId,
+                CancellationToken.None);
+
+            IReadOnlyDictionary<Guid, IdeaDetailDto> detailsById;
+            if (listItems.Count == 0)
+            {
+                detailsById = new Dictionary<Guid, IdeaDetailDto>();
+            }
+            else
+            {
+                var detailTasks = listItems
+                    .Select(item => WorkflowApiClient.GetIdeaDetailAsync(AuthSessionService.AccessToken!, item.IdeaId, CancellationToken.None))
+                    .ToArray();
+
+                detailsById = (await Task.WhenAll(detailTasks))
+                    .ToDictionary(detail => detail.IdeaId);
+            }
+
+            _ideas = listItems
+                .Select(item =>
+                {
+                    detailsById.TryGetValue(item.IdeaId, out var detail);
+                    return MapIdeaCard(item, detail);
+                })
+                .ToArray();
+        }
+        catch (Exception ex)
+        {
+            _ideas = Array.Empty<KanbanIdeaCardModel>();
+            _errorMessage = ErrorMessageService.GetDisplayMessage(null, null, ex);
+        }
+        finally
+        {
+            _loadingBoardIdeas = false;
+        }
+    }
+
+    private async Task HandleBoardChangeAsync(ChangeEventArgs args)
+    {
+        if (!Guid.TryParse(args.Value?.ToString(), out var boardId))
+        {
+            return;
+        }
+
+        var selectedBoard = _boards.FirstOrDefault(board => board.BoardId == boardId);
+        if (selectedBoard is null || selectedBoard.BoardId == _selectedBoard?.BoardId)
+        {
+            return;
+        }
+
+        _selectedBoard = selectedBoard;
+        CloseIdeaPanel();
+        await PersistSelectedBoardAsync(boardId);
+        await LoadBoardIdeasAsync();
+    }
+>>>>>>> 7aedab1 (Refine ideas board to mockups)
 
     private void SetFilter(IdeaFilter filter)
     {
@@ -176,11 +540,106 @@
         _page = 1;
     }
 
+<<<<<<< HEAD
     private Task HandleSearchAsync()
     {
         _page = 1;
         StateHasChanged();
         return Task.CompletedTask;
+=======
+    private void OpenCreateDialog()
+    {
+        _showCreateDialog = true;
+    }
+
+    private void CloseCreateDialog()
+    {
+        if (_isSubmitting)
+        {
+            return;
+        }
+
+        _showCreateDialog = false;
+    }
+
+    private async Task HandleCreateAsync()
+    {
+        if (_selectedBoard is null)
+        {
+            return;
+        }
+
+        _isSubmitting = true;
+
+        try
+        {
+            var createdIdea = await WorkflowApiClient.CreateIdeaAsync(
+                AuthSessionService.AccessToken!,
+                _selectedBoard.BoardId,
+                new IdeaWriteRequestDto
+                {
+                    Title = _createModel.Title.Trim(),
+                    Description = _createModel.Description.Trim(),
+                    Priority = _createModel.Priority,
+                    DueDate = _createModel.DueDate,
+                    TagNames = _createModel.TagText.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries),
+                    MentionEmails = Array.Empty<string>()
+                },
+                CancellationToken.None);
+
+            _createModel = new CreateIdeaFormModel();
+            _showCreateDialog = false;
+            await LoadBoardIdeasAsync();
+            await OpenIdeaPanelAsync(createdIdea.IdeaId);
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = ErrorMessageService.GetDisplayMessage(null, null, ex);
+        }
+        finally
+        {
+            _isSubmitting = false;
+        }
+    }
+
+    private async Task OpenIdeaPanelAsync(Guid ideaId)
+    {
+        _showIdeaPanel = true;
+        _loadingIdeaPanel = true;
+        _ideaPanelErrorMessage = null;
+        _selectedIdeaDetail = null;
+
+        try
+        {
+            _selectedIdeaDetail = await WorkflowApiClient.GetIdeaDetailAsync(AuthSessionService.AccessToken!, ideaId, CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            _ideaPanelErrorMessage = ErrorMessageService.GetDisplayMessage(null, null, ex);
+        }
+        finally
+        {
+            _loadingIdeaPanel = false;
+        }
+    }
+
+    private void CloseIdeaPanel()
+    {
+        _showIdeaPanel = false;
+        _loadingIdeaPanel = false;
+        _ideaPanelErrorMessage = null;
+        _selectedIdeaDetail = null;
+    }
+
+    private void OpenIdeaPage()
+    {
+        if (_selectedIdeaDetail is null)
+        {
+            return;
+        }
+
+        NavigationManager.NavigateTo($"/ideas/{_selectedIdeaDetail.IdeaId}/edit");
+>>>>>>> 7aedab1 (Refine ideas board to mockups)
     }
 
     private void PrevPage()
@@ -188,8 +647,45 @@
         if (_page > 1) _page--;
     }
 
+<<<<<<< HEAD
     private void NextPage()
+=======
+    private static bool MatchesSearch(KanbanIdeaCardModel idea, string term)
+    {
+        if (idea.Title.Contains(term, StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        if (!string.IsNullOrWhiteSpace(idea.AssigneeDisplayName) &&
+            idea.AssigneeDisplayName.Contains(term, StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        return idea.TagNames.Any(tag => tag.Contains(term, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static KanbanIdeaCardModel MapIdeaCard(IdeaListItemDto item, IdeaDetailDto? detail)
+>>>>>>> 7aedab1 (Refine ideas board to mockups)
     {
         if (_page * _pageSize < TotalFilteredCount) _page++;
+    }
+
+    private sealed class CreateIdeaFormModel
+    {
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.StringLength(150)]
+        public string Title { get; set; } = string.Empty;
+
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.StringLength(4000)]
+        public string Description { get; set; } = string.Empty;
+
+        public string Priority { get; set; } = "Medium";
+
+        public DateOnly? DueDate { get; set; }
+
+        public string TagText { get; set; } = string.Empty;
     }
 }

@@ -19,7 +19,7 @@ SargentNexus is a collaboration and project management tool for submitting, trac
 - Ideas require a priority (`Low`, `Medium`, `High`, `Critical`) and may optionally include a due date.
 - Board cards are compact and display title, priority, assigned-to, and upvote state.
 - Clicking an idea title opens an in-context detail overlay for editing rather than a full-page navigation.
-- The `/ideas` page is a Kanban swimlane board; ideas are shown as cards grouped by the selected board's statuses. The board picker defaults to the first board and persists selection in `localStorage`. Filter chips (All / Created by me / Assigned to me) and a title search filter cards client-side. Dragging a card to another column moves the idea's status (optimistic UI, reverts on failure). SiteAdmin and OrgAdmin users can reorder columns by drag; User and ReadOnly users cannot.
+- The `/ideas` page is a Kanban swimlane board; ideas are shown as cards grouped by the selected board's statuses. The board picker defaults to the first board and persists selection in `localStorage`. Filter chips (All / Created by me / Assigned to me) and a title/tag/assignee search filter cards client-side. Dragging a card to another column moves the idea's status (optimistic UI, reverts on failure). SiteAdmin and OrgAdmin users can reorder columns by drag; User and ReadOnly users cannot.
 - OAuth implementation is scheduled for post-MVP Phase 2, with SAML scheduled in a subsequent post-OAuth phase.
 
 ## UI Shell Rules

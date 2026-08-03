@@ -1,0 +1,46 @@
+<article class="idea-card">
+    <button type="button" class="idea-card__title-button" @onclick="HandleSelectedAsync">@Card.Title</button>
+
+    <div class="idea-card__row">
+        <span class="idea-card__label">Priority</span>
+        <span class="idea-card__value idea-card__value--priority">@Card.Priority</span>
+    </div>
+
+    <div class="idea-card__row">
+        <span class="idea-card__label">Assigned To</span>
+        <span class="idea-card__assignee" title="@(Card.AssigneeDisplayName ?? "Unassigned")">
+            <span class="idea-card__avatar">@Card.AssigneeInitials</span>
+            <span class="idea-card__assignee-name">@(Card.AssigneeDisplayName ?? "Unassigned")</span>
+        </span>
+    </div>
+
+    <div class="idea-card__row">
+        <span class="idea-card__label">Upvotes</span>
+        <span class="idea-card__value idea-card__value--upvotes">^ @Card.UpvoteCount</span>
+    </div>
+
+    @if (Card.TagNames.Count > 0)
+    {
+        <div class="idea-card__tags">
+            @foreach (var tag in Card.TagNames.Take(2))
+            {
+                <span class="idea-card__tag">@tag</span>
+            }
+
+            @if (Card.TagNames.Count > 2)
+            {
+                <span class="idea-card__tag idea-card__tag--more">+@(Card.TagNames.Count - 2)</span>
+            }
+        </div>
+    }
+</article>
+
+@code {
+    [Parameter, EditorRequired]
+    public KanbanIdeaCardModel Card { get; set; } = new();
+
+    [Parameter]
+    public EventCallback<Guid> OnSelected { get; set; }
+
+    private Task HandleSelectedAsync() => OnSelected.InvokeAsync(Card.IdeaId);
+}

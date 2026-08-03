@@ -35,7 +35,7 @@ Each card shows: title (2-line truncation), assignee name/initials, created date
 Filter chips appear above the board: **All**, **Created by me** (`AuthorUserId == currentUserId`), **Assigned to me** (`AssigneeUserId == currentUserId`). Filtering is client-side. Empty columns remain visible with a "No ideas" placeholder.
 
 ### Search
-Text input above the board filters cards by title (client-side, case-insensitive). Combinable with filter chips.
+Text input above the board filters cards by title, tag, and assignee (client-side, case-insensitive). Combinable with filter chips.
 
 ### Drag-and-Drop: Moving an Idea
 1. User drags a card to another column.

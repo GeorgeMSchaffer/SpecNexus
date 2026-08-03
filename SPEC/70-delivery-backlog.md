@@ -231,7 +231,7 @@ Tasks:
 - render one column per status on the selected board, ordered by `Status.SortOrder`; horizontal scroll on overflow
 - render idea cards showing title (2-line truncation), assignee, relative date, upvote count, and first 2 tags
 - clicking a card navigates to `/ideas/{ideaId}/edit`
-- add filter chips (All / Created by me / Assigned to me) and title search above the board; filtering is client-side
+- add filter chips (All / Created by me / Assigned to me) and title/tag/assignee search above the board; filtering is client-side
 - implement card drag-and-drop: optimistic column move, call `POST /api/v1/ideas/{ideaId}/status`, revert on failure with error toast
 - implement column reorder drag for SiteAdmin and OrgAdmin: optimistic reorder, call `PUT /api/v1/boards/{boardId}/statuses/{statusId}` per changed status, revert all on failure with error toast
 - implement components in `src/SargentNexus.Client/Shared/Kanban/`: `IdeaKanbanBoard.razor`, `KanbanColumn.razor`, `IdeaCard.razor`
