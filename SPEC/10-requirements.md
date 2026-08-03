@@ -17,9 +17,8 @@ SargentNexus is a collaboration and project management tool for submitting, trac
 - In Development, startup seed creates a demo environment with 3 organizations, each containing Org Admin, User, and Read Only accounts initialized with temporary password `abc123!` and forced password change on first login.
 - In Development, each seeded demo organization includes one example board with ideas across every default swimlane, plus example comments and description-based spec content.
 - Ideas require a priority (`Low`, `Medium`, `High`, `Critical`) and may optionally include a due date.
-- Board cards are compact and display title, priority, assigned-to, and upvote state.
-- Clicking an idea title opens an in-context detail overlay for editing rather than a full-page navigation.
-- The `/ideas` page is a Kanban swimlane board; ideas are shown as cards grouped by the selected board's statuses. The board picker defaults to the first board and persists selection in `localStorage`. Filter chips (All / Created by me / Assigned to me) and a title/tag/assignee search filter cards client-side. Dragging a card to another column moves the idea's status (optimistic UI, reverts on failure). SiteAdmin and OrgAdmin users can reorder columns by drag; User and ReadOnly users cannot.
+- Board cards are compact and display title (clickable), priority, assigned-to, and upvote state. Clicking the card title opens an in-context detail overlay for full editing (title, priority, due date, description, assignee, tags, mentions, comments); no page navigation occurs. The overlay provides Cancel, Save Idea, and Move in Board actions.
+- The `/ideas` page is a Kanban swimlane board. Ideas are shown as compact cards grouped by the selected board's statuses. The board picker defaults to the first board and persists selection in `localStorage`. A primary New Idea button in the board header (hidden for ReadOnly) opens the overlay in create mode. Search filters by title, tag, or assignee (client-side). Filter chips (All / Created by me / Assigned to me) are combinable with search. Dragging a card to another column moves the idea's status to the target swimlane's status (optimistic UI, reverts on failure). SiteAdmin and OrgAdmin users may reorder columns by drag; reorder saves immediately on drop. User and ReadOnly users cannot reorder columns.
 - OAuth implementation is scheduled for post-MVP Phase 2, with SAML scheduled in a subsequent post-OAuth phase.
 
 ## UI Shell Rules
@@ -44,6 +43,8 @@ SargentNexus is a collaboration and project management tool for submitting, trac
 | Manage statuses | ✓ | ✓ | | |
 | View boards and ideas | ✓ | ✓ | ✓ | ✓ |
 | Create/edit ideas | ✓ | ✓ | ✓ | |
+| Delete ideas (soft) | ✓ | ✓ | | |
+| Bulk CSV import ideas | ✓ | ✓ | | |
 | Update idea status | ✓ | ✓ | ✓* | |
 | Comment on ideas | ✓ | ✓ | ✓ | ✓ |
 | Upvote ideas | ✓ | ✓ | ✓ | ✓ |
