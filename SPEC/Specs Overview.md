@@ -64,6 +64,7 @@ Key rule: all tenant-owned data is organization-scoped; Site Admin is global and
 - Development-only seed creates exactly 3 demo organizations.
 - Each demo organization includes Org Admin, User, and Read Only users initialized with `abc123!` and forced password change.
 - Admin-issued temporary password reset is one-time display, expires in 24 hours, and forces password change on first use.
+- Post-MVP self-service reset uses a private single-use email link that expires after 24 hours, returns generic request and invalid-link responses, and revokes all sessions after success.
 
 ### Organizations and Users
 - Only Site Admin can create organizations.
@@ -107,6 +108,8 @@ Derived API tooling surface: `SPEC/SPECKIT/openapi/openapi.yaml`.
 | `GET /api/v1/auth/me` | Authenticated | None | Current user summary | 401 |
 | `POST /api/v1/auth/change-password` | Authenticated | `currentPassword`, `newPassword` | 204 | 400, 401, 403 |
 | `POST /api/v1/users/{userId}/temporary-password` | Site Admin, Org Admin (scope) | Admin-issued reset intent | Temporary password + must-change flag | 401, 403, 404 |
+| `POST /api/v1/auth/password-reset/request` (post-MVP) | Anonymous | `email` | Generic 202 response | 400 |
+| `POST /api/v1/auth/password-reset/confirm` (post-MVP) | Anonymous with reset token | `token`, `newPassword`, `confirmPassword` | 204; sessions revoked | 400 |
 | `GET /api/v1/organizations` | Site Admin | Paging/filter/sort query | Paged organization list | 401, 403 |
 | `POST /api/v1/organizations` | Site Admin | Organization create fields | `organizationId`, `defaultBoardId`, `defaultStatusCount` | 400, 401, 403 |
 | `GET /api/v1/organizations/{organizationId}` | Site Admin, Org Admin (scope) | None | Organization detail | 401, 403, 404 |

@@ -6,7 +6,7 @@ Users can securely access the application using organization-scoped accounts.
 ## Scope
 - In: login, seeded Site Admin account, admin-issued password reset
 - Out (MVP): OAuth, SAML, MFA, social login
-- Post-MVP: OAuth is Phase 2 and SAML is a later follow-on phase
+- Post-MVP: self-service password reset by private email link, OAuth in Phase 2, and SAML in a later follow-on phase
 
 ## Requirements
 1. Users must authenticate with email and password.
@@ -27,6 +27,17 @@ Users can securely access the application using organization-scoped accounts.
 17. Invited users can self-register through a dedicated Register page (`/register`) using a valid organization invite code.
 18. Logout is handled via a dedicated Logout route (`/logout`) that clears the session and redirects to Login.
 19. Unauthenticated or unauthorized shells expose only `Login` and `Register` entry points; protected navigation is hidden until authentication succeeds.
+20. Authenticated users can update their own first and last name from My Profile without changing their email, role, status, or organization.
+21. A successful profile update refreshes the active client session so the updated name appears immediately throughout the application.
+22. Post-MVP self-service password reset is available to active accounts with local-password credentials, including the global Site Admin and organization users.
+23. The password-reset request always returns the same generic response, whether the email is unknown, inactive, external-only, throttled, or eligible.
+24. An eligible reset request sends a private link containing a cryptographically random bearer token. The reset page is anonymous, absent from application navigation, and usable only with a valid token.
+25. A reset token expires after 24 hours, is single-use, and is invalidated when a newer token is issued for the account.
+26. Password-reset email delivery is limited to 3 requests per normalized email and 10 requests per source IP in a rolling 15-minute window. Requests over either limit retain the generic response but do not send an email.
+27. The reset form requires `newPassword` and `confirmPassword`; the values must match and satisfy the existing password complexity policy.
+28. Invalid, expired, superseded, and used tokens produce the same invalid-link state with an action to request a new reset email.
+29. A successful self-service reset revokes all existing sessions, consumes the token, shows confirmation, and returns the user to Login without authenticating them automatically.
+30. Plaintext reset token values and plaintext passwords must not be persisted or written to logs, audit metadata, analytics, or error responses.
 
 ## Acceptance Criteria
 - [ ] Valid credentials allow login
@@ -44,3 +55,12 @@ Users can securely access the application using organization-scoped accounts.
 - [ ] Invited users can self-register from `/register` using invite code + profile + password inputs
 - [ ] `/logout` clears the active session and redirects to `/login`
 - [ ] Unauthenticated/unauthorized users do not see protected navigation links
+- [ ] Authenticated users can update their own first and last name from My Profile
+- [ ] A profile update trims and validates both names, emits an audit event, and immediately refreshes the displayed session name
+- [ ] Post-MVP reset requests use the same generic response for eligible and ineligible email addresses
+- [ ] Post-MVP reset email delivery is limited to 3 requests per normalized email and 10 per source IP within 15 minutes
+- [ ] Post-MVP reset links use cryptographically random, single-use tokens that expire after 24 hours and are superseded by newer tokens
+- [ ] Post-MVP reset requires matching new and confirmation passwords that satisfy the existing complexity policy
+- [ ] Invalid, expired, superseded, and used reset links display the same invalid-link state
+- [ ] A successful post-MVP reset revokes all sessions and returns the user to Login without automatic authentication
+- [ ] Password-reset requests and outcomes are audited without exposing the token or plaintext password

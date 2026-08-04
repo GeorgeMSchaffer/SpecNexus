@@ -1,4 +1,4 @@
-﻿@implements IDisposable
+@implements IDisposable
 @inject IAuthSessionService AuthSessionService
 @inject NavigationManager NavigationManager
 
@@ -42,7 +42,7 @@
 
         if (redirectAuthenticatedAwayFromLogin && path is "" or "login")
         {
-            NavigationManager.NavigateTo("/workflow", forceLoad: false);
+            NavigationManager.NavigateTo("/board", forceLoad: false);
         }
     }
 

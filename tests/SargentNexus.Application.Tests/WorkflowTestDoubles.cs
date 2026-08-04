@@ -8,9 +8,12 @@ internal sealed class FakeWorkflowDataAccess : IWorkflowDataAccess
     private readonly Dictionary<Guid, User> _users = new();
     private readonly Dictionary<Guid, Organization> _organizations = new();
     private readonly Dictionary<Guid, Status> _statuses = new();
+    private readonly Dictionary<Guid, IdeaType> _ideaTypes = new();
+    private readonly Dictionary<Guid, BusinessImpact> _businessImpacts = new();
     private readonly Dictionary<Guid, Board> _boards = new();
     private readonly List<BoardSwimlane> _boardSwimlanes = new();
     private readonly Dictionary<Guid, Idea> _ideas = new();
+    private readonly List<IdeaAssignee> _ideaAssignees = new();
     private readonly Dictionary<Guid, Comment> _comments = new();
     private readonly List<Upvote> _upvotes = new();
     private readonly Dictionary<Guid, Tag> _tags = new();
@@ -34,6 +37,16 @@ internal sealed class FakeWorkflowDataAccess : IWorkflowDataAccess
     public void SeedStatus(Status status)
     {
         _statuses[status.Id] = status;
+    }
+
+    public void SeedIdeaType(IdeaType ideaType)
+    {
+        _ideaTypes[ideaType.Id] = ideaType;
+    }
+
+    public void SeedBusinessImpact(BusinessImpact businessImpact)
+    {
+        _businessImpacts[businessImpact.Id] = businessImpact;
     }
 
     public void SeedBoard(Board board)
@@ -114,6 +127,34 @@ internal sealed class FakeWorkflowDataAccess : IWorkflowDataAccess
         return Task.FromResult<IReadOnlyList<Status>>(_statuses.Values.Where(item => item.OrganizationId == organizationId).ToArray());
     }
 
+    public Task<IdeaType?> FindIdeaTypeByIdAsync(Guid ideaTypeId, CancellationToken cancellationToken)
+    {
+        _ideaTypes.TryGetValue(ideaTypeId, out var ideaType);
+        return Task.FromResult(ideaType);
+    }
+
+    public Task<BusinessImpact?> FindBusinessImpactByIdAsync(Guid businessImpactId, CancellationToken cancellationToken)
+    {
+        _businessImpacts.TryGetValue(businessImpactId, out var businessImpact);
+        return Task.FromResult(businessImpact);
+    }
+
+    public Task<IReadOnlyList<IdeaType>> ListIdeaTypesAsync(Guid organizationId, CancellationToken cancellationToken)
+    {
+        return Task.FromResult<IReadOnlyList<IdeaType>>(_ideaTypes.Values
+            .Where(item => item.OrganizationId == organizationId)
+            .OrderBy(item => item.SortOrder)
+            .ToArray());
+    }
+
+    public Task<IReadOnlyList<BusinessImpact>> ListBusinessImpactsAsync(Guid organizationId, CancellationToken cancellationToken)
+    {
+        return Task.FromResult<IReadOnlyList<BusinessImpact>>(_businessImpacts.Values
+            .Where(item => item.OrganizationId == organizationId)
+            .OrderBy(item => item.SortOrder)
+            .ToArray());
+    }
+
     public Task<Board?> FindBoardByIdAsync(Guid boardId, CancellationToken cancellationToken)
     {
         _boards.TryGetValue(boardId, out var board);
@@ -177,7 +218,7 @@ internal sealed class FakeWorkflowDataAccess : IWorkflowDataAccess
         if (authorUserId.HasValue)
             query = query.Where(item => item.AuthorUserId == authorUserId.Value);
         else if (assigneeUserId.HasValue)
-            query = query.Where(item => item.AssigneeUserId == assigneeUserId.Value);
+            query = query.Where(item => item.Assignees.Any(assignee => assignee.UserId == assigneeUserId.Value));
 
         if (!string.IsNullOrWhiteSpace(search))
             query = query.Where(item => item.Title.Contains(search, StringComparison.OrdinalIgnoreCase));
@@ -263,6 +304,30 @@ internal sealed class FakeWorkflowDataAccess : IWorkflowDataAccess
     public void AddIdea(Idea idea)
     {
         SeedIdea(idea);
+    }
+
+    public void AddIdeaAssignee(IdeaAssignee ideaAssignee)
+    {
+        _ideaAssignees.Add(ideaAssignee);
+
+        if (_ideas.TryGetValue(ideaAssignee.IdeaId, out var idea) && _users.TryGetValue(ideaAssignee.UserId, out var user))
+        {
+            ideaAssignee.Idea = idea;
+            ideaAssignee.User = user;
+            idea.Assignees.Add(ideaAssignee);
+        }
+    }
+
+    public void RemoveIdeaAssignees(IEnumerable<IdeaAssignee> ideaAssignees)
+    {
+        foreach (var ideaAssignee in ideaAssignees.ToArray())
+        {
+            _ideaAssignees.RemoveAll(item => item.IdeaId == ideaAssignee.IdeaId && item.UserId == ideaAssignee.UserId);
+            if (_ideas.TryGetValue(ideaAssignee.IdeaId, out var idea))
+            {
+                idea.Assignees.Remove(ideaAssignee);
+            }
+        }
     }
 
     public void AddComment(Comment comment)
@@ -408,9 +473,28 @@ internal sealed class FakeWorkflowDataAccess : IWorkflowDataAccess
             idea.Status = status;
         }
 
-        if (idea.AssigneeUserId.HasValue && _users.TryGetValue(idea.AssigneeUserId.Value, out var assignee))
+        if (_ideaTypes.TryGetValue(idea.IdeaTypeId, out var ideaType))
         {
-            idea.AssigneeUser = assignee;
+            idea.IdeaType = ideaType;
+        }
+
+        if (_businessImpacts.TryGetValue(idea.BusinessImpactId, out var businessImpact))
+        {
+            idea.BusinessImpact = businessImpact;
+        }
+
+        if (_users.TryGetValue(idea.AuthorUserId, out var author))
+        {
+            idea.AuthorUser = author;
+        }
+
+        foreach (var assignee in idea.Assignees)
+        {
+            if (_users.TryGetValue(assignee.UserId, out var user))
+            {
+                assignee.Idea = idea;
+                assignee.User = user;
+            }
         }
     }
 }

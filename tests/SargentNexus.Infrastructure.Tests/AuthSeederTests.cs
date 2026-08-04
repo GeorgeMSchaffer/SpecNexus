@@ -161,7 +161,7 @@ public sealed class AuthSeederTests
     }
 
     [Fact]
-    public async Task SeedDevelopmentDemoEnvironmentAsync_RerunAfterMutation_RepairsDemoInvariantsWithoutDuplication()
+    public async Task SeedDevelopmentDemoEnvironmentAsync_RerunAfterMutation_RepairsGraphWithoutResettingUserAuthenticationState()
     {
         await using var dbContext = CreateDbContext();
         var hasher = CreateInternal<IPasswordHasher>("SargentNexus.Infrastructure.Pbkdf2PasswordHasher");
@@ -193,13 +193,17 @@ public sealed class AuthSeederTests
         var readOnlyUserToReset = await dbContext.Users
             .SingleAsync(item => item.OrganizationId == organizationA.Id && item.Role == UserRole.ReadOnly);
 
+        var changedPasswordHash = hasher.Hash("ChangedPassword1!");
+        var temporaryPasswordExpiresAtUtc = DateTime.UtcNow.AddHours(1);
+
         ideaA.StatusId = foreignStatus.Id;
         statusToRestore.IsDeleted = true;
         swimlaneToRepair.Order = 99;
         readOnlyUserToReset.Status = UserLifecycleStatus.Inactive;
         readOnlyUserToReset.MustChangePassword = false;
+        readOnlyUserToReset.PasswordHash = changedPasswordHash;
         readOnlyUserToReset.TemporaryPasswordHash = "temp-hash";
-        readOnlyUserToReset.TemporaryPasswordExpiresAtUtc = DateTime.UtcNow.AddHours(1);
+        readOnlyUserToReset.TemporaryPasswordExpiresAtUtc = temporaryPasswordExpiresAtUtc;
 
         await dbContext.SaveChangesAsync();
 
@@ -221,11 +225,11 @@ public sealed class AuthSeederTests
         Assert.False(repairedStatus.IsDeleted);
         Assert.Equal(new[] { 0, 1, 2, 3, 4 }, repairedSwimlanes.Select(item => item.Order).ToArray());
         Assert.Equal(organizationA.Id, repairedIdeaStatus.OrganizationId);
-        Assert.Equal(UserLifecycleStatus.Active, repairedReadOnly.Status);
-        Assert.True(repairedReadOnly.MustChangePassword);
-        Assert.Null(repairedReadOnly.TemporaryPasswordHash);
-        Assert.Null(repairedReadOnly.TemporaryPasswordExpiresAtUtc);
-        Assert.True(hasher.Verify("abc123!", repairedReadOnly.PasswordHash));
+        Assert.Equal(UserLifecycleStatus.Inactive, repairedReadOnly.Status);
+        Assert.False(repairedReadOnly.MustChangePassword);
+        Assert.Equal(changedPasswordHash, repairedReadOnly.PasswordHash);
+        Assert.Equal("temp-hash", repairedReadOnly.TemporaryPasswordHash);
+        Assert.Equal(temporaryPasswordExpiresAtUtc, repairedReadOnly.TemporaryPasswordExpiresAtUtc);
 
         Assert.Equal(3, await dbContext.Organizations.CountAsync());
         Assert.Equal(9, await dbContext.Users.CountAsync(item => item.Role != UserRole.SiteAdmin));
@@ -264,6 +268,27 @@ public sealed class AuthSeederTests
         Assert.Equal("siteadmin@sargentnexus.local", siteAdmin.Email);
         Assert.True(siteAdmin.MustChangePassword);
         Assert.True(hasher.Verify("Abc123!Demo", siteAdmin.PasswordHash));
+    }
+
+    [Fact]
+    public async Task SeedSiteAdminAsync_ExistingUser_PreservesChangedPasswordAndClearedPrompt()
+    {
+        await using var dbContext = CreateDbContext();
+        var hasher = CreateInternal<IPasswordHasher>("SargentNexus.Infrastructure.Pbkdf2PasswordHasher");
+        var seeder = CreateSeeder(dbContext, hasher);
+
+        await seeder.SeedSiteAdminAsync(CancellationToken.None);
+
+        var siteAdmin = await dbContext.Users.SingleAsync(item => item.Role == UserRole.SiteAdmin);
+        siteAdmin.PasswordHash = hasher.Hash("ChangedPassword1!");
+        siteAdmin.MustChangePassword = false;
+        await dbContext.SaveChangesAsync();
+
+        await seeder.SeedSiteAdminAsync(CancellationToken.None);
+
+        var reseededSiteAdmin = await dbContext.Users.SingleAsync(item => item.Role == UserRole.SiteAdmin);
+        Assert.True(hasher.Verify("ChangedPassword1!", reseededSiteAdmin.PasswordHash));
+        Assert.False(reseededSiteAdmin.MustChangePassword);
     }
 
     [Fact]

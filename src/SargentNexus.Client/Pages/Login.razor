@@ -5,41 +5,45 @@
 
 <PageTitle>Sign In</PageTitle>
 
-<h1>Sign in</h1>
+<div class="login-page">
+    <section class="login-card" aria-labelledby="login-heading">
+        <h1 id="login-heading">Sign in</h1>
 
-<EditForm Model="_model" OnValidSubmit="HandleSubmitAsync">
-    <DataAnnotationsValidator />
+        <EditForm Model="_model" OnValidSubmit="HandleSubmitAsync">
+            <DataAnnotationsValidator />
 
-    <div class="mb-3">
-        <label class="form-label" for="email">Email</label>
-        <InputText id="email" class="form-control" @bind-Value="_model.Email" />
-        <ValidationMessage For="() => _model.Email" />
-    </div>
+            <div class="mb-3">
+                <label class="form-label" for="email">Email</label>
+                <InputText id="email" class="form-control" @bind-Value="_model.Email" />
+                <ValidationMessage For="() => _model.Email" />
+            </div>
 
-    <div class="mb-3">
-        <label class="form-label" for="password">Password</label>
-        <InputText id="password" type="password" class="form-control" @bind-Value="_model.Password" />
-        <ValidationMessage For="() => _model.Password" />
-    </div>
+            <div class="mb-3">
+                <label class="form-label" for="password">Password</label>
+                <InputText id="password" type="password" class="form-control" @bind-Value="_model.Password" />
+                <ValidationMessage For="() => _model.Password" />
+            </div>
 
-    @if (!string.IsNullOrWhiteSpace(_errorTitle))
-    {
-        <div class="alert alert-danger" role="alert">
-            <strong>@_errorTitle</strong>
-            @if (!string.IsNullOrWhiteSpace(_errorDetail))
+            @if (!string.IsNullOrWhiteSpace(_errorTitle))
             {
-                <div>@_errorDetail</div>
+                <div class="alert alert-danger" role="alert">
+                    <strong>@_errorTitle</strong>
+                    @if (!string.IsNullOrWhiteSpace(_errorDetail))
+                    {
+                        <div>@_errorDetail</div>
+                    }
+                </div>
             }
+
+            <button class="btn btn-primary" type="submit" disabled="@_isSubmitting">
+                @(_isSubmitting ? "Signing in..." : "Sign in")
+            </button>
+        </EditForm>
+
+        <div class="mt-3">
+            <a href="/register">Create an account with an invite code</a>
         </div>
-    }
-
-    <button class="btn btn-primary" type="submit" disabled="@_isSubmitting">
-        @(_isSubmitting ? "Signing in..." : "Sign in")
-    </button>
-</EditForm>
-
-<div class="mt-3">
-    <a href="/register">Create an account with an invite code</a>
+    </section>
 </div>
 
 @code {
@@ -74,7 +78,7 @@
                 return;
             }
 
-            NavigationManager.NavigateTo("/workflow", forceLoad: false);
+            NavigationManager.NavigateTo("/board", forceLoad: false);
         }
         catch (AuthApiException ex)
         {

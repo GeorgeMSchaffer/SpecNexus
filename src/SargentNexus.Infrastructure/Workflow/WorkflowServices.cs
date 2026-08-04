@@ -43,6 +43,32 @@ public sealed class WorkflowDataAccess : IWorkflowDataAccess
             .ToArrayAsync(cancellationToken);
     }
 
+    public Task<IdeaType?> FindIdeaTypeByIdAsync(Guid ideaTypeId, CancellationToken cancellationToken)
+    {
+        return _dbContext.IdeaTypes.SingleOrDefaultAsync(item => item.Id == ideaTypeId, cancellationToken);
+    }
+
+    public Task<BusinessImpact?> FindBusinessImpactByIdAsync(Guid businessImpactId, CancellationToken cancellationToken)
+    {
+        return _dbContext.BusinessImpacts.SingleOrDefaultAsync(item => item.Id == businessImpactId, cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<IdeaType>> ListIdeaTypesAsync(Guid organizationId, CancellationToken cancellationToken)
+    {
+        return await _dbContext.IdeaTypes
+            .Where(item => item.OrganizationId == organizationId)
+            .OrderBy(item => item.SortOrder)
+            .ToArrayAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<BusinessImpact>> ListBusinessImpactsAsync(Guid organizationId, CancellationToken cancellationToken)
+    {
+        return await _dbContext.BusinessImpacts
+            .Where(item => item.OrganizationId == organizationId)
+            .OrderBy(item => item.SortOrder)
+            .ToArrayAsync(cancellationToken);
+    }
+
     public Task<Board?> FindBoardByIdAsync(Guid boardId, CancellationToken cancellationToken)
     {
         return _dbContext.Boards.SingleOrDefaultAsync(item => item.Id == boardId, cancellationToken);
@@ -82,8 +108,11 @@ public sealed class WorkflowDataAccess : IWorkflowDataAccess
     {
         return _dbContext.Ideas
             .Include(item => item.Status)
+            .Include(item => item.IdeaType)
+            .Include(item => item.BusinessImpact)
             .Include(item => item.AuthorUser)
-            .Include(item => item.AssigneeUser)
+            .Include(item => item.Assignees)
+                .ThenInclude(item => item.User)
             .Include(item => item.IdeaTags)
                 .ThenInclude(item => item.Tag)
             .Include(item => item.Mentions)
@@ -97,12 +126,16 @@ public sealed class WorkflowDataAccess : IWorkflowDataAccess
     {
         return await _dbContext.Ideas
             .Include(item => item.Status)
+            .Include(item => item.IdeaType)
+            .Include(item => item.BusinessImpact)
             .Include(item => item.AuthorUser)
-            .Include(item => item.AssigneeUser)
+            .Include(item => item.Assignees)
+                .ThenInclude(item => item.User)
             .Include(item => item.IdeaTags)
                 .ThenInclude(item => item.Tag)
             .Include(item => item.Upvotes)
-            .Where(item => item.BoardId == boardId)
+            .Include(item => item.Comments)
+            .Where(item => item.BoardId == boardId && !item.IsDeleted)
             .ToArrayAsync(cancellationToken);
     }
 
@@ -117,9 +150,15 @@ public sealed class WorkflowDataAccess : IWorkflowDataAccess
     {
         var query = _dbContext.Ideas
             .Include(item => item.Status)
+            .Include(item => item.IdeaType)
+            .Include(item => item.BusinessImpact)
             .Include(item => item.AuthorUser)
-            .Include(item => item.AssigneeUser)
+            .Include(item => item.Assignees)
+                .ThenInclude(item => item.User)
+            .Include(item => item.IdeaTags)
+                .ThenInclude(item => item.Tag)
             .Include(item => item.Upvotes)
+            .Include(item => item.Comments)
             .Where(item => item.Board.OrganizationId == organizationId && !item.IsDeleted);
 
         if (authorUserId.HasValue)
@@ -128,7 +167,7 @@ public sealed class WorkflowDataAccess : IWorkflowDataAccess
         }
         else if (assigneeUserId.HasValue)
         {
-            query = query.Where(item => item.AssigneeUserId == assigneeUserId.Value);
+            query = query.Where(item => item.Assignees.Any(assignee => assignee.UserId == assigneeUserId.Value));
         }
 
         if (!string.IsNullOrWhiteSpace(search))
@@ -223,6 +262,16 @@ public sealed class WorkflowDataAccess : IWorkflowDataAccess
     public void AddIdea(Idea idea)
     {
         _dbContext.Ideas.Add(idea);
+    }
+
+    public void AddIdeaAssignee(IdeaAssignee ideaAssignee)
+    {
+        _dbContext.IdeaAssignees.Add(ideaAssignee);
+    }
+
+    public void RemoveIdeaAssignees(IEnumerable<IdeaAssignee> ideaAssignees)
+    {
+        _dbContext.IdeaAssignees.RemoveRange(ideaAssignees);
     }
 
     public void AddComment(Comment comment)
@@ -404,7 +453,7 @@ public sealed class WorkflowAuditWriter : IWorkflowAuditWriter
                 idea.StatusId,
                 idea.Priority,
                 idea.DueDate,
-                idea.AssigneeUserId
+                AssigneeUserIds = idea.Assignees.Select(item => item.UserId)
             },
             cancellationToken);
     }
@@ -445,7 +494,7 @@ public sealed class WorkflowAuditWriter : IWorkflowAuditWriter
                 idea.StatusId,
                 idea.Priority,
                 idea.DueDate,
-                idea.AssigneeUserId,
+                AssigneeUserIds = idea.Assignees.Select(item => item.UserId),
                 idea.UpdatedAtUtc
             },
             cancellationToken);

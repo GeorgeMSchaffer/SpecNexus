@@ -23,6 +23,14 @@ Responses:
 Response:
 - current authenticated user summary
 
+### `PUT /api/v1/auth/me`
+Request:
+- `firstName`
+- `lastName`
+
+Response:
+- updated authenticated user summary
+
 ### `POST /api/v1/auth/change-password`
 Request:
 - `currentPassword`

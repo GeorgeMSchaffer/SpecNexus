@@ -163,6 +163,14 @@ public interface IWorkflowDataAccess
 
     Task<IReadOnlyList<Status>> ListStatusesAsync(Guid organizationId, CancellationToken cancellationToken);
 
+    Task<IdeaType?> FindIdeaTypeByIdAsync(Guid ideaTypeId, CancellationToken cancellationToken);
+
+    Task<BusinessImpact?> FindBusinessImpactByIdAsync(Guid businessImpactId, CancellationToken cancellationToken);
+
+    Task<IReadOnlyList<IdeaType>> ListIdeaTypesAsync(Guid organizationId, CancellationToken cancellationToken);
+
+    Task<IReadOnlyList<BusinessImpact>> ListBusinessImpactsAsync(Guid organizationId, CancellationToken cancellationToken);
+
     Task<Board?> FindBoardByIdAsync(Guid boardId, CancellationToken cancellationToken);
 
     Task<IReadOnlyList<Board>> ListBoardsAsync(Guid organizationId, CancellationToken cancellationToken);
@@ -207,6 +215,10 @@ public interface IWorkflowDataAccess
     void RemoveBoardSwimlanes(IEnumerable<BoardSwimlane> swimlanes);
 
     void AddIdea(Idea idea);
+
+    void AddIdeaAssignee(IdeaAssignee ideaAssignee);
+
+    void RemoveIdeaAssignees(IEnumerable<IdeaAssignee> ideaAssignees);
 
     void AddComment(Comment comment);
 
@@ -802,7 +814,7 @@ public sealed class WorkflowManagementService : IWorkflowManagementService
         var items = filtered
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
-            .Select(ToIdeaListItem)
+            .Select(item => ToIdeaListItem(item, actor.UserId))
             .ToArray();
 
         return WorkflowResult<PagedResultModel<IdeaListItemModel>>.Success(new PagedResultModel<IdeaListItemModel>
@@ -833,7 +845,7 @@ public sealed class WorkflowManagementService : IWorkflowManagementService
             return WorkflowResult<IdeaDetailModel>.Failure(authorization.FailureReason!.Value, authorization.Errors);
         }
 
-        return WorkflowResult<IdeaDetailModel>.Success(ToIdeaDetail(idea));
+        return WorkflowResult<IdeaDetailModel>.Success(ToIdeaDetail(idea, actor.UserId));
     }
 
     public async Task<WorkflowResult<IdeaDetailModel>> CreateIdeaAsync(
@@ -881,13 +893,15 @@ public sealed class WorkflowManagementService : IWorkflowManagementService
             Title = request.Title.Trim(),
             Description = request.Description.Trim(),
             Priority = parsedPriority,
+            IdeaTypeId = request.IdeaTypeId,
+            BusinessImpactId = request.BusinessImpactId,
             DueDate = request.DueDate,
-            AssigneeUserId = request.AssigneeUserId,
             StatusId = selectedStatusId.Value,
             CreatedAtUtc = nowUtc
         };
 
         _dataAccess.AddIdea(idea);
+        await ReplaceIdeaAssigneesAsync(idea, request.AssigneeUserIds, cancellationToken);
         await _dataAccess.SaveChangesAsync(cancellationToken);
 
         await ReplaceIdeaTagsAndMentionsAsync(idea, actor.UserId, request.TagNames, request.MentionEmails, cancellationToken);
@@ -895,7 +909,7 @@ public sealed class WorkflowManagementService : IWorkflowManagementService
 
         var persisted = await _dataAccess.FindIdeaByIdAsync(idea.Id, cancellationToken);
         await _auditWriter.WriteIdeaCreatedAsync(actor.UserId, persisted!, cancellationToken);
-        return WorkflowResult<IdeaDetailModel>.Success(ToIdeaDetail(persisted!));
+        return WorkflowResult<IdeaDetailModel>.Success(ToIdeaDetail(persisted!, actor.UserId));
     }
 
     public async Task<WorkflowImportResult<IdeaImportResponseModel>> ImportIdeasCsvAsync(
@@ -954,14 +968,14 @@ public sealed class WorkflowManagementService : IWorkflowManagementService
         }
 
         var header = ParseCsvLine(headerLine.TrimStart('\uFEFF'));
-        var expectedHeader = new[] { "Title", "Description", "Priority", "DueDate", "Status", "AssignedTo", "Tags" };
+        var expectedHeader = new[] { "Title", "Description", "Priority", "IdeaType", "BusinessImpact", "DueDate", "Status", "AssignedTo", "Tags" };
         if (header.Count != expectedHeader.Length || !header.SequenceEqual(expectedHeader, StringComparer.Ordinal))
         {
             return WorkflowImportResult<IdeaImportResponseModel>.Failure(
                 WorkflowFailureReason.ValidationError,
                 new Dictionary<string, string[]>
                 {
-                    ["file"] = new[] { "CSV header must be exactly: Title,Description,Priority,DueDate,Status,AssignedTo,Tags" }
+                    ["file"] = new[] { "CSV header must be exactly: Title,Description,Priority,IdeaType,BusinessImpact,DueDate,Status,AssignedTo,Tags" }
                 });
         }
 
@@ -986,6 +1000,28 @@ public sealed class WorkflowManagementService : IWorkflowManagementService
             .Where(item => !item.IsDeleted)
             .GroupBy(item => item.Name.Trim(), StringComparer.OrdinalIgnoreCase)
             .ToDictionary(item => item.Key, item => item.First(), StringComparer.OrdinalIgnoreCase);
+
+        var activeIdeaTypes = (await _dataAccess.ListIdeaTypesAsync(board.OrganizationId, cancellationToken))
+            .Where(item => !item.IsDeleted)
+            .OrderBy(item => item.SortOrder)
+            .ToArray();
+        var activeBusinessImpacts = (await _dataAccess.ListBusinessImpactsAsync(board.OrganizationId, cancellationToken))
+            .Where(item => !item.IsDeleted)
+            .OrderBy(item => item.SortOrder)
+            .ToArray();
+
+        if (activeIdeaTypes.Length == 0 || activeBusinessImpacts.Length == 0)
+        {
+            return WorkflowImportResult<IdeaImportResponseModel>.Failure(
+                WorkflowFailureReason.ValidationError,
+                new Dictionary<string, string[]>
+                {
+                    ["file"] = new[] { "The organization must have active Idea Type and Business Impact options." }
+                });
+        }
+
+        var ideaTypeByName = activeIdeaTypes.ToDictionary(item => item.Name.Trim(), StringComparer.OrdinalIgnoreCase);
+        var businessImpactByName = activeBusinessImpacts.ToDictionary(item => item.Name.Trim(), StringComparer.OrdinalIgnoreCase);
 
         var existingIdeas = await _dataAccess.ListIdeasByBoardIdAsync(boardId, cancellationToken);
         var existingTitles = existingIdeas
@@ -1021,17 +1057,19 @@ public sealed class WorkflowManagementService : IWorkflowManagementService
             var columns = ParseCsvLine(line);
             if (columns.Count != expectedHeader.Length)
             {
-                AddRowError(rowErrors, dataRowNumber, "Row must contain exactly 7 columns.");
+                AddRowError(rowErrors, dataRowNumber, "Row must contain exactly 9 columns.");
                 continue;
             }
 
             var title = columns[0].Trim();
             var description = columns[1].Trim();
             var priorityText = columns[2].Trim();
-            var dueDateText = columns[3].Trim();
-            var statusText = columns[4].Trim();
-            var assignedToText = columns[5].Trim();
-            var tagsText = columns[6].Trim();
+            var ideaTypeText = columns[3].Trim();
+            var businessImpactText = columns[4].Trim();
+            var dueDateText = columns[5].Trim();
+            var statusText = columns[6].Trim();
+            var assignedToText = columns[7].Trim();
+            var tagsText = columns[8].Trim();
 
             if (title.Length == 0)
             {
@@ -1095,23 +1133,70 @@ public sealed class WorkflowManagementService : IWorkflowManagementService
                 statusId = Guid.Empty;
             }
 
-            Guid? assigneeUserId = null;
-            if (!string.IsNullOrWhiteSpace(assignedToText))
+            var ideaTypeId = activeIdeaTypes[0].Id;
+            if (!string.IsNullOrWhiteSpace(ideaTypeText))
             {
-                var assignee = await _dataAccess.FindUserByEmailAsync(board.OrganizationId, assignedToText, cancellationToken);
-                if (assignee is null || assignee.Status != UserLifecycleStatus.Active)
+                if (ideaTypeByName.TryGetValue(ideaTypeText, out var ideaType))
                 {
-                    AddRowError(rowErrors, dataRowNumber, $"AssignedTo '{assignedToText}' must resolve to an active user in this organization.");
+                    ideaTypeId = ideaType.Id;
                 }
                 else
                 {
-                    assigneeUserId = assignee.Id;
+                    AddRowError(rowErrors, dataRowNumber, $"IdeaType '{ideaTypeText}' is not an active option in this organization.");
+                }
+            }
+
+            var businessImpactId = activeBusinessImpacts[0].Id;
+            if (!string.IsNullOrWhiteSpace(businessImpactText))
+            {
+                if (businessImpactByName.TryGetValue(businessImpactText, out var businessImpact))
+                {
+                    businessImpactId = businessImpact.Id;
+                }
+                else
+                {
+                    AddRowError(rowErrors, dataRowNumber, $"BusinessImpact '{businessImpactText}' is not an active option in this organization.");
+                }
+            }
+
+            var assigneeUserIds = new List<Guid>();
+            if (!string.IsNullOrWhiteSpace(assignedToText))
+            {
+                var assigneeEmails = assignedToText.Split('|', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+                if (assigneeEmails.Length > 5)
+                {
+                    AddRowError(rowErrors, dataRowNumber, "AssignedTo cannot contain more than five email addresses.");
+                }
+
+                if (assigneeEmails.Distinct(StringComparer.OrdinalIgnoreCase).Count() != assigneeEmails.Length)
+                {
+                    AddRowError(rowErrors, dataRowNumber, "AssignedTo email addresses must be distinct.");
+                }
+
+                foreach (var assigneeEmail in assigneeEmails.Distinct(StringComparer.OrdinalIgnoreCase))
+                {
+                    var assignee = await _dataAccess.FindUserByEmailAsync(board.OrganizationId, assigneeEmail, cancellationToken);
+                    if (assignee is null || assignee.Status != UserLifecycleStatus.Active)
+                    {
+                        AddRowError(rowErrors, dataRowNumber, $"AssignedTo '{assigneeEmail}' must resolve to an active user in this organization.");
+                    }
+                    else
+                    {
+                        assigneeUserIds.Add(assignee.Id);
+                    }
                 }
             }
 
             var tagNames = tagsText.Length == 0
                 ? Array.Empty<string>()
-                : tagsText.Split('|', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+                : tagsText.Split('|', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToArray();
+
+            if (tagNames.Length > 10)
+            {
+                AddRowError(rowErrors, dataRowNumber, "Tags cannot contain more than 10 distinct values.");
+            }
 
             foreach (var tagName in tagNames)
             {
@@ -1129,7 +1214,9 @@ public sealed class WorkflowManagementService : IWorkflowManagementService
                 priorityText,
                 dueDate,
                 statusId,
-                assigneeUserId,
+                ideaTypeId,
+                businessImpactId,
+                assigneeUserIds,
                 tagNames));
         }
 
@@ -1165,13 +1252,23 @@ public sealed class WorkflowManagementService : IWorkflowManagementService
                 Title = candidate.Title,
                 Description = candidate.Description,
                 Priority = Enum.Parse<IdeaPriority>(candidate.Priority, true),
+                IdeaTypeId = candidate.IdeaTypeId,
+                BusinessImpactId = candidate.BusinessImpactId,
                 DueDate = candidate.DueDate,
-                AssigneeUserId = candidate.AssigneeUserId,
                 StatusId = candidate.StatusId,
                 CreatedAtUtc = nowUtc
             };
 
             _dataAccess.AddIdea(idea);
+
+            foreach (var assigneeUserId in candidate.AssigneeUserIds)
+            {
+                _dataAccess.AddIdeaAssignee(new IdeaAssignee
+                {
+                    IdeaId = idea.Id,
+                    UserId = assigneeUserId
+                });
+            }
 
             foreach (var rawTag in candidate.TagNames.Distinct(StringComparer.OrdinalIgnoreCase))
             {
@@ -1267,6 +1364,15 @@ public sealed class WorkflowManagementService : IWorkflowManagementService
             return WorkflowResult<IdeaDetailModel>.Failure(WorkflowFailureReason.ValidationError, validationErrors);
         }
 
+        var assignmentsChanged = !idea.Assignees.Select(item => item.UserId).OrderBy(item => item)
+            .SequenceEqual(request.AssigneeUserIds.OrderBy(item => item));
+        var descriptionChanged = !string.Equals(idea.Description, request.Description.Trim(), StringComparison.Ordinal);
+
+        if ((assignmentsChanged || descriptionChanged) && !CanManageIdeaContent(actor, idea))
+        {
+            return WorkflowResult<IdeaDetailModel>.Failure(WorkflowFailureReason.Forbidden);
+        }
+
         var selectedStatusId = await ResolveTargetStatusIdAsync(board.Id, request.StatusId ?? idea.StatusId, cancellationToken);
 
         if (!selectedStatusId.HasValue)
@@ -1277,8 +1383,9 @@ public sealed class WorkflowManagementService : IWorkflowManagementService
         idea.Title = request.Title.Trim();
         idea.Description = request.Description.Trim();
         idea.Priority = Enum.Parse<IdeaPriority>(request.Priority, true);
+        idea.IdeaTypeId = request.IdeaTypeId;
+        idea.BusinessImpactId = request.BusinessImpactId;
         idea.DueDate = request.DueDate;
-        idea.AssigneeUserId = request.AssigneeUserId;
         idea.StatusId = selectedStatusId.Value;
         idea.UpdatedAtUtc = DateTime.UtcNow;
 
@@ -1295,12 +1402,13 @@ public sealed class WorkflowManagementService : IWorkflowManagementService
 
         _dataAccess.RemoveIdeaTags(idea.IdeaTags);
         _dataAccess.RemoveMentions(idea.Mentions);
+        await ReplaceIdeaAssigneesAsync(idea, request.AssigneeUserIds, cancellationToken);
         await ReplaceIdeaTagsAndMentionsAsync(idea, actor.UserId, request.TagNames, mentionResolution.ResolvedEmails, cancellationToken);
         await _dataAccess.SaveChangesAsync(cancellationToken);
 
         var persisted = await _dataAccess.FindIdeaByIdAsync(idea.Id, cancellationToken);
         await _auditWriter.WriteIdeaUpdatedAsync(actor.UserId, persisted!, cancellationToken);
-        return WorkflowResult<IdeaDetailModel>.Success(ToIdeaDetail(persisted!));
+        return WorkflowResult<IdeaDetailModel>.Success(ToIdeaDetail(persisted!, actor.UserId));
     }
 
     public async Task<WorkflowResult> SoftDeleteIdeaAsync(
@@ -1323,7 +1431,9 @@ public sealed class WorkflowManagementService : IWorkflowManagementService
         }
 
         idea.IsDeleted = true;
-        idea.UpdatedAtUtc = DateTime.UtcNow;
+        idea.DeletedAtUtc = DateTime.UtcNow;
+        idea.DeletedByUserId = actor.UserId;
+        idea.UpdatedAtUtc = idea.DeletedAtUtc;
         await _dataAccess.SaveChangesAsync(cancellationToken);
         return WorkflowResult.Success();
     }
@@ -1430,17 +1540,7 @@ public sealed class WorkflowManagementService : IWorkflowManagementService
             idea.UpdatedAtUtc = now;
             await _dataAccess.SaveChangesAsync(cancellationToken);
             await _auditWriter.WriteIdeaStatusMovedAsync(actor.UserId, idea, previousStatusId, cancellationToken);
-            if (actor.UserId != idea.AuthorUserId)
-            {
-                await _notificationWriter.WriteAsync(idea.AuthorUserId, actor.UserId, NotificationEventType.IdeaStatusChanged,
-                    idea.Id, idea.Title, idea.OrganizationId, idea.BoardId, cancellationToken);
-            }
-
-            if (idea.AssigneeUserId.HasValue && idea.AssigneeUserId.Value != actor.UserId && idea.AssigneeUserId.Value != idea.AuthorUserId)
-            {
-                await _notificationWriter.WriteAsync(idea.AssigneeUserId.Value, actor.UserId, NotificationEventType.IdeaStatusChanged,
-                    idea.Id, idea.Title, idea.OrganizationId, idea.BoardId, cancellationToken);
-            }
+            await NotifyIdeaParticipantsAsync(idea, actor.UserId, NotificationEventType.IdeaStatusChanged, cancellationToken);
 
             return WorkflowResult.Success();
         }
@@ -1451,17 +1551,7 @@ public sealed class WorkflowManagementService : IWorkflowManagementService
         await _dataAccess.SaveChangesAsync(cancellationToken);
         await _auditWriter.WriteIdeaStatusMovedAsync(actor.UserId, idea, previousStatusIdForMove, cancellationToken);
 
-        if (actor.UserId != idea.AuthorUserId)
-        {
-            await _notificationWriter.WriteAsync(idea.AuthorUserId, actor.UserId, NotificationEventType.IdeaStatusChanged,
-                idea.Id, idea.Title, idea.OrganizationId, idea.BoardId, cancellationToken);
-        }
-
-        if (idea.AssigneeUserId.HasValue && idea.AssigneeUserId.Value != actor.UserId && idea.AssigneeUserId.Value != idea.AuthorUserId)
-        {
-            await _notificationWriter.WriteAsync(idea.AssigneeUserId.Value, actor.UserId, NotificationEventType.IdeaStatusChanged,
-                idea.Id, idea.Title, idea.OrganizationId, idea.BoardId, cancellationToken);
-        }
+        await NotifyIdeaParticipantsAsync(idea, actor.UserId, NotificationEventType.IdeaStatusChanged, cancellationToken);
 
         return WorkflowResult.Success();
     }
@@ -1558,17 +1648,7 @@ public sealed class WorkflowManagementService : IWorkflowManagementService
         await _dataAccess.SaveChangesAsync(cancellationToken);
         await _auditWriter.WriteCommentCreatedAsync(actor.UserId, idea.OrganizationId, comment, cancellationToken);
 
-        if (actor.UserId != idea.AuthorUserId)
-        {
-            await _notificationWriter.WriteAsync(idea.AuthorUserId, actor.UserId, NotificationEventType.CommentAdded,
-                idea.Id, idea.Title, idea.OrganizationId, idea.BoardId, cancellationToken);
-        }
-
-        if (idea.AssigneeUserId.HasValue && idea.AssigneeUserId.Value != actor.UserId && idea.AssigneeUserId.Value != idea.AuthorUserId)
-        {
-            await _notificationWriter.WriteAsync(idea.AssigneeUserId.Value, actor.UserId, NotificationEventType.CommentAdded,
-                idea.Id, idea.Title, idea.OrganizationId, idea.BoardId, cancellationToken);
-        }
+        await NotifyIdeaParticipantsAsync(idea, actor.UserId, NotificationEventType.CommentAdded, cancellationToken);
 
         return WorkflowResult<CommentModel>.Success(ToCommentModel(comment));
     }
@@ -1779,7 +1859,7 @@ public sealed class WorkflowManagementService : IWorkflowManagementService
             Page = page,
             PageSize = pageSize,
             TotalCount = totalCount,
-            Items = items.Select(ToIdeaListItem).ToArray()
+            Items = items.Select(item => ToIdeaListItem(item, actor.UserId)).ToArray()
         };
 
         return WorkflowResult<PagedResultModel<IdeaListItemModel>>.Success(result);
@@ -1813,7 +1893,7 @@ public sealed class WorkflowManagementService : IWorkflowManagementService
         };
     }
 
-    private static IdeaListItemModel ToIdeaListItem(Idea idea)
+    private static IdeaListItemModel ToIdeaListItem(Idea idea, Guid actorUserId)
     {
         return new IdeaListItemModel
         {
@@ -1821,21 +1901,26 @@ public sealed class WorkflowManagementService : IWorkflowManagementService
             BoardId = idea.BoardId,
             Title = idea.Title,
             Priority = idea.Priority.ToString(),
+            IdeaTypeId = idea.IdeaTypeId,
+            IdeaTypeName = idea.IdeaType.Name,
+            BusinessImpactId = idea.BusinessImpactId,
+            BusinessImpactName = idea.BusinessImpact.Name,
+            BusinessImpactColor = idea.BusinessImpact.Color,
             DueDate = idea.DueDate,
-            AssigneeUserId = idea.AssigneeUserId,
-            AssigneeDisplayName = idea.AssigneeUser is null
-                ? null
-                : $"{idea.AssigneeUser.FirstName} {idea.AssigneeUser.LastName}".Trim(),
+            Assignees = ToAssigneeSummaries(idea),
+            TagNames = idea.IdeaTags.Select(item => item.Tag.Name).OrderBy(item => item, StringComparer.OrdinalIgnoreCase).ToArray(),
             StatusId = idea.StatusId,
             StatusName = idea.Status.Name,
             UpvoteCount = idea.Upvotes.Count,
+            HasUpvoted = idea.Upvotes.Any(item => item.UserId == actorUserId),
+            CommentCount = idea.Comments.Count,
             AuthorUserId = idea.AuthorUserId,
             AuthorDisplayName = $"{idea.AuthorUser.FirstName} {idea.AuthorUser.LastName}".Trim(),
             CreatedAtUtc = idea.CreatedAtUtc
         };
     }
 
-    private static IdeaDetailModel ToIdeaDetail(Idea idea)
+    private static IdeaDetailModel ToIdeaDetail(Idea idea, Guid actorUserId)
     {
         return new IdeaDetailModel
         {
@@ -1844,11 +1929,13 @@ public sealed class WorkflowManagementService : IWorkflowManagementService
             Title = idea.Title,
             Description = idea.Description,
             Priority = idea.Priority.ToString(),
+            IdeaTypeId = idea.IdeaTypeId,
+            IdeaTypeName = idea.IdeaType.Name,
+            BusinessImpactId = idea.BusinessImpactId,
+            BusinessImpactName = idea.BusinessImpact.Name,
+            BusinessImpactColor = idea.BusinessImpact.Color,
             DueDate = idea.DueDate,
-            AssigneeUserId = idea.AssigneeUserId,
-            AssigneeDisplayName = idea.AssigneeUser is null
-                ? null
-                : $"{idea.AssigneeUser.FirstName} {idea.AssigneeUser.LastName}".Trim(),
+            Assignees = ToAssigneeSummaries(idea),
             StatusId = idea.StatusId,
             StatusName = idea.Status.Name,
             ApprovalState = idea.ApprovalState.ToString(),
@@ -1868,8 +1955,27 @@ public sealed class WorkflowManagementService : IWorkflowManagementService
                 .OrderBy(item => item.CreatedAtUtc)
                 .Select(ToCommentModel)
                 .ToArray(),
-            UpvoteCount = idea.Upvotes.Count
+            UpvoteCount = idea.Upvotes.Count,
+            HasUpvoted = idea.Upvotes.Any(item => item.UserId == actorUserId),
+            CommentCount = idea.Comments.Count
         };
+    }
+
+    private static IReadOnlyList<IdeaAssigneeSummaryModel> ToAssigneeSummaries(Idea idea)
+    {
+        return idea.Assignees
+            .Select(item => item.User)
+            .OrderBy(item => item.FirstName, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(item => item.LastName, StringComparer.OrdinalIgnoreCase)
+            .Select(item => new IdeaAssigneeSummaryModel
+            {
+                UserId = item.Id,
+                FirstName = item.FirstName,
+                LastName = item.LastName,
+                DisplayName = $"{item.FirstName} {item.LastName}".Trim(),
+                IsActive = item.Status == UserLifecycleStatus.Active
+            })
+            .ToArray();
     }
 
     private static CommentModel ToCommentModel(Comment comment)
@@ -1907,13 +2013,49 @@ public sealed class WorkflowManagementService : IWorkflowManagementService
             errors.Add("Idea priority must be one of Low, Medium, High, or Critical.");
         }
 
-        if (request.AssigneeUserId.HasValue)
+        if (request.IdeaTypeId == Guid.Empty)
         {
-            var assignee = await _dataAccess.FindOrganizationUserByIdAsync(board.OrganizationId, request.AssigneeUserId.Value, cancellationToken);
-
-            if (assignee is null)
+            errors.Add("Idea Type is required.");
+        }
+        else
+        {
+            var ideaType = await _dataAccess.FindIdeaTypeByIdAsync(request.IdeaTypeId, cancellationToken);
+            if (ideaType is null || ideaType.OrganizationId != board.OrganizationId || ideaType.IsDeleted)
             {
-                errors.Add("Assignee user must belong to the board organization.");
+                errors.Add("Idea Type must be an active option in the board organization.");
+            }
+        }
+
+        if (request.BusinessImpactId == Guid.Empty)
+        {
+            errors.Add("Business Impact is required.");
+        }
+        else
+        {
+            var businessImpact = await _dataAccess.FindBusinessImpactByIdAsync(request.BusinessImpactId, cancellationToken);
+            if (businessImpact is null || businessImpact.OrganizationId != board.OrganizationId || businessImpact.IsDeleted)
+            {
+                errors.Add("Business Impact must be an active option in the board organization.");
+            }
+        }
+
+        if (request.AssigneeUserIds.Count > 5)
+        {
+            errors.Add("An idea can have no more than five assignees.");
+        }
+
+        if (request.AssigneeUserIds.Distinct().Count() != request.AssigneeUserIds.Count)
+        {
+            errors.Add("Assignee users must be distinct.");
+        }
+
+        foreach (var assigneeUserId in request.AssigneeUserIds.Distinct())
+        {
+            var assignee = await _dataAccess.FindOrganizationUserByIdAsync(board.OrganizationId, assigneeUserId, cancellationToken);
+            if (assignee is null || assignee.Status != UserLifecycleStatus.Active)
+            {
+                errors.Add("Assignee users must be active and belong to the board organization.");
+                break;
             }
         }
 
@@ -1925,6 +2067,17 @@ public sealed class WorkflowManagementService : IWorkflowManagementService
 
         errors.AddRange(mentionResolution.Errors);
 
+        var normalizedTagNames = request.TagNames
+            .Select(item => item?.Trim() ?? string.Empty)
+            .Where(item => item.Length > 0)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        if (normalizedTagNames.Length > 10)
+        {
+            errors.Add("An idea can have no more than 10 tags.");
+        }
+
         foreach (var tagName in request.TagNames)
         {
             if (string.IsNullOrWhiteSpace(tagName.Trim()))
@@ -1935,6 +2088,52 @@ public sealed class WorkflowManagementService : IWorkflowManagementService
         }
 
         return errors;
+    }
+
+    private Task ReplaceIdeaAssigneesAsync(
+        Idea idea,
+        IReadOnlyList<Guid> assigneeUserIds,
+        CancellationToken cancellationToken)
+    {
+        _dataAccess.RemoveIdeaAssignees(idea.Assignees);
+
+        foreach (var userId in assigneeUserIds.Distinct())
+        {
+            _dataAccess.AddIdeaAssignee(new IdeaAssignee
+            {
+                IdeaId = idea.Id,
+                UserId = userId
+            });
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private async Task NotifyIdeaParticipantsAsync(
+        Idea idea,
+        Guid actorUserId,
+        NotificationEventType eventType,
+        CancellationToken cancellationToken)
+    {
+        var recipientIds = idea.Assignees
+            .Select(item => item.UserId)
+            .Append(idea.AuthorUserId)
+            .Where(item => item != actorUserId)
+            .Distinct()
+            .ToArray();
+
+        foreach (var recipientUserId in recipientIds)
+        {
+            await _notificationWriter.WriteAsync(recipientUserId, actorUserId, eventType,
+                idea.Id, idea.Title, idea.OrganizationId, idea.BoardId, cancellationToken);
+        }
+    }
+
+    private static bool CanManageIdeaContent(WorkflowActorContext actor, Idea idea)
+    {
+        return actor.UserId == idea.AuthorUserId ||
+            string.Equals(actor.Role, UserRole.OrgAdmin.ToString(), StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(actor.Role, UserRole.SiteAdmin.ToString(), StringComparison.OrdinalIgnoreCase);
     }
 
     private async Task<Guid?> ResolveTargetStatusIdAsync(Guid boardId, Guid? requestedStatusId, CancellationToken cancellationToken)
@@ -2176,7 +2375,9 @@ public sealed class WorkflowManagementService : IWorkflowManagementService
         string Priority,
         DateOnly? DueDate,
         Guid StatusId,
-        Guid? AssigneeUserId,
+        Guid IdeaTypeId,
+        Guid BusinessImpactId,
+        IReadOnlyList<Guid> AssigneeUserIds,
         IReadOnlyList<string> TagNames);
 
     private static string BuildIdeaLink(Idea idea)

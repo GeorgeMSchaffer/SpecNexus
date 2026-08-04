@@ -15,17 +15,47 @@
         <div class="card mb-4">
             <div class="card-body">
                 <h2 class="h5 mb-3">Account information</h2>
-                @if (AuthSessionService.User is { } user)
+
+                @if (!string.IsNullOrWhiteSpace(_profileSuccessMessage))
                 {
-                    <dl class="row mb-0">
-                        <dt class="col-sm-3">Name</dt>
-                        <dd class="col-sm-9">@user.FirstName @user.LastName</dd>
-                        <dt class="col-sm-3">Email</dt>
-                        <dd class="col-sm-9">@user.Email</dd>
-                        <dt class="col-sm-3">Role</dt>
-                        <dd class="col-sm-9">@user.Role</dd>
-                    </dl>
+                    <div class="alert alert-success" role="status">@_profileSuccessMessage</div>
                 }
+
+                @if (!string.IsNullOrWhiteSpace(_profileErrorMessage))
+                {
+                    <div class="alert alert-danger" role="alert">@_profileErrorMessage</div>
+                }
+
+                <EditForm Model="_profileModel" OnValidSubmit="HandleProfileSubmitAsync">
+                        <DataAnnotationsValidator />
+
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label" for="profileFirstName">First name</label>
+                                <InputText id="profileFirstName" class="form-control" @bind-Value="_profileModel.FirstName" />
+                                <ValidationMessage For="() => _profileModel.FirstName" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label" for="profileLastName">Last name</label>
+                                <InputText id="profileLastName" class="form-control" @bind-Value="_profileModel.LastName" />
+                                <ValidationMessage For="() => _profileModel.LastName" />
+                            </div>
+                        </div>
+
+                        @if (AuthSessionService.User is { } user)
+                        {
+                            <dl class="row mt-3 mb-3">
+                                <dt class="col-sm-3">Email</dt>
+                                <dd class="col-sm-9">@user.Email</dd>
+                                <dt class="col-sm-3">Role</dt>
+                                <dd class="col-sm-9">@user.Role</dd>
+                            </dl>
+                        }
+
+                        <button class="btn btn-primary" type="submit" disabled="@_isProfileSubmitting">
+                            @(_isProfileSubmitting ? "Saving..." : "Save name")
+                        </button>
+                </EditForm>
             </div>
         </div>
 
@@ -97,16 +127,49 @@
 </AuthGate>
 
 @code {
+    private readonly ProfileFormModel _profileModel = new();
     private readonly ChangePasswordFormModel _model = new();
     private readonly List<string> _passwordPolicyErrors = new();
+    private bool _isProfileSubmitting;
     private bool _isSubmitting;
     private bool _passwordChanged;
+    private string? _profileSuccessMessage;
+    private string? _profileErrorMessage;
     private string? _errorTitle;
     private string? _errorDetail;
 
     protected override async Task OnInitializedAsync()
     {
         await AuthSessionService.InitializeAsync();
+
+        if (AuthSessionService.User is { } user)
+        {
+            _profileModel.FirstName = user.FirstName;
+            _profileModel.LastName = user.LastName;
+        }
+    }
+
+    private async Task HandleProfileSubmitAsync()
+    {
+        _isProfileSubmitting = true;
+        _profileSuccessMessage = null;
+        _profileErrorMessage = null;
+
+        try
+        {
+            await AuthSessionService.UpdateProfileAsync(_profileModel.FirstName, _profileModel.LastName);
+            _profileModel.FirstName = AuthSessionService.User?.FirstName ?? _profileModel.FirstName.Trim();
+            _profileModel.LastName = AuthSessionService.User?.LastName ?? _profileModel.LastName.Trim();
+            _profileSuccessMessage = "Name updated successfully.";
+        }
+        catch (AuthApiException ex)
+        {
+            _profileErrorMessage = ErrorMessageService.GetDisplayMessage(ex.Title, ex.Detail, ex);
+        }
+        finally
+        {
+            _isProfileSubmitting = false;
+        }
     }
 
     private async Task HandleSubmitAsync()
@@ -166,5 +229,16 @@
 
         [System.ComponentModel.DataAnnotations.Required]
         public string ConfirmNewPassword { get; set; } = string.Empty;
+    }
+
+    private sealed class ProfileFormModel
+    {
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.MaxLength(100)]
+        public string FirstName { get; set; } = string.Empty;
+
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.MaxLength(100)]
+        public string LastName { get; set; } = string.Empty;
     }
 }

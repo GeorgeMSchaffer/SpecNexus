@@ -55,6 +55,33 @@ paths:
             application/problem+json:
               schema:
                 $ref: ../components/schemas/common.yaml#/ProblemDetails
+    put:
+      summary: Update the current authenticated user's name
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/auth.yaml#/UpdateProfileRequest
+      responses:
+        '200':
+          description: Updated current user summary
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/UserSummary
+        '400':
+          description: Missing or invalid name fields
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ValidationProblemDetails
+        '401':
+          description: Missing authentication or unresolved authenticated user
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
   /api/v1/auth/change-password:
     post:
       summary: Change the current user's password

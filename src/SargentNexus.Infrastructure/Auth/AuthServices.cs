@@ -334,13 +334,7 @@ internal sealed class AuthSeeder : IAuthSeeder
             siteAdmin.FirstName = _options.SiteAdminFirstName;
             siteAdmin.LastName = _options.SiteAdminLastName;
             siteAdmin.Email = _options.SiteAdminEmail.Trim();
-            siteAdmin.PasswordHash = _passwordHasher.Hash(_options.SiteAdminPassword);
             siteAdmin.Role = UserRole.SiteAdmin;
-            siteAdmin.Status = UserLifecycleStatus.Active;
-            siteAdmin.MustChangePassword = true;
-            siteAdmin.FailedLoginAttemptCount = 0;
-            siteAdmin.LastFailedLoginAttemptUtc = null;
-            siteAdmin.LockoutEndUtc = null;
             await _dbContext.SaveChangesAsync(cancellationToken);
             return;
         }
@@ -398,10 +392,11 @@ internal sealed class AuthSeeder : IAuthSeeder
 
             var statuses = await EnsureStatusesAsync(organization, cancellationToken);
             var board = await EnsureBoardAsync(organization, demoOrganization, cancellationToken);
+            var ideaTypes = await EnsureIdeaTypesAsync(organization, cancellationToken);
+            var businessImpacts = await EnsureBusinessImpactsAsync(organization, cancellationToken);
             await EnsureBoardSwimlanesAsync(board, statuses, cancellationToken);
             var roleUsers = await EnsureRoleUsersAsync(organization, demoOrganization, demoPasswordHash, cancellationToken);
-            await EnsureIdeasAndCommentsAsync(organization, board, statuses, roleUsers, nowUtc, cancellationToken);
-        }
+            await EnsureIdeasAndCommentsAsync(organization, board, statuses, ideaTypes, businessImpacts, roleUsers, nowUtc, cancellationToken);        }
 
         await _dbContext.SaveChangesAsync(cancellationToken);
     }
@@ -415,11 +410,16 @@ internal sealed class AuthSeeder : IAuthSeeder
 
         if (_dbContext.Database.IsRelational())
         {
+            var databaseName = _dbContext.Database.GetDbConnection().Database;
+            if (!string.IsNullOrWhiteSpace(databaseName) && databaseName.EndsWith("_Dev", StringComparison.OrdinalIgnoreCase))
+            {
+                await _dbContext.Database.EnsureDeletedAsync(cancellationToken);
+            }
+
             await _dbContext.Database.MigrateAsync(cancellationToken);
             _databaseEnsured = true;
             return;
         }
-
         await _dbContext.Database.EnsureCreatedAsync(cancellationToken);
         _databaseEnsured = true;
     }
@@ -495,6 +495,75 @@ internal sealed class AuthSeeder : IAuthSeeder
         }
 
         return results;
+    }
+
+    private async Task<IReadOnlyList<IdeaType>> EnsureIdeaTypesAsync(Organization organization, CancellationToken cancellationToken)
+    {
+        var existingIdeaTypes = await _dbContext.IdeaTypes
+            .Where(item => item.OrganizationId == organization.Id)
+            .ToListAsync(cancellationToken);
+
+        if (existingIdeaTypes.Count == 0)
+        {
+            var ideaType = new IdeaType
+            {
+                Id = Guid.NewGuid(),
+                OrganizationId = organization.Id,
+                Name = "General",
+                SortOrder = 0,
+                IsDeleted = false
+            };
+
+            _dbContext.IdeaTypes.Add(ideaType);
+            existingIdeaTypes.Add(ideaType);
+        }
+        else
+        {
+            foreach (var item in existingIdeaTypes)
+            {
+                if (item.IsDeleted)
+                {
+                    item.IsDeleted = false;
+                }
+            }
+        }
+
+        return existingIdeaTypes.OrderBy(item => item.SortOrder).ThenBy(item => item.Name).ToList();
+    }
+
+    private async Task<IReadOnlyList<BusinessImpact>> EnsureBusinessImpactsAsync(Organization organization, CancellationToken cancellationToken)
+    {
+        var existingBusinessImpacts = await _dbContext.BusinessImpacts
+            .Where(item => item.OrganizationId == organization.Id)
+            .ToListAsync(cancellationToken);
+
+        if (existingBusinessImpacts.Count == 0)
+        {
+            var businessImpact = new BusinessImpact
+            {
+                Id = Guid.NewGuid(),
+                OrganizationId = organization.Id,
+                Name = "Moderate",
+                Color = "#6B7280",
+                SortOrder = 0,
+                IsDeleted = false
+            };
+
+            _dbContext.BusinessImpacts.Add(businessImpact);
+            existingBusinessImpacts.Add(businessImpact);
+        }
+        else
+        {
+            foreach (var item in existingBusinessImpacts)
+            {
+                if (item.IsDeleted)
+                {
+                    item.IsDeleted = false;
+                }
+            }
+        }
+
+        return existingBusinessImpacts.OrderBy(item => item.SortOrder).ThenBy(item => item.Name).ToList();
     }
 
     private async Task<Board> EnsureBoardAsync(
@@ -602,11 +671,6 @@ internal sealed class AuthSeeder : IAuthSeeder
                 user.FirstName = userSeed.FirstName;
                 user.LastName = userSeed.LastName;
                 user.Role = userSeed.Role;
-                user.Status = UserLifecycleStatus.Active;
-                user.PasswordHash = demoPasswordHash;
-                user.MustChangePassword = true;
-                user.TemporaryPasswordHash = null;
-                user.TemporaryPasswordExpiresAtUtc = null;
             }
 
             roleUsers[userSeed.Role] = user;
@@ -619,6 +683,8 @@ internal sealed class AuthSeeder : IAuthSeeder
         Organization organization,
         Board board,
         IReadOnlyList<Status> statuses,
+        IReadOnlyList<IdeaType> ideaTypes,
+        IReadOnlyList<BusinessImpact> businessImpacts,
         IReadOnlyDictionary<UserRole, User> roleUsers,
         DateTime nowUtc,
         CancellationToken cancellationToken)
@@ -638,7 +704,8 @@ internal sealed class AuthSeeder : IAuthSeeder
         var author = roleUsers[UserRole.User];
         var orgAdmin = roleUsers[UserRole.OrgAdmin];
         var readOnly = roleUsers[UserRole.ReadOnly];
-
+        var ideaType = ideaTypes.First();
+        var businessImpact = businessImpacts.First();
         for (var index = 0; index < statuses.Count; index++)
         {
             var status = statuses[index];
@@ -661,7 +728,8 @@ internal sealed class AuthSeeder : IAuthSeeder
                     Description = description,
                     Priority = IdeaPriority.Medium,
                     DueDate = null,
-                    AssigneeUserId = null,
+                    BusinessImpactId = businessImpact.Id,
+                    IdeaTypeId = ideaType.Id,
                     StatusId = status.Id,
                     CreatedAtUtc = nowUtc,
                     UpdatedAtUtc = null
@@ -675,7 +743,8 @@ internal sealed class AuthSeeder : IAuthSeeder
                 idea.Description = description;
                 idea.Priority = IdeaPriority.Medium;
                 idea.DueDate = null;
-                idea.AssigneeUserId = null;
+                idea.BusinessImpactId = businessImpact.Id;
+                idea.IdeaTypeId = ideaType.Id;
                 idea.StatusId = status.Id;
             }
 
@@ -802,6 +871,21 @@ internal sealed class AuthAuditWriter : IAuthAuditWriter
             cancellationToken);
     }
 
+    public Task WriteProfileUpdatedAsync(User user, CancellationToken cancellationToken)
+    {
+        return WriteAsync(
+            actorUserId: user.Id,
+            organizationId: user.OrganizationId,
+            entityId: user.Id,
+            eventType: "User.ProfileUpdated",
+            metadata: new
+            {
+                user.FirstName,
+                user.LastName
+            },
+            cancellationToken);
+    }
+
     public Task WritePasswordChangeFailedAsync(Guid? userId, Guid? organizationId, string reason, CancellationToken cancellationToken)
     {
         return WriteAsync(
@@ -854,3 +938,11 @@ internal sealed class AuthAuditWriter : IAuthAuditWriter
         await _dbContext.SaveChangesAsync(cancellationToken);
     }
 }
+
+
+
+
+
+
+
+

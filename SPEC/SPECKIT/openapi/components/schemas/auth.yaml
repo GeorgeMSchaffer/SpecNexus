@@ -27,6 +27,16 @@ ChangePasswordRequest:
       type: string
     newPassword:
       type: string
+UpdateProfileRequest:
+  type: object
+  required: [firstName, lastName]
+  properties:
+    firstName:
+      type: string
+      maxLength: 100
+    lastName:
+      type: string
+      maxLength: 100
 SelfRegistrationRequest:
   type: object
   required: [inviteCode, firstName, lastName, email, password]

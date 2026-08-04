@@ -160,7 +160,9 @@ public sealed class WorkflowManagementServiceTests
             {
                 Title = "Improve onboarding",
                 Description = "Add more guided setup steps",
-                Priority = "High"
+                Priority = "High",
+                IdeaTypeId = fixture.IdeaType.Id,
+                BusinessImpactId = fixture.BusinessImpact.Id
             },
             CancellationToken.None);
 
@@ -187,6 +189,8 @@ public sealed class WorkflowManagementServiceTests
                 Title = "Updated title",
                 Description = "Updated description",
                 Priority = "Critical",
+                IdeaTypeId = fixture.IdeaType.Id,
+                BusinessImpactId = fixture.BusinessImpact.Id,
                 StatusId = fixture.StatusTwo.Id
             },
             CancellationToken.None);
@@ -245,6 +249,8 @@ public sealed class WorkflowManagementServiceTests
                 Title = "Updated title",
                 Description = "Updated description",
                 Priority = "Critical",
+                IdeaTypeId = fixture.IdeaType.Id,
+                BusinessImpactId = fixture.BusinessImpact.Id,
                 StatusId = fixture.StatusTwo.Id,
                 TagNames = new[] { "Fresh", "fresh" },
                 MentionEmails = new[] { fixture.StandardUser.Email }
@@ -273,6 +279,8 @@ public sealed class WorkflowManagementServiceTests
                 Title = "Tag normalization",
                 Description = "Verify duplicate tag normalization",
                 Priority = "Medium",
+                IdeaTypeId = fixture.IdeaType.Id,
+                BusinessImpactId = fixture.BusinessImpact.Id,
                 TagNames = new[] { "Ops", "ops", "  OPS  " }
             },
             CancellationToken.None);
@@ -300,6 +308,8 @@ public sealed class WorkflowManagementServiceTests
                 Title = "Tag reuse",
                 Description = "Verify existing tag reuse",
                 Priority = "Medium",
+                IdeaTypeId = fixture.IdeaType.Id,
+                BusinessImpactId = fixture.BusinessImpact.Id,
                 TagNames = new[] { "operations" }
             },
             CancellationToken.None);
@@ -354,6 +364,8 @@ public sealed class WorkflowManagementServiceTests
                 Title = "Mention filtering",
                 Description = "Verify mention scoping",
                 Priority = "Medium",
+                IdeaTypeId = fixture.IdeaType.Id,
+                BusinessImpactId = fixture.BusinessImpact.Id,
                 MentionEmails = new[] { "user@test.local" }
             },
             CancellationToken.None);
@@ -397,7 +409,9 @@ public sealed class WorkflowManagementServiceTests
             {
                 Title = "Reduce handoff delays",
                 Description = "Automate assignment notifications",
-                Priority = "Medium"
+                Priority = "Medium",
+                IdeaTypeId = fixture.IdeaType.Id,
+                BusinessImpactId = fixture.BusinessImpact.Id
             },
             CancellationToken.None);
 
@@ -596,6 +610,8 @@ public sealed class WorkflowManagementServiceTests
                 Title = "Mentioned idea",
                 Description = "Notify the mentioned user",
                 Priority = "Medium",
+                IdeaTypeId = fixture.IdeaType.Id,
+                BusinessImpactId = fixture.BusinessImpact.Id,
                 MentionEmails = new[] { fixture.StandardUser.Email }
             },
             CancellationToken.None);
@@ -621,6 +637,8 @@ public sealed class WorkflowManagementServiceTests
                 Title = "Self mention",
                 Description = "No self notification",
                 Priority = "Medium",
+                IdeaTypeId = fixture.IdeaType.Id,
+                BusinessImpactId = fixture.BusinessImpact.Id,
                 MentionEmails = new[] { fixture.OrgAdminUser.Email }
             },
             CancellationToken.None);
@@ -655,7 +673,7 @@ public sealed class WorkflowManagementServiceTests
         var fixture = new WorkflowFixture();
         var board = fixture.CreateBoardWithTwoSwimlanes();
         var idea = fixture.CreateIdeaWithAuthor(fixture.StandardUser, board);
-        idea.AssigneeUserId = fixture.ReadOnlyUser.Id;
+        fixture.DataAccess.AddIdeaAssignee(new IdeaAssignee { IdeaId = idea.Id, UserId = fixture.ReadOnlyUser.Id });
 
         var result = await fixture.Service.MoveIdeaStatusAsync(
             fixture.OrgAdminActor,
@@ -728,7 +746,7 @@ public sealed class WorkflowManagementServiceTests
         var fixture = new WorkflowFixture();
         var board = fixture.CreateBoardWithTwoSwimlanes();
         var idea = fixture.CreateIdeaWithAuthor(fixture.StandardUser, board);
-        idea.AssigneeUserId = fixture.ReadOnlyUser.Id;
+        fixture.DataAccess.AddIdeaAssignee(new IdeaAssignee { IdeaId = idea.Id, UserId = fixture.ReadOnlyUser.Id });
 
         var result = await fixture.Service.CreateCommentAsync(
             fixture.OrgAdminActor,
@@ -984,9 +1002,9 @@ public sealed class WorkflowManagementServiceTests
         var board = fixture.CreateBoardWithTwoSwimlanes();
         fixture.CreateIdeaWithAuthor(fixture.OrgAdminUser, board).Title = "Existing Idea";
 
-        var csv = "Title,Description,Priority,DueDate,Status,AssignedTo,Tags\n"
-            + "Existing Idea,Already there,Low,,,,\n"
-            + "New Idea,Brand new item,High,2026-08-10,In Progress,user@test.local,alpha|beta\n";
+        var csv = "Title,Description,Priority,IdeaType,BusinessImpact,DueDate,Status,AssignedTo,Tags\n"
+            + "Existing Idea,Already there,Low,,,,,,\n"
+            + "New Idea,Brand new item,High,,,2026-08-10,In Progress,user@test.local,alpha|beta\n";
 
         var result = await fixture.Service.ImportIdeasCsvAsync(
             fixture.OrgAdminActor,
@@ -1009,9 +1027,9 @@ public sealed class WorkflowManagementServiceTests
         var fixture = new WorkflowFixture();
         var board = fixture.CreateBoardWithTwoSwimlanes();
 
-        var csv = "Title,Description,Priority,DueDate,Status,AssignedTo,Tags\n"
-            + "Dup,First row,Low,,,,\n"
-            + "Dup,Second row,Medium,,,,\n";
+        var csv = "Title,Description,Priority,IdeaType,BusinessImpact,DueDate,Status,AssignedTo,Tags\n"
+            + "Dup,First row,Low,,,,,,\n"
+            + "Dup,Second row,Medium,,,,,,\n";
 
         var result = await fixture.Service.ImportIdeasCsvAsync(
             fixture.OrgAdminActor,
@@ -1127,6 +1145,23 @@ public sealed class WorkflowManagementServiceTests
                 IsDeleted = false
             };
 
+            IdeaType = new IdeaType
+            {
+                Id = Guid.NewGuid(),
+                OrganizationId = Organization.Id,
+                Name = "Continuous Improvement",
+                SortOrder = 0
+            };
+
+            BusinessImpact = new BusinessImpact
+            {
+                Id = Guid.NewGuid(),
+                OrganizationId = Organization.Id,
+                Name = "Medium",
+                Color = "#F59E0B",
+                SortOrder = 1
+            };
+
             DataAccess = new FakeWorkflowDataAccess();
             AuditWriter = new FakeWorkflowAuditWriter();
             NotificationWriter = new FakeNotificationWriter();
@@ -1140,6 +1175,8 @@ public sealed class WorkflowManagementServiceTests
             DataAccess.SeedUser(SiteAdminUser);
             DataAccess.SeedStatus(StatusOne);
             DataAccess.SeedStatus(StatusTwo);
+            DataAccess.SeedIdeaType(IdeaType);
+            DataAccess.SeedBusinessImpact(BusinessImpact);
 
             Service = new WorkflowManagementService(DataAccess, AuditWriter, NotificationWriter);
 
@@ -1205,6 +1242,10 @@ public sealed class WorkflowManagementServiceTests
 
         public Status StatusTwo { get; }
 
+        public IdeaType IdeaType { get; }
+
+        public BusinessImpact BusinessImpact { get; }
+
         public WorkflowActorContext OrgAdminActor { get; }
 
         public WorkflowActorContext ReadOnlyActor { get; }
@@ -1254,6 +1295,8 @@ public sealed class WorkflowManagementServiceTests
                 Title = "Idea",
                 Description = "Description",
                 Priority = IdeaPriority.Medium,
+                IdeaTypeId = IdeaType.Id,
+                BusinessImpactId = BusinessImpact.Id,
                 StatusId = StatusOne.Id,
                 CreatedAtUtc = DateTime.UtcNow
             };

@@ -158,6 +158,38 @@ public sealed class AuthControllerTests
     }
 
     [Fact]
+    public async Task UpdateMe_WhenServiceSucceeds_ReturnsUpdatedUser()
+    {
+        var userId = Guid.NewGuid();
+        var updatedUser = new AuthenticatedUserModel
+        {
+            UserId = userId,
+            FirstName = "Ada",
+            LastName = "Lovelace",
+            Email = "ada@sargentnexus.test",
+            Role = "User",
+            Status = "Active"
+        };
+        var authAccountService = new StubAuthAccountService
+        {
+            UpdateProfileAsyncHandler = (_, _, _) => Task.FromResult(UpdateProfileResult.Success(updatedUser))
+        };
+        var controller = CreateController(new StubLoginService(), authAccountService, userId);
+        var request = new UpdateProfileRequestModel
+        {
+            FirstName = "Ada",
+            LastName = "Lovelace"
+        };
+
+        var result = await controller.UpdateMe(request, CancellationToken.None);
+
+        var ok = Assert.IsType<OkObjectResult>(result);
+        Assert.Same(updatedUser, ok.Value);
+        Assert.Equal(userId, authAccountService.LastUpdateProfileUserId);
+        Assert.Same(request, authAccountService.LastUpdateProfileRequest);
+    }
+
+    [Fact]
     public async Task ChangePassword_WhenNoAuthenticatedUserId_ReturnsUnauthorizedProblem()
     {
         var controller = CreateController(new StubLoginService(), new StubAuthAccountService());
@@ -384,11 +416,17 @@ public sealed class AuthControllerTests
     {
         public Func<Guid, CancellationToken, Task<AuthenticatedUserModel?>>? GetCurrentUserAsyncHandler { get; init; }
 
+        public Func<Guid, UpdateProfileRequestModel, CancellationToken, Task<UpdateProfileResult>>? UpdateProfileAsyncHandler { get; init; }
+
         public Func<Guid, ChangePasswordRequestModel, CancellationToken, Task<ChangePasswordResult>>? ChangePasswordAsyncHandler { get; init; }
 
         public Func<Guid, Guid, CancellationToken, Task<TemporaryPasswordResult>>? IssueTemporaryPasswordAsyncHandler { get; init; }
 
         public Guid? LastGetCurrentUserId { get; private set; }
+
+        public Guid? LastUpdateProfileUserId { get; private set; }
+
+        public UpdateProfileRequestModel? LastUpdateProfileRequest { get; private set; }
 
         public Guid? LastChangePasswordUserId { get; private set; }
 
@@ -404,6 +442,18 @@ public sealed class AuthControllerTests
             return GetCurrentUserAsyncHandler is null
                 ? Task.FromResult<AuthenticatedUserModel?>(null)
                 : GetCurrentUserAsyncHandler(userId, cancellationToken);
+        }
+
+        public Task<UpdateProfileResult> UpdateProfileAsync(
+            Guid userId,
+            UpdateProfileRequestModel request,
+            CancellationToken cancellationToken)
+        {
+            LastUpdateProfileUserId = userId;
+            LastUpdateProfileRequest = request;
+            return UpdateProfileAsyncHandler is null
+                ? Task.FromResult(UpdateProfileResult.Failure(UpdateProfileFailureReason.UserNotFound))
+                : UpdateProfileAsyncHandler(userId, request, cancellationToken);
         }
 
         public Task<ChangePasswordResult> ChangePasswordAsync(

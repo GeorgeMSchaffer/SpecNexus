@@ -118,6 +118,22 @@ Success response `200`:
 Error responses:
 - `401` caller is not authenticated
 
+### `PUT /api/v1/auth/me`
+Purpose: Update the currently authenticated user's editable profile fields.
+
+Request body:
+- `firstName` required string, max 100 characters
+- `lastName` required string, max 100 characters
+
+Both fields are trimmed before persistence. Email, role, organization, and status cannot be changed through this endpoint.
+
+Success response `200`:
+- updated authenticated user summary using the same shape as `GET /api/v1/auth/me`
+
+Error responses:
+- `400` missing or invalid name fields
+- `401` caller is not authenticated or the authenticated user cannot be resolved
+
 ### `POST /api/v1/auth/change-password`
 Purpose: Change the current user's password, including the first-login Site Admin password change.
 
@@ -134,7 +150,7 @@ Error responses:
 - `403` caller is authenticated but not allowed to change the password in the current state
 
 ### `POST /api/v1/users/{userId}/temporary-password`
-Purpose: Later-phase admin-issued temporary password reset.
+Purpose: MVP/P1 admin-issued temporary password reset.
 
 Request body:
 - empty body or implementation-defined admin note
@@ -152,6 +168,50 @@ Behavior rules:
 - the temporary password is displayed one time only
 - the temporary password expires after 24 hours if unused
 - the user must change the password on first successful use
+
+### `POST /api/v1/auth/password-reset/request`
+Purpose: Post-MVP anonymous request for a self-service password-reset email.
+
+Request body:
+- `email` required string, valid email format
+
+Success response `202 Accepted`:
+- `message` string with the same generic wording for every syntactically valid request
+
+Behavior rules:
+- only active accounts with local-password credentials are eligible, including Site Admin and organization users
+- unknown, inactive, external-only, throttled, and eligible emails receive the same response
+- eligible requests send an unlinked anonymous reset-page URL containing a cryptographically random bearer token
+- issuing a new token invalidates every prior token for the account
+- the token expires after 24 hours and is single-use
+- delivery is limited to 3 requests per normalized email and 10 requests per source IP in a rolling 15-minute window
+- requests above either limit return the generic success response without sending an email
+- token values are not persisted in plaintext or included in logs, audit metadata, analytics, or responses
+
+Error responses:
+- `400` malformed request body, missing email, or invalid email format
+
+### `POST /api/v1/auth/password-reset/confirm`
+Purpose: Post-MVP anonymous completion of a self-service password reset using the emailed token.
+
+Request body:
+- `token` required string
+- `newPassword` required string
+- `confirmPassword` required string
+
+Success response:
+- `204 No Content`
+
+Behavior rules:
+- `newPassword` and `confirmPassword` must match
+- the new password must satisfy the existing authentication complexity policy
+- invalid, expired, superseded, and used tokens return the same invalid-link failure
+- a successful reset consumes the token and revokes all existing sessions for the account
+- the response does not authenticate the user; the client shows confirmation and returns to Login
+- token and plaintext password values are not persisted or included in logs, audit metadata, analytics, or error responses
+
+Error responses:
+- `400` malformed request, password mismatch, password-policy failure, or invalid-link failure
 
 ## Organization Contracts
 
@@ -528,12 +588,19 @@ Success response `200` paged item shape:
 - `boardId`
 - `title`
 - `priority` string
+- `ideaTypeId` GUID string
+- `ideaTypeName` string
+- `businessImpactId` GUID string
+- `businessImpactName` string
+- `businessImpactColor` string
 - `dueDate` date string (`YYYY-MM-DD`) or `null`
-- `assigneeUserId` GUID string or `null`
-- `assigneeDisplayName` string or `null`
+- `assignees` array with at most five items, ordered by `firstName`, then `lastName`; each item contains `userId`, `firstName`, `lastName`, `displayName`, and `isActive`; clients derive persona initials from the name fields
+- `tagNames` string array, ordered alphabetically
 - `statusId`
 - `statusName`
 - `upvoteCount`
+- `hasUpvoted` boolean for the current caller
+- `commentCount` integer
 - `authorUserId`
 - `createdAtUtc`
 
@@ -544,8 +611,10 @@ Request body:
 - `title` required string, max 150 characters
 - `description` required string, max 4000 characters
 - `priority` required string: `Low`, `Medium`, `High`, or `Critical`
+- `ideaTypeId` required GUID string referencing an active Idea Type in the board's organization
+- `businessImpactId` required GUID string referencing an active Business Impact in the board's organization
 - `dueDate` optional date string (`YYYY-MM-DD`)
-- `assigneeUserId` optional GUID string
+- `assigneeUserIds` optional array of zero to five distinct GUID strings; every user must be active and belong to the board's organization
 - `statusId` optional GUID string, defaults to the left-most swimlane when omitted
 - `tagNames` optional string array
 - `mentionEmails` optional string array
@@ -556,6 +625,8 @@ Success response `201`:
 - `statusId`
 - `title`
 - `priority`
+- `ideaTypeId`
+- `businessImpactId`
 - `dueDate`
 
 ### `GET /api/v1/ideas/{ideaId}`
@@ -567,15 +638,21 @@ Success response `200`:
 - `title`
 - `description`
 - `priority`
+- `ideaTypeId`
+- `ideaTypeName`
+- `businessImpactId`
+- `businessImpactName`
+- `businessImpactColor`
 - `dueDate`
-- `assigneeUserId`
-- `assigneeDisplayName`
+- `assignees` array using the board-list assignee item shape
 - `statusId`
 - `statusName`
 - `tagNames`
 - `mentions`
 - `comments`
 - `upvoteCount`
+- `hasUpvoted` boolean for the current caller
+- `commentCount` integer
 
 ### `PUT /api/v1/ideas/{ideaId}`
 Purpose: Update idea content.
@@ -584,15 +661,21 @@ Request body:
 - `title` required string, max 150 characters
 - `description` required string, max 4000 characters
 - `priority` required string: `Low`, `Medium`, `High`, or `Critical`
+- `ideaTypeId` required GUID string referencing an active Idea Type in the idea's organization
+- `businessImpactId` required GUID string referencing an active Business Impact in the idea's organization
 - `dueDate` optional date string (`YYYY-MM-DD`)
-- `assigneeUserId` optional GUID string
-- `tagNames` optional string array
+- `assigneeUserIds` optional array of zero to five distinct GUID strings; every newly selected user must be active and belong to the idea's organization
+- `tagNames` optional array of no more than 10 distinct normalized tag names
 - `mentionEmails` optional string array
 
 UI behavior contract:
-- board cards remain compact and show only `title`, `priority`, `assigneeDisplayName`, and upvote state.
+- board cards remain compact and show `title`, `priority`, Business Impact chip, the first three alphabetical `tagNames` plus tag overflow count, the first three ordered `assignees` plus assignee overflow count, viewer-local age derived from `createdAtUtc`, current-user upvote state/count, and comment count.
 - selecting the card title opens a detail overlay for full idea editing in context.
 - full idea editing in the overlay supports all editable idea fields and collaboration fields.
+- selecting the card comment action opens the detail overlay and focuses the comment composer.
+- description updates are accepted only from the idea author, an in-scope Org Admin, or Site Admin; unauthorized description changes return `403 Forbidden`.
+- assignee updates replace the complete collection atomically and are accepted only from the idea author, an in-scope Org Admin, or Site Admin; unauthorized assignment changes return `403 Forbidden`.
+- duplicate assignee IDs, more than five assignee IDs, inactive newly selected users, cross-organization users, or more than 10 distinct tags return `400 Bad Request`.
 
 ### `POST /api/v1/ideas/{ideaId}/status`
 Purpose: Move an idea to another board status.
@@ -602,6 +685,107 @@ Request body:
 
 Success response:
 - `204 No Content`
+
+### `DELETE /api/v1/ideas/{ideaId}`
+Purpose: Soft-delete an idea while preserving its row and audit history.
+
+Authorization:
+- Site Admin within the target resource context
+- Org Admin within their own organization
+
+Success response:
+- `204 No Content`
+
+Error responses:
+- `401` caller is not authenticated
+- `403` caller is not an authorized in-scope admin
+- `404` idea does not exist, is already deleted, or is outside caller scope
+
+Query behavior:
+- normal board, list, and detail endpoints exclude soft-deleted ideas
+- no restore endpoint is exposed in this release
+
+## Idea Field Option Contracts
+
+Idea Type and Business Impact are dedicated organization-scoped option collections. Active labels are trimmed, case-insensitively unique within their field and organization, and returned in ascending `sortOrder`. The first active option is the default. Every organization must retain at least one active option in each collection.
+
+### `GET /api/v1/organizations/{organizationId}/idea-types`
+Purpose: List active Idea Type options. Authorized admins may pass `includeDeleted=true` to include archived options.
+
+Success response `200` item shape:
+- `ideaTypeId` GUID string
+- `organizationId` GUID string
+- `name` string, max 100 characters
+- `sortOrder` integer
+- `isDeleted` boolean
+
+### `POST /api/v1/organizations/{organizationId}/idea-types`
+Purpose: Create an Idea Type option. Site Admin and in-scope Org Admin only.
+
+Request body:
+- `name` required string, max 100 characters
+- `sortOrder` required integer, zero or greater
+
+Success response: `201` Idea Type item
+
+### `PUT /api/v1/idea-types/{ideaTypeId}`
+Purpose: Rename or reorder an Idea Type option. Site Admin and in-scope Org Admin only.
+
+Request body:
+- `name` required string, max 100 characters
+- `sortOrder` required integer, zero or greater
+
+### `DELETE /api/v1/idea-types/{ideaTypeId}`
+Purpose: Soft-delete an Idea Type option. Reject deletion with `400` when it is the last active Idea Type in the organization.
+
+### `PUT /api/v1/organizations/{organizationId}/idea-types/reorder`
+Purpose: Atomically set the complete active Idea Type order. The first identifier becomes the default for future ideas.
+
+Request body:
+- `orderedIdeaTypeIds` required non-empty array of all active Idea Type GUIDs in the organization
+
+### `GET /api/v1/organizations/{organizationId}/business-impacts`
+Purpose: List active Business Impact options. Authorized admins may pass `includeDeleted=true` to include archived options.
+
+Success response `200` item shape:
+- `businessImpactId` GUID string
+- `organizationId` GUID string
+- `name` string, max 100 characters
+- `color` required string, CSS hex color in `#RRGGBB` format
+- `sortOrder` integer
+- `isDeleted` boolean
+
+### `POST /api/v1/organizations/{organizationId}/business-impacts`
+Purpose: Create a Business Impact option. Site Admin and in-scope Org Admin only.
+
+Request body:
+- `name` required string, max 100 characters
+- `color` required string in `#RRGGBB` format
+- `sortOrder` required integer, zero or greater
+
+Success response: `201` Business Impact item
+
+### `PUT /api/v1/business-impacts/{businessImpactId}`
+Purpose: Rename, recolor, or reorder a Business Impact option. Site Admin and in-scope Org Admin only.
+
+Request body:
+- `name` required string, max 100 characters
+- `color` required string in `#RRGGBB` format
+- `sortOrder` required integer, zero or greater
+
+### `DELETE /api/v1/business-impacts/{businessImpactId}`
+Purpose: Soft-delete a Business Impact option. Reject deletion with `400` when it is the last active Business Impact in the organization.
+
+### `PUT /api/v1/organizations/{organizationId}/business-impacts/reorder`
+Purpose: Atomically set the complete active Business Impact order. The first identifier becomes the default for future ideas.
+
+Request body:
+- `orderedBusinessImpactIds` required non-empty array of all active Business Impact GUIDs in the organization
+
+Option deletion behavior:
+- soft deletion preserves existing idea references and their prior labels
+- archived options cannot be assigned on create or update
+- existing ideas return archived option labels with an archived indicator
 
 ## Tag Contracts
 

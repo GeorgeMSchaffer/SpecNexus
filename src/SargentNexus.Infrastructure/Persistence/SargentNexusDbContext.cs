@@ -16,11 +16,17 @@ public sealed class SargentNexusDbContext : DbContext
 
     public DbSet<Status> Statuses => Set<Status>();
 
+    public DbSet<IdeaType> IdeaTypes => Set<IdeaType>();
+
+    public DbSet<BusinessImpact> BusinessImpacts => Set<BusinessImpact>();
+
     public DbSet<Board> Boards => Set<Board>();
 
     public DbSet<BoardSwimlane> BoardSwimlanes => Set<BoardSwimlane>();
 
     public DbSet<Idea> Ideas => Set<Idea>();
+
+    public DbSet<IdeaAssignee> IdeaAssignees => Set<IdeaAssignee>();
 
     public DbSet<Tag> Tags => Set<Tag>();
 
@@ -89,6 +95,41 @@ public sealed class SargentNexusDbContext : DbContext
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
+        modelBuilder.Entity<IdeaType>(entity =>
+        {
+            entity.ToTable("idea_types");
+            entity.HasKey(item => item.Id);
+            entity.Property(item => item.Name).HasMaxLength(100).IsRequired();
+            entity.Property(item => item.SortOrder).HasDefaultValue(0);
+            entity.Property(item => item.IsDeleted).HasDefaultValue(false);
+            entity.HasIndex(item => new { item.OrganizationId, item.Name })
+                .IsUnique()
+                .HasFilter("[IsDeleted] = 0");
+            entity.HasIndex(item => new { item.OrganizationId, item.SortOrder });
+            entity.HasOne(item => item.Organization)
+                .WithMany(item => item.IdeaTypes)
+                .HasForeignKey(item => item.OrganizationId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<BusinessImpact>(entity =>
+        {
+            entity.ToTable("business_impacts");
+            entity.HasKey(item => item.Id);
+            entity.Property(item => item.Name).HasMaxLength(100).IsRequired();
+            entity.Property(item => item.Color).HasMaxLength(7).IsRequired();
+            entity.Property(item => item.SortOrder).HasDefaultValue(0);
+            entity.Property(item => item.IsDeleted).HasDefaultValue(false);
+            entity.HasIndex(item => new { item.OrganizationId, item.Name })
+                .IsUnique()
+                .HasFilter("[IsDeleted] = 0");
+            entity.HasIndex(item => new { item.OrganizationId, item.SortOrder });
+            entity.HasOne(item => item.Organization)
+                .WithMany(item => item.BusinessImpacts)
+                .HasForeignKey(item => item.OrganizationId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
         modelBuilder.Entity<Board>(entity =>
         {
             entity.ToTable("boards");
@@ -138,13 +179,32 @@ public sealed class SargentNexusDbContext : DbContext
                 .WithMany(item => item.AuthoredIdeas)
                 .HasForeignKey(item => item.AuthorUserId)
                 .OnDelete(DeleteBehavior.Cascade);
-            entity.HasOne(item => item.AssigneeUser)
-                .WithMany(item => item.AssignedIdeas)
-                .HasForeignKey(item => item.AssigneeUserId)
+            entity.HasOne(item => item.IdeaType)
+                .WithMany(item => item.Ideas)
+                .HasForeignKey(item => item.IdeaTypeId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(item => item.BusinessImpact)
+                .WithMany(item => item.Ideas)
+                .HasForeignKey(item => item.BusinessImpactId)
                 .OnDelete(DeleteBehavior.Restrict);
             entity.HasOne(item => item.Status)
                 .WithMany(item => item.Ideas)
                 .HasForeignKey(item => item.StatusId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<IdeaAssignee>(entity =>
+        {
+            entity.ToTable("idea_assignees");
+            entity.HasKey(item => new { item.IdeaId, item.UserId });
+            entity.HasIndex(item => item.UserId);
+            entity.HasOne(item => item.Idea)
+                .WithMany(item => item.Assignees)
+                .HasForeignKey(item => item.IdeaId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(item => item.User)
+                .WithMany(item => item.IdeaAssignments)
+                .HasForeignKey(item => item.UserId)
                 .OnDelete(DeleteBehavior.Restrict);
         });
 

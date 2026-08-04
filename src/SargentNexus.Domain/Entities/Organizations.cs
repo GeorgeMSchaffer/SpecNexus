@@ -36,6 +36,10 @@ public sealed class Organization : EntityBase
 
     public ICollection<Status> Statuses { get; set; } = new List<Status>();
 
+    public ICollection<IdeaType> IdeaTypes { get; set; } = new List<IdeaType>();
+
+    public ICollection<BusinessImpact> BusinessImpacts { get; set; } = new List<BusinessImpact>();
+
     public ICollection<Board> Boards { get; set; } = new List<Board>();
 
     public ICollection<Idea> Ideas { get; set; } = new List<Idea>();
@@ -73,7 +77,7 @@ public sealed class User : EntityBase
 
     public ICollection<Idea> AuthoredIdeas { get; set; } = new List<Idea>();
 
-    public ICollection<Idea> AssignedIdeas { get; set; } = new List<Idea>();
+    public ICollection<IdeaAssignee> IdeaAssignments { get; set; } = new List<IdeaAssignee>();
 
     public ICollection<Comment> Comments { get; set; } = new List<Comment>();
 

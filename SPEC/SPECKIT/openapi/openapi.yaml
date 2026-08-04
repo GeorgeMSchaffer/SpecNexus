@@ -76,6 +76,8 @@ components:
       $ref: ./components/schemas/auth.yaml#/LoginSuccessResponse
     ChangePasswordRequest:
       $ref: ./components/schemas/auth.yaml#/ChangePasswordRequest
+    UpdateProfileRequest:
+      $ref: ./components/schemas/auth.yaml#/UpdateProfileRequest
     UserSummary:
       $ref: ./components/schemas/common.yaml#/UserSummary
     OrganizationCreateRequest:

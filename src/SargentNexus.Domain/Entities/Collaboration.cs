@@ -20,17 +20,25 @@ public sealed class Idea : AuditableEntityBase
 
     public IdeaPriority Priority { get; set; }
 
+    public Guid IdeaTypeId { get; set; }
+
+    public IdeaType IdeaType { get; set; } = null!;
+
+    public Guid BusinessImpactId { get; set; }
+
+    public BusinessImpact BusinessImpact { get; set; } = null!;
+
     public DateOnly? DueDate { get; set; }
-
-    public Guid? AssigneeUserId { get; set; }
-
-    public User? AssigneeUser { get; set; }
 
     public Guid StatusId { get; set; }
 
     public Status Status { get; set; } = null!;
 
     public bool IsDeleted { get; set; }
+
+    public DateTime? DeletedAtUtc { get; set; }
+
+    public Guid? DeletedByUserId { get; set; }
 
     public IdeaApprovalState ApprovalState { get; set; }
 
@@ -44,11 +52,24 @@ public sealed class Idea : AuditableEntityBase
 
     public ICollection<IdeaTag> IdeaTags { get; set; } = new List<IdeaTag>();
 
+    public ICollection<IdeaAssignee> Assignees { get; set; } = new List<IdeaAssignee>();
+
     public ICollection<Mention> Mentions { get; set; } = new List<Mention>();
 
     public ICollection<Comment> Comments { get; set; } = new List<Comment>();
 
     public ICollection<Upvote> Upvotes { get; set; } = new List<Upvote>();
+}
+
+public sealed class IdeaAssignee
+{
+    public Guid IdeaId { get; set; }
+
+    public Idea Idea { get; set; } = null!;
+
+    public Guid UserId { get; set; }
+
+    public User User { get; set; } = null!;
 }
 
 public sealed class Tag : EntityBase

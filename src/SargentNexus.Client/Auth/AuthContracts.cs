@@ -42,6 +42,13 @@ public sealed class ChangePasswordRequestDto
     public string NewPassword { get; set; } = string.Empty;
 }
 
+public sealed class UpdateProfileRequestDto
+{
+    public string FirstName { get; set; } = string.Empty;
+
+    public string LastName { get; set; } = string.Empty;
+}
+
 public sealed class SelfRegistrationRequestDto
 {
     public string InviteCode { get; set; } = string.Empty;

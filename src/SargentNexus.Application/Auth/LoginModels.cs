@@ -49,6 +49,28 @@ public sealed class ChangePasswordRequestModel
     public string NewPassword { get; set; } = string.Empty;
 }
 
+public sealed class UpdateProfileRequestModel
+{
+    private string _firstName = string.Empty;
+    private string _lastName = string.Empty;
+
+    [Required]
+    [MaxLength(100)]
+    public string FirstName
+    {
+        get => _firstName;
+        set => _firstName = value?.Trim() ?? string.Empty;
+    }
+
+    [Required]
+    [MaxLength(100)]
+    public string LastName
+    {
+        get => _lastName;
+        set => _lastName = value?.Trim() ?? string.Empty;
+    }
+}
+
 public enum LoginFailureReason
 {
     InvalidCredentials = 1,
@@ -137,6 +159,37 @@ public sealed class AuthenticatedUserModel
     public string Email { get; init; } = string.Empty;
 
     public string Status { get; init; } = string.Empty;
+}
+
+public enum UpdateProfileFailureReason
+{
+    UserNotFound = 1
+}
+
+public sealed class UpdateProfileResult
+{
+    private UpdateProfileResult(bool succeeded, AuthenticatedUserModel? response, UpdateProfileFailureReason? failureReason)
+    {
+        Succeeded = succeeded;
+        Response = response;
+        FailureReason = failureReason;
+    }
+
+    public bool Succeeded { get; }
+
+    public AuthenticatedUserModel? Response { get; }
+
+    public UpdateProfileFailureReason? FailureReason { get; }
+
+    public static UpdateProfileResult Success(AuthenticatedUserModel response)
+    {
+        return new UpdateProfileResult(true, response, null);
+    }
+
+    public static UpdateProfileResult Failure(UpdateProfileFailureReason reason)
+    {
+        return new UpdateProfileResult(false, null, reason);
+    }
 }
 
 public sealed class TemporaryPasswordResponseModel

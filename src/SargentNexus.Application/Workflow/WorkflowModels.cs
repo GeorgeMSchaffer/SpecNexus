@@ -210,17 +210,31 @@ public sealed class IdeaListItemModel
 
     public string Priority { get; init; } = string.Empty;
 
+    public Guid IdeaTypeId { get; init; }
+
+    public string IdeaTypeName { get; init; } = string.Empty;
+
+    public Guid BusinessImpactId { get; init; }
+
+    public string BusinessImpactName { get; init; } = string.Empty;
+
+    public string BusinessImpactColor { get; init; } = string.Empty;
+
     public DateOnly? DueDate { get; init; }
 
-    public Guid? AssigneeUserId { get; init; }
+    public IReadOnlyList<IdeaAssigneeSummaryModel> Assignees { get; init; } = Array.Empty<IdeaAssigneeSummaryModel>();
 
-    public string? AssigneeDisplayName { get; init; }
+    public IReadOnlyList<string> TagNames { get; init; } = Array.Empty<string>();
 
     public Guid StatusId { get; init; }
 
     public string StatusName { get; init; } = string.Empty;
 
     public int UpvoteCount { get; init; }
+
+    public bool HasUpvoted { get; init; }
+
+    public int CommentCount { get; init; }
 
     public Guid AuthorUserId { get; init; }
 
@@ -241,11 +255,19 @@ public sealed class IdeaDetailModel
 
     public string Priority { get; init; } = string.Empty;
 
+    public Guid IdeaTypeId { get; init; }
+
+    public string IdeaTypeName { get; init; } = string.Empty;
+
+    public Guid BusinessImpactId { get; init; }
+
+    public string BusinessImpactName { get; init; } = string.Empty;
+
+    public string BusinessImpactColor { get; init; } = string.Empty;
+
     public DateOnly? DueDate { get; init; }
 
-    public Guid? AssigneeUserId { get; init; }
-
-    public string? AssigneeDisplayName { get; init; }
+    public IReadOnlyList<IdeaAssigneeSummaryModel> Assignees { get; init; } = Array.Empty<IdeaAssigneeSummaryModel>();
 
     public Guid StatusId { get; init; }
 
@@ -268,6 +290,23 @@ public sealed class IdeaDetailModel
     public IReadOnlyList<CommentModel> Comments { get; init; } = Array.Empty<CommentModel>();
 
     public int UpvoteCount { get; init; }
+
+    public bool HasUpvoted { get; init; }
+
+    public int CommentCount { get; init; }
+}
+
+public sealed class IdeaAssigneeSummaryModel
+{
+    public Guid UserId { get; init; }
+
+    public string FirstName { get; init; } = string.Empty;
+
+    public string LastName { get; init; } = string.Empty;
+
+    public string DisplayName { get; init; } = string.Empty;
+
+    public bool IsActive { get; init; }
 }
 
 public sealed class IdeaWriteRequestModel
@@ -284,9 +323,15 @@ public sealed class IdeaWriteRequestModel
     [RegularExpression("Low|Medium|High|Critical")]
     public string Priority { get; set; } = string.Empty;
 
+    [Required]
+    public Guid IdeaTypeId { get; set; }
+
+    [Required]
+    public Guid BusinessImpactId { get; set; }
+
     public DateOnly? DueDate { get; set; }
 
-    public Guid? AssigneeUserId { get; set; }
+    public IReadOnlyList<Guid> AssigneeUserIds { get; set; } = Array.Empty<Guid>();
 
     public Guid? StatusId { get; set; }
 

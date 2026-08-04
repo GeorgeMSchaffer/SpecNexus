@@ -1,0 +1,20 @@
+.login-page {
+    display: flex;
+    justify-content: center;
+    padding-block: 2rem;
+}
+
+.login-card {
+    width: 50%;
+    padding: 2rem;
+    background: var(--sn-surface);
+    border: 1px solid var(--sn-line);
+    border-radius: 0.55rem;
+    box-shadow: var(--sn-shadow);
+}
+
+@media (max-width: 767.98px) {
+    .login-card {
+        width: 100%;
+    }
+}

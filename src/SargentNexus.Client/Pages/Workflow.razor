@@ -1,14 +1,15 @@
+@page "/board"
 @page "/workflow"
 @inject IAuthSessionService AuthSessionService
 @inject IClientErrorMessageService ErrorMessageService
 @inject NavigationManager NavigationManager
 @inject WorkflowApiClient WorkflowApiClient
 
-<PageTitle>Workflow</PageTitle>
+<PageTitle>Boards</PageTitle>
 
 <AuthGate>
     <div class="container py-4">
-        <h1 class="h3 mb-3">Workflow</h1>
+        <h1 class="h3 mb-3">Boards</h1>
 
         @if (_loading)
         {
@@ -57,7 +58,7 @@
     private bool _loading = true;
     private string? _errorMessage;
 
-    private void OpenBoard(Guid boardId) => NavigationManager.NavigateTo($"/workflow/{boardId}");
+    private void OpenBoard(Guid boardId) => NavigationManager.NavigateTo($"/board/{boardId}");
 
     protected override async Task OnInitializedAsync()
     {

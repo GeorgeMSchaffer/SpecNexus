@@ -53,6 +53,10 @@ Additional context:
 - Follow test standards from [.github/copilot-instructions.md](.github/copilot-instructions.md): Arrange/Act/Assert, clear test naming, boundary and invalid-state coverage, and isolated tests without external dependencies.
 - Do not add new packages without approval.
 
+## GIT
+	- Use branches for feature development, merge into dev once completed.
+	- Cleanup worktree's when done.
+
 ## Build
 
 Build the full solution:

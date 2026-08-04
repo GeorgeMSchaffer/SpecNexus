@@ -1,3 +1,4 @@
+@page "/board/{BoardId:guid}"
 @page "/workflow/{BoardId:guid}"
 @inject IAuthSessionService AuthSessionService
 @inject IClientErrorMessageService ErrorMessageService
@@ -7,29 +8,34 @@
 <PageTitle>@(_board?.Name ?? "Board")</PageTitle>
 
 <AuthGate>
-    <div class="container-fluid py-3">
-        <div class="d-flex align-items-center gap-3 mb-3 flex-wrap">
-            <NavLink class="btn btn-sm btn-outline-secondary" href="/workflow">← Boards</NavLink>
+    <main class="workflow-board workflow-board--@_boardStyle">
+        <header class="workflow-board__toolbar">
+            <NavLink class="workflow-board__back" href="/board" aria-label="Back to boards">←</NavLink>
 
             @if (_board is not null)
             {
-                <div>
-                    <h1 class="h4 mb-0">@_board.Name</h1>
-                    <span class="text-muted small">@(_board.AllowUserStatusUpdate ? "User-managed" : "Admin-managed")</span>
+                <div class="workflow-board__heading">
+                    <h1>@_board.Name</h1>
+                    <span>@(_board.AllowUserStatusUpdate ? "User-managed" : "Admin-managed") board</span>
                 </div>
             }
 
-            <div class="ms-auto">
+            <div class="workflow-board__actions">
+                <div class="board-style-picker" role="group" aria-label="Board style">
+                    <button type="button" class="@StyleButtonClass("jira")" aria-pressed="@(_boardStyle == "jira")" @onclick="SetJiraStyle">Jira</button>
+                    <button type="button" class="@StyleButtonClass("trello")" aria-pressed="@(_boardStyle == "trello")" @onclick="SetTrelloStyle">Trello</button>
+                    <button type="button" class="@StyleButtonClass("focus")" aria-pressed="@(_boardStyle == "focus")" @onclick="SetFocusStyle">Focus</button>
+                </div>
                 @if (CanCreateIdea)
                 {
-                    <button class="btn btn-primary btn-sm" @onclick="StartCreateIdea">+ New idea</button>
+                    <button class="workflow-board__new" @onclick="StartCreateIdea"><span aria-hidden="true">+</span> New idea</button>
                 }
             </div>
-        </div>
+        </header>
 
         @if (_loading)
         {
-            <div class="d-flex align-items-center gap-2 text-muted py-4">
+            <div class="workflow-board__message d-flex align-items-center gap-2 text-muted py-4">
                 <div class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></div>
                 <span>Loading board…</span>
             </div>
@@ -40,34 +46,57 @@
         }
         else if (_board is not null)
         {
+            <div class="workflow-board__controls">
+                <div class="workflow-board__search">
+                    <label for="board-search">Search ideas</label>
+                    <input id="board-search"
+                           type="search"
+                           @bind="_searchText"
+                           @bind:event="oninput"
+                           placeholder="Search title or assignee" />
+                </div>
+                <div class="board-filter-picker" role="group" aria-label="Filter ideas">
+                    <button type="button" class="@FilterButtonClass("all")" aria-pressed="@(_ideaFilter == "all")" @onclick="ShowAllIdeas">All</button>
+                    <button type="button" class="@FilterButtonClass("created")" aria-pressed="@(_ideaFilter == "created")" @onclick="ShowCreatedIdeas">Created by me</button>
+                    <button type="button" class="@FilterButtonClass("assigned")" aria-pressed="@(_ideaFilter == "assigned")" @onclick="ShowAssignedIdeas">Assigned to me</button>
+                </div>
+                <span class="workflow-board__result-count">@VisibleIdeaCount of @_ideasResult.Items.Count ideas</span>
+            </div>
+
             @if (_showCreateForm)
             {
-                <div class="card mb-4" style="max-width:600px">
-                    <div class="card-body">
-                        <h2 class="h6 mb-3">New idea</h2>
-                        <EditForm Model="_createForm" OnValidSubmit="SaveNewIdeaAsync">
+                <div class="workflow-board__create-backdrop" @onclick="CancelCreate"></div>
+                <aside class="workflow-board__create-form" role="dialog" aria-modal="true" aria-labelledby="new-idea-title" @onclick:stopPropagation="true">
+                    <header class="workflow-board__form-header">
+                        <div>
+                            <span>New card</span>
+                            <h2 id="new-idea-title">Create an idea</h2>
+                        </div>
+                        <button type="button" aria-label="Close new idea form" @onclick="CancelCreate">×</button>
+                    </header>
+                    <EditForm Model="_createForm" OnValidSubmit="SaveNewIdeaAsync" class="workflow-board__form">
                             <DataAnnotationsValidator />
-                            <div class="mb-3">
+                            <div class="workflow-board__field workflow-board__field--full">
                                 <label class="form-label">Title <span class="text-danger">*</span></label>
                                 <InputText class="form-control" @bind-Value="_createForm.Title" />
                                 <ValidationMessage For="() => _createForm.Title" />
                             </div>
-                            <div class="mb-3">
+                            <div class="workflow-board__field workflow-board__field--full">
                                 <label class="form-label">Description</label>
-                                <InputTextArea class="form-control" rows="3" @bind-Value="_createForm.Description" />
+                                <InputTextArea class="form-control" rows="5" @bind-Value="_createForm.Description" />
                             </div>
-                            <div class="row g-2 mb-3">
-                                <div class="col-sm-6">
+                            <div class="workflow-board__form-grid">
+                                <div class="workflow-board__field">
                                     <label class="form-label">Priority</label>
                                     <InputSelect class="form-select" @bind-Value="_createForm.Priority">
-                                        <option value="">-- none --</option>
+                                        <option value="">No priority</option>
                                         <option value="Low">Low</option>
                                         <option value="Medium">Medium</option>
                                         <option value="High">High</option>
                                         <option value="Critical">Critical</option>
                                     </InputSelect>
                                 </div>
-                                <div class="col-sm-6">
+                                <div class="workflow-board__field">
                                     <label class="form-label">Due date</label>
                                     <input type="date" class="form-control"
                                            value="@_createForm.DueDateString"
@@ -76,17 +105,16 @@
                             </div>
                             @if (!string.IsNullOrWhiteSpace(_createError))
                             {
-                                <div class="alert alert-danger py-2">@_createError</div>
+                                <div class="workflow-board__form-error" role="alert">@_createError</div>
                             }
-                            <div class="d-flex gap-2">
-                                <button class="btn btn-primary" type="submit" disabled="@_isSubmitting">
-                                    @(_isSubmitting ? "Creating…" : "Create")
-                                </button>
+                            <div class="workflow-board__form-actions">
                                 <button class="btn btn-outline-secondary" type="button" @onclick="CancelCreate">Cancel</button>
+                                <button class="btn btn-primary" type="submit" disabled="@_isSubmitting">
+                                    @(_isSubmitting ? "Creating…" : "Create idea")
+                                </button>
                             </div>
-                        </EditForm>
-                    </div>
-                </div>
+                    </EditForm>
+                </aside>
             }
 
             @if (_swimlanes.Count == 0)
@@ -99,24 +127,33 @@
             }
             else
             {
-                <div class="board-columns d-flex gap-3 overflow-auto pb-3">
+                <div class="board-stage">
+                <div class="board-columns">
                     @foreach (var swimlane in _swimlanes)
                     {
                         var laneIdeas = IdeasForSwimlane(swimlane.StatusId);
-                        <div class="board-column flex-shrink-0">
-                            <div class="board-column-header d-flex justify-content-between align-items-center mb-2 px-2">
-                                <span class="fw-semibold small text-uppercase text-muted">@swimlane.StatusName</span>
-                                <span class="badge text-bg-secondary rounded-pill">@laneIdeas.Count</span>
+                        <section class="board-column">
+                            <div class="board-column-header">
+                                <span class="board-column-title">@swimlane.StatusName</span>
+                                <span class="board-column-count">@laneIdeas.Count</span>
                             </div>
 
                             @if (laneIdeas.Count == 0)
                             {
-                                <div class="board-card-empty text-muted small px-2 py-3 text-center rounded border border-dashed">
-                                    No ideas here yet.
-                                    @if (CanCreateIdea)
+                                <div class="board-card-empty">
+                                    @if (HasActiveFilters)
                                     {
-                                        <br />
-                                        <button class="btn btn-link btn-sm p-0 mt-1" @onclick="StartCreateIdea">Add one</button>
+                                        <strong>No matching ideas</strong>
+                                        <span>Try another search or filter.</span>
+                                    }
+                                    else
+                                    {
+                                        <strong>No ideas here yet</strong>
+                                        <span>This lane is ready for its first idea.</span>
+                                        @if (CanCreateIdea)
+                                        {
+                                            <button type="button" @onclick="StartCreateIdea">Add an idea</button>
+                                        }
                                     }
                                 </div>
                             }
@@ -125,59 +162,63 @@
                                 @foreach (var idea in laneIdeas)
                                 {
                                     var ideaId = idea.IdeaId;
-                                    <div class="board-card card mb-2 shadow-sm" @onclick="() => OpenIdeaOverlay(ideaId)" style="cursor:pointer">
-                                        <div class="card-body py-2 px-3">
-                                            <div class="fw-semibold small mb-1 text-truncate" title="@idea.Title">@idea.Title</div>
-                                            <div class="d-flex gap-2 align-items-center">
+                                    <article class="board-card" tabindex="0" @onclick="() => OpenIdeaOverlay(ideaId)" @onkeydown="args => HandleCardKeyDown(args, ideaId)">
+                                        <div class="board-card__body">
+                                            <div class="board-card__title" title="@idea.Title">@idea.Title</div>
+                                            <div class="board-card__meta">
                                                 @if (!string.IsNullOrWhiteSpace(idea.Priority))
                                                 {
-                                                    <span class="badge @PriorityBadgeClass(idea.Priority) badge-sm">@idea.Priority</span>
+                                                    <span class="badge @PriorityBadgeClass(idea.Priority)">@idea.Priority</span>
                                                 }
                                                 @if (idea.DueDate is not null)
                                                 {
-                                                    <span class="text-muted extra-small">Due @idea.DueDate.Value.ToString("MMM d")</span>
+                                                    <span>Due @idea.DueDate.Value.ToString("MMM d")</span>
                                                 }
                                                 @if (idea.UpvoteCount > 0)
                                                 {
-                                                    <span class="ms-auto text-muted extra-small">▲ @idea.UpvoteCount</span>
+                                                    <span class="board-card__votes">▲ @idea.UpvoteCount</span>
                                                 }
                                             </div>
                                             @if (!string.IsNullOrWhiteSpace(idea.AssigneeDisplayName))
                                             {
-                                                <div class="text-muted extra-small mt-1">@idea.AssigneeDisplayName</div>
+                                                <div class="board-card__assignee"><span aria-hidden="true">@AssigneeInitials(idea.AssigneeDisplayName)</span>@idea.AssigneeDisplayName</div>
                                             }
                                         </div>
-                                    </div>
+                                    </article>
                                 }
                             }
-                        </div>
+                        </section>
                     }
+                </div>
                 </div>
             }
         }
-    </div>
+    </main>
 
     @* Idea detail overlay *@
     @if (_overlayIdeaId.HasValue)
     {
         <div class="idea-overlay-backdrop" @onclick="CloseOverlay"></div>
-        <div class="idea-overlay-panel" @onclick:stopPropagation="true">
-            <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
-                <h2 class="h5 mb-0">Idea Details</h2>
-                <div class="d-flex gap-2">
+        <aside class="idea-overlay-panel" role="dialog" aria-modal="true" aria-labelledby="idea-detail-title" @onclick:stopPropagation="true">
+            <header class="idea-overlay__header">
+                <div>
+                    <span>Board card</span>
+                    <h2 id="idea-detail-title">Idea details</h2>
+                </div>
+                <div class="idea-overlay__header-actions">
                     @if (_overlayIdea is not null)
                     {
-                        <a class="btn btn-outline-secondary btn-sm"
+                        <a class="idea-overlay__open"
                            href="/ideas/@_overlayIdea.IdeaId/edit"
-                           title="Open full edit page">Open ↗</a>
+                           title="Open full edit page">Open full view</a>
                     }
-                    <button class="btn btn-outline-secondary btn-sm" @onclick="CloseOverlay">✕</button>
+                    <button class="idea-overlay__close" aria-label="Close idea details" @onclick="CloseOverlay">×</button>
                 </div>
-            </div>
+            </header>
 
             @if (_overlayLoading)
             {
-                <div class="d-flex align-items-center gap-2 text-muted py-3">
+                <div class="idea-overlay__loading">
                     <div class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></div>
                     <span>Loading…</span>
                 </div>
@@ -188,18 +229,19 @@
             }
             else if (_overlayIdea is not null)
             {
-                <h3 class="h5 mb-1">@_overlayIdea.Title</h3>
-                <div class="text-muted small mb-3">
-                    Priority: @_overlayIdea.Priority
+                <div class="idea-overlay__content">
+                <h3 class="idea-overlay__title">@_overlayIdea.Title</h3>
+                <div class="idea-overlay__summary">
+                    <span class="idea-overlay__priority">@_overlayIdea.Priority</span>
                     @if (_overlayIdea.DueDate is not null)
                     {
-                        <span> · Due: @_overlayIdea.DueDate.Value.ToString("d")</span>
+                        <span>Due @_overlayIdea.DueDate.Value.ToString("MMM d, yyyy")</span>
                     }
                 </div>
 
-                <div class="mb-3">
-                    <label class="form-label fw-semibold">Status</label>
-                    <select class="form-select form-select-sm" value="@_overlaySelectedStatusId"
+                <div class="idea-overlay__field">
+                    <label for="idea-status">Status</label>
+                    <select id="idea-status" class="form-select" value="@_overlaySelectedStatusId"
                             @onchange="OverlayHandleStatusChangeAsync" disabled="@_overlaySubmitting">
                         @foreach (var swimlane in _swimlanes)
                         {
@@ -210,15 +252,15 @@
 
                 @if (!string.IsNullOrWhiteSpace(_overlayIdea.Description))
                 {
-                    <div class="mb-3">
-                        <div class="fw-semibold mb-1">Description</div>
-                        <p class="mb-0">@_overlayIdea.Description</p>
-                    </div>
+                    <section class="idea-overlay__section">
+                        <h4>Description</h4>
+                        <p>@_overlayIdea.Description</p>
+                    </section>
                 }
 
-                <div class="d-flex align-items-center gap-3 mb-3">
-                    <span class="badge text-bg-primary">▲ @_overlayIdea.UpvoteCount</span>
-                    <button class="btn btn-outline-primary btn-sm"
+                <div class="idea-overlay__engagement">
+                    <span>▲ @_overlayIdea.UpvoteCount upvotes</span>
+                    <button type="button"
                             @onclick="OverlayToggleUpvoteAsync"
                             disabled="@_overlaySubmitting">
                         @(_overlayHasUpvoted ? "Remove upvote" : "Upvote")
@@ -227,50 +269,53 @@
 
                 @if (_overlayIdea.TagNames.Count > 0)
                 {
-                    <div class="mb-3">
-                        <div class="fw-semibold mb-1">Tags</div>
-                        <div class="d-flex flex-wrap gap-1">
+                    <section class="idea-overlay__section">
+                        <h4>Tags</h4>
+                        <div class="idea-overlay__tags">
                             @foreach (var tag in _overlayIdea.TagNames)
                             {
-                                <span class="badge text-bg-light">@tag</span>
+                                <span>@tag</span>
                             }
                         </div>
-                    </div>
+                    </section>
                 }
 
-                <hr />
-                <h4 class="h6 mb-2">Comments</h4>
+                <section class="idea-overlay__comments">
+                <h4>Comments <span>@_overlayIdea.Comments.Count</span></h4>
                 @if (_overlayIdea.Comments.Count == 0)
                 {
-                    <p class="text-muted small mb-2">No comments yet.</p>
+                    <p class="idea-overlay__comments-empty">No comments yet. Start the conversation below.</p>
                 }
                 else
                 {
-                    <div class="list-group mb-3">
+                    <div class="idea-overlay__comment-list">
                         @foreach (var comment in _overlayIdea.Comments)
                         {
-                            <div class="list-group-item py-2 px-3">
-                                <div class="small text-muted">@comment.CreatedAtUtc.ToLocalTime().ToString("g")</div>
-                                <div>@comment.Body</div>
-                            </div>
+                            <article class="idea-overlay__comment">
+                                <time datetime="@comment.CreatedAtUtc.ToString("O")">@comment.CreatedAtUtc.ToLocalTime().ToString("MMM d · h:mm tt")</time>
+                                <p>@comment.Body</p>
+                            </article>
                         }
                     </div>
                 }
 
-                <EditForm Model="_overlayComment" OnValidSubmit="OverlayAddCommentAsync">
+                <EditForm Model="_overlayComment" OnValidSubmit="OverlayAddCommentAsync" class="idea-overlay__composer">
                     <DataAnnotationsValidator />
-                    <div class="mb-2">
-                        <InputTextArea class="form-control form-control-sm" rows="2"
+                    <div>
+                        <label for="idea-comment">Add a comment</label>
+                        <InputTextArea id="idea-comment" class="form-control" rows="3"
                                        placeholder="Add a comment…"
                                        @bind-Value="_overlayComment.Body" />
                         <ValidationMessage For="() => _overlayComment.Body" />
                     </div>
-                    <button class="btn btn-primary btn-sm" type="submit" disabled="@_overlaySubmitting">
+                    <button type="submit" disabled="@_overlaySubmitting">
                         @(_overlaySubmitting ? "Posting…" : "Post")
                     </button>
                 </EditForm>
+                </section>
+                </div>
             }
-        </div>
+        </aside>
     }
 </AuthGate>
 
@@ -285,6 +330,9 @@
     private bool _loading = true;
     private bool _isSubmitting;
     private bool _showCreateForm;
+    private string _boardStyle = "jira";
+    private string _ideaFilter = "all";
+    private string _searchText = string.Empty;
     private string? _errorMessage;
     private string? _createError;
     private CreateIdeaFormModel _createForm = new();
@@ -355,8 +403,62 @@
         }
     }
 
+    private bool HasActiveFilters => _ideaFilter != "all" || !string.IsNullOrWhiteSpace(_searchText);
+
+    private int VisibleIdeaCount => _ideasResult.Items.Count(MatchesActiveFilters);
+
     private List<IdeaListItemDto> IdeasForSwimlane(Guid statusId) =>
-        _ideasResult.Items.Where(i => i.StatusId == statusId).ToList();
+        _ideasResult.Items.Where(idea => idea.StatusId == statusId && MatchesActiveFilters(idea)).ToList();
+
+    private bool MatchesActiveFilters(IdeaListItemDto idea)
+    {
+        var currentUserId = AuthSessionService.User?.UserId;
+        var matchesPersonalFilter = _ideaFilter switch
+        {
+            "created" => currentUserId.HasValue && idea.AuthorUserId == currentUserId.Value,
+            "assigned" => currentUserId.HasValue && idea.AssigneeUserId == currentUserId.Value,
+            _ => true
+        };
+
+        if (!matchesPersonalFilter || string.IsNullOrWhiteSpace(_searchText))
+        {
+            return matchesPersonalFilter;
+        }
+
+        var searchText = _searchText.Trim();
+        return idea.Title.Contains(searchText, StringComparison.OrdinalIgnoreCase)
+            || (idea.AssigneeDisplayName?.Contains(searchText, StringComparison.OrdinalIgnoreCase) ?? false)
+            || (idea.AuthorDisplayName?.Contains(searchText, StringComparison.OrdinalIgnoreCase) ?? false);
+    }
+
+    private void ShowAllIdeas() => _ideaFilter = "all";
+
+    private void ShowCreatedIdeas() => _ideaFilter = "created";
+
+    private void ShowAssignedIdeas() => _ideaFilter = "assigned";
+
+    private string FilterButtonClass(string filter) =>
+        _ideaFilter == filter ? "board-filter-picker__button is-active" : "board-filter-picker__button";
+
+    private void SetJiraStyle() => _boardStyle = "jira";
+
+    private void SetTrelloStyle() => _boardStyle = "trello";
+
+    private void SetFocusStyle() => _boardStyle = "focus";
+
+    private string StyleButtonClass(string style) =>
+        _boardStyle == style ? "board-style-picker__button is-active" : "board-style-picker__button";
+
+    private static string AssigneeInitials(string displayName) =>
+        string.Concat(displayName.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(part => char.ToUpperInvariant(part[0])));
+
+    private async Task HandleCardKeyDown(KeyboardEventArgs args, Guid ideaId)
+    {
+        if (args.Key is "Enter" or " ")
+        {
+            await OpenIdeaOverlay(ideaId);
+        }
+    }
 
     private async Task OpenIdeaOverlay(Guid ideaId)
     {

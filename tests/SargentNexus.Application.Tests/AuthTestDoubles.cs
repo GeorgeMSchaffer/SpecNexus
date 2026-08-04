@@ -164,6 +164,8 @@ internal sealed class FakeAuthAuditWriter : IAuthAuditWriter
 
     public List<User> PasswordChanges { get; } = new();
 
+    public List<User> ProfileUpdates { get; } = new();
+
     public List<(Guid? UserId, Guid? OrganizationId, string Reason)> PasswordChangeFailures { get; } = new();
 
     public List<(Guid ActorUserId, User TargetUser)> TemporaryPasswordIssuedEvents { get; } = new();
@@ -183,6 +185,12 @@ internal sealed class FakeAuthAuditWriter : IAuthAuditWriter
     public Task WritePasswordChangedAsync(User user, CancellationToken cancellationToken)
     {
         PasswordChanges.Add(user);
+        return Task.CompletedTask;
+    }
+
+    public Task WriteProfileUpdatedAsync(User user, CancellationToken cancellationToken)
+    {
+        ProfileUpdates.Add(user);
         return Task.CompletedTask;
     }
 

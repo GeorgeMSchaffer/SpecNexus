@@ -81,6 +81,35 @@ public sealed class AuthController : ApiControllerBase
         return Ok(currentUser);
     }
 
+    [HttpPut("/api/v1/auth/me")]
+    [ProducesResponseType(typeof(AuthenticatedUserModel), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> UpdateMe([FromBody] UpdateProfileRequestModel request, CancellationToken cancellationToken)
+    {
+        var userId = GetCurrentUserId();
+
+        if (!userId.HasValue)
+        {
+            return Problem(
+                statusCode: StatusCodes.Status401Unauthorized,
+                title: "Authentication required.",
+                detail: "A valid bearer token is required.");
+        }
+
+        var result = await _authAccountService.UpdateProfileAsync(userId.Value, request, cancellationToken);
+
+        if (!result.Succeeded)
+        {
+            return Problem(
+                statusCode: StatusCodes.Status401Unauthorized,
+                title: "Authentication required.",
+                detail: "The authenticated user could not be resolved.");
+        }
+
+        return Ok(result.Response);
+    }
+
     [HttpPost("/api/v1/auth/change-password")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]

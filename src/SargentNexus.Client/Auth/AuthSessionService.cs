@@ -167,6 +167,33 @@ public sealed class AuthSessionService : IAuthSessionService
         NotifyStateChanged();
     }
 
+    public async Task UpdateProfileAsync(string firstName, string lastName, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(_accessToken))
+        {
+            throw new InvalidOperationException("Cannot update a profile without an authenticated session.");
+        }
+
+        var updatedUser = await _authApiClient.UpdateProfileAsync(_accessToken, new UpdateProfileRequestDto
+        {
+            FirstName = firstName,
+            LastName = lastName
+        }, cancellationToken);
+
+        _user = new LoginUserDto
+        {
+            UserId = updatedUser.UserId,
+            OrganizationId = updatedUser.OrganizationId,
+            Role = updatedUser.Role,
+            FirstName = updatedUser.FirstName,
+            LastName = updatedUser.LastName,
+            Email = updatedUser.Email,
+            Status = updatedUser.Status
+        };
+        await PersistSessionAsync();
+        NotifyStateChanged();
+    }
+
     public async Task LogoutAsync()
     {
         await ClearSessionAsync();

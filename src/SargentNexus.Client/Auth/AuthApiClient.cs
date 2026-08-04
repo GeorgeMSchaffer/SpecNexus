@@ -45,6 +45,25 @@ public sealed class AuthApiClient
         throw await CreateExceptionAsync(response, cancellationToken);
     }
 
+    public async Task<AuthenticatedUserDto> UpdateProfileAsync(string accessToken, UpdateProfileRequestDto request, CancellationToken cancellationToken)
+    {
+        using var message = new HttpRequestMessage(HttpMethod.Put, "api/v1/auth/me")
+        {
+            Content = JsonContent.Create(request)
+        };
+        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+
+        using var response = await _httpClient.SendAsync(message, cancellationToken);
+
+        if (response.IsSuccessStatusCode)
+        {
+            var payload = await response.Content.ReadFromJsonAsync<AuthenticatedUserDto>(cancellationToken: cancellationToken);
+            return payload ?? throw new AuthApiException(500, "Invalid profile response.", "The profile update response was empty.");
+        }
+
+        throw await CreateExceptionAsync(response, cancellationToken);
+    }
+
     public async Task<AuthenticatedUserDto?> GetCurrentUserAsync(string accessToken, CancellationToken cancellationToken)
     {
         using var message = new HttpRequestMessage(HttpMethod.Get, "api/v1/auth/me");

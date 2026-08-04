@@ -6,6 +6,48 @@ namespace SargentNexus.Application.Tests;
 public sealed class AuthAccountServiceTests
 {
     [Fact]
+    public async Task UpdateProfile_WhenUserExists_TrimsPersistsAndAuditsNames()
+    {
+        var user = TestUsers.CreateDefault();
+        var lookup = new FakeAuthUserLookup(usersById: new[] { user });
+        var audit = new FakeAuthAuditWriter();
+        var service = CreateService(lookup, audit);
+
+        var result = await service.UpdateProfileAsync(user.Id, new UpdateProfileRequestModel
+        {
+            FirstName = "  Ada ",
+            LastName = " Lovelace  "
+        }, CancellationToken.None);
+
+        Assert.True(result.Succeeded);
+        Assert.Equal("Ada", user.FirstName);
+        Assert.Equal("Lovelace", user.LastName);
+        Assert.Equal("Ada", result.Response!.FirstName);
+        Assert.Equal("Lovelace", result.Response.LastName);
+        Assert.Equal(1, lookup.SaveChangesCallCount);
+        Assert.Single(audit.ProfileUpdates);
+    }
+
+    [Fact]
+    public async Task UpdateProfile_WhenUserIsMissing_ReturnsUserNotFoundWithoutSaving()
+    {
+        var lookup = new FakeAuthUserLookup();
+        var audit = new FakeAuthAuditWriter();
+        var service = CreateService(lookup, audit);
+
+        var result = await service.UpdateProfileAsync(Guid.NewGuid(), new UpdateProfileRequestModel
+        {
+            FirstName = "Ada",
+            LastName = "Lovelace"
+        }, CancellationToken.None);
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(UpdateProfileFailureReason.UserNotFound, result.FailureReason);
+        Assert.Equal(0, lookup.SaveChangesCallCount);
+        Assert.Empty(audit.ProfileUpdates);
+    }
+
+    [Fact]
     public async Task GivenMissingActor_WhenIssueTemporaryPassword_ThenForbidden()
     {
         var target = TestUsers.CreateDefault();

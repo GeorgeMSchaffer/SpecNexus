@@ -1,7 +1,7 @@
 # Feature: Boards and Statuses
 
 ## Outcome
-Organizations can manage idea boards using configurable workflow swimlanes.
+Organizations can manage idea boards using configurable status swimlanes.
 
 ## Status Rules
 1. Statuses are defined at the organization level.
@@ -29,6 +29,9 @@ Organizations can manage idea boards using configurable workflow swimlanes.
 6. Swimlane order changes are saved immediately when the drag-and-drop action completes.
 7. Board views must provide guided empty states with a primary action and short explanatory text when no ideas exist.
 8. In Development, each seeded demo organization includes one example board with at least one idea in each default swimlane.
+9. User-facing copy uses `Board` or `Boards`, never `Workflow` or `Workflows`.
+10. The canonical client routes are `/boards` for the board list and `/board/{boardId}` for board detail. `/board`, `/workflow`, `/workflows`, and `/workflow/{boardId}` redirect to the corresponding canonical route.
+11. Internal application service and namespace names may retain `Workflow` where they are not user-visible.
 
 ## Approval Workflow Decisions (Post-MVP — Deferred)
 The following decisions apply to a future post-MVP approval workflow for board status transitions. **None of these behaviors are implemented in MVP.**
@@ -53,3 +56,5 @@ When implemented:
 - [ ] Development startup seed includes one example board per demo organization
 - [ ] Each seeded example board includes ideas across every default swimlane
 - [ ] Site Admin and Org Admin can bulk-import ideas from a CSV file
+- [ ] User-facing navigation, headings, actions, and messages use Board terminology
+- [ ] `/boards` and `/board/{boardId}` are canonical and legacy Workflow routes redirect without data loss

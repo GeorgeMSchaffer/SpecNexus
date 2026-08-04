@@ -17,18 +17,24 @@ SargentNexus is a collaboration and project management tool for submitting, trac
 - Organizations can upload one logo at a time from the organization edit form; uploading a new logo replaces the previous logo.
 - Statuses are organization-scoped.
 - Tags are organization-scoped.
+- An idea can have up to 10 distinct organization-scoped tags. Users authorized to edit an idea can select existing tags or create reusable tags inline.
 - Read Only users can comment and upvote, but cannot edit ideas or board configuration.
 - In Development, startup seed creates a demo environment with 3 organizations, each containing Org Admin, User, and Read Only accounts initialized with temporary password `abc123!` and forced password change on first login.
 - In Development, each seeded demo organization includes one example board with ideas across every default swimlane, plus example comments and description-based spec content.
-- Ideas require a priority (`Low`, `Medium`, `High`, `Critical`) and may optionally include a due date.
-- Board cards are compact and display title (clickable), priority, assigned-to, and upvote state. Clicking the card title opens an in-context detail overlay for full editing (title, priority, due date, description, assignee, tags, mentions, comments); no page navigation occurs. The overlay provides Cancel, Save Idea, and Move in Board actions.
-- The `/ideas` page is a Kanban swimlane board. Ideas are shown as compact cards grouped by the selected board's statuses. The board picker defaults to the first board and persists selection in `localStorage`. A primary New Idea button in the board header (hidden for ReadOnly) opens the overlay in create mode. Search filters by title, tag, or assignee (client-side). Filter chips (All / Created by me / Assigned to me) are combinable with search. Dragging a card to another column moves the idea's status to the target swimlane's status (optimistic UI, reverts on failure). SiteAdmin and OrgAdmin users may reorder columns by drag; reorder saves immediately on drop. User and ReadOnly users cannot reorder columns.
+- Ideas require Priority, an organization-configured Idea Type, and an organization-configured Business Impact; due date remains optional.
+- Every organization retains at least one active Idea Type and one active Business Impact. Admins control option sort order, the first active option is the default, and option deletion is soft-delete only.
+- Idea assignment is optional and supports up to five distinct users. Newly selected assignees must be active users in the idea's organization; inactive historical assignees remain visible but cannot be newly selected. The idea author and in-scope admins can change assignments.
+- Board cards are compact and display title, priority, Business Impact chip, up to three tags plus `+N`, up to three assigned-user personas plus `+N`, viewer-local submission age, current-user upvote state/count, and comment count. Clicking the title opens Idea Detail; clicking comments opens Idea Detail focused on the comment composer.
+- `/boards` is the canonical board list and `/board/{boardId}` is the canonical swimlane view. User-facing copy uses Board terminology; singular-list and legacy Workflow routes redirect to canonical routes.
+- Desktop card drag uses a dedicated handle, moves the idea optimistically, and reverts on failure. Changing status in Idea Detail moves the visible card immediately. Keyboard and touch users use the Idea Detail status selector.
+- Idea authors and in-scope admins can edit descriptions. Only in-scope Org Admins and Site Admins can soft-delete ideas; deleted ideas are excluded from normal queries and restore is deferred.
 - OAuth implementation is scheduled for post-MVP Phase 2, with SAML scheduled in a subsequent post-OAuth phase.
 
 ## UI Shell Rules
 - Every screen includes a persistent header with primary blue background, logo at top-left, and global actions.
 - The header reserves a `150px` brand zone on the left for logo and product identity.
 - Every screen includes role-aware primary navigation in a consistent location.
+- The selected primary-navigation item uses a flat rectangular active background and stronger text/icon color. It has no border radius, no active left border, and retains `aria-current="page"` plus a visible keyboard focus outline. This rule does not apply to tabs, pivots, filter chips, or segmented controls.
 - The header includes a logout icon action.
 - Admin-authorized users see a gear icon action in the header that navigates to the Admin homepage.
 - Breadcrumb navigation appears immediately below the header and reflects current location with upward navigation.
@@ -45,8 +51,11 @@ SargentNexus is a collaboration and project management tool for submitting, trac
 | Import users by CSV (authorized orgs) | ✓ | ✓ | | |
 | Create/manage boards | ✓ | ✓ | | |
 | Manage statuses | ✓ | ✓ | | |
+| Manage Idea Type and Business Impact options | ✓ | ✓ | | |
 | View boards and ideas | ✓ | ✓ | ✓ | ✓ |
 | Create/edit ideas | ✓ | ✓ | ✓ | |
+| Edit idea description | ✓ | ✓ | Author only | |
+| Change idea assignees | ✓ | ✓ | Author only | |
 | Delete ideas (soft) | ✓ | ✓ | | |
 | Bulk CSV import ideas | ✓ | ✓ | | |
 | Update idea status | ✓ | ✓ | ✓* | |

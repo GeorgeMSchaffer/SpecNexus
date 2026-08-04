@@ -66,8 +66,11 @@ Tasks:
 - force first-login password change for the seeded Site Admin
 - emit audit events for login outcomes and password actions
 
-Follow-up:
-- add admin-issued temporary password reset
+MVP/P1 extension:
+- retain the implemented admin-issued temporary password reset
+
+Post-MVP follow-up:
+- post-MVP: add self-service reset by private 24-hour email link with generic responses, request throttling, replay prevention, and session revocation
 
 Exit criteria:
 - login success, invalid credentials, inactive account, and lockout flows work end-to-end
@@ -127,6 +130,9 @@ Tasks:
 - enforce minimum two swimlanes per board
 - support board subsets of organization statuses
 - implement immediate swimlane reorder persistence
+- implement organization-scoped Idea Type and Business Impact option CRUD, ordering, and soft deletion
+- seed canonical option sets and use the first active option by sort order as the default
+- reject deletion of the last active option and preserve archived references on existing ideas
 
 Exit criteria:
 - new organizations have a usable default board and status set
@@ -148,6 +154,9 @@ Suggested sequencing by team:
 Tasks:
 - implement idea create, edit, detail, list, and status update flows
 - implement idea soft-delete for Site Admin and Org Admin; soft-deleted ideas excluded from board views and list queries
+- persist deletion actor/time metadata; keep restore deferred
+- add required Idea Type and Business Impact relationships and backfill existing ideas
+- restrict description edits to the idea author and in-scope admins
 - implement bulk CSV import: whole-file validation, 500-row limit, in-file duplicate detection, board-duplicate skipping, transactional creation, dual audit events
 - enforce title and description constraints
 - default new idea status to the left-most board swimlane when not supplied
@@ -156,6 +165,7 @@ Tasks:
 - implement email-based mention resolution for ideas and comments
 - implement comment create, edit, delete, and chronological retrieval
 - implement upvote toggle with one active upvote per user per idea
+- include Business Impact chip data, comment count, and current-user upvote state in board projections
 - allow board-configured user status changes for any idea on the board
 - keep completed ideas editable and collaborative
 - emit audit events for idea lifecycle actions
@@ -208,7 +218,7 @@ Tasks:
 - set header background to `rgb(33, 37, 41)`; render username in white
 - move sign-out to an icon button immediately left of the username display
 - add gear icon to header that navigates to `/settings`
-- replace vertical sidebar nav with a horizontal menu under the header: Home, Workflow, Ideas only
+- replace visible Workflow terminology with Board/Boards; use canonical `/boards` and `/board/{boardId}` routes with compatibility redirects
 
 **Settings area (formerly Admin):**
 - rename all Admin routes to `/settings/...`, page titles to "Settings", and gear icon tooltip to "Settings"
@@ -221,21 +231,38 @@ Tasks:
   - clicking Edit or Create swaps to form view; saving or cancelling returns to list with list refreshed
 - display invite code in organization list and detail; provide regenerate action for admins
 
-**Workflow page:**
-- restrict the Workflow page to a board list only (remove all non-list content)
+**Boards page:**
+- restrict the Boards page to a board list only (remove all non-list content)
 - clicking a board navigates to that board's swimlane/kanban view
 
-**Ideas page (Kanban board):**
-- build `/ideas` page as a Kanban swimlane board
-- add board picker dropdown in page header; default to first board; persist selection in `localStorage` (key: `ideas-board-id`)
+**Board detail (Kanban board):**
+- build `/board/{boardId}` as the canonical Kanban swimlane board
 - render one column per status on the selected board, ordered by `Status.SortOrder`; horizontal scroll on overflow
-- render compact idea cards showing title (clickable), priority badge, assignee name, and upvote count
-- clicking a card title opens an in-context detail overlay (no page navigation); overlay fields: title, priority, due date, description, assignee, tags, mentions, comments; overlay actions: Cancel, Save Idea, Move in Board
+- restyle the Board detail hierarchy, full-height lanes, density, cards, tag rows, persona footers, and age placement from `mockups/sprint-management/idea-board.html`; preserve configured statuses and approved controls, excluding demo-only pivots, conversion actions, duplicate commands, and sprint features
+- render compact idea cards showing title, priority, Business Impact chip, first three alphabetical tags plus `+N`, first three ordered assignee personas plus `+N`, viewer-local submission age, current-user upvote control/count, and comment control/count
+- clicking a card title opens an in-context detail overlay (no page navigation); overlay fields: title, priority, due date, description, zero-to-five assignees, zero-to-10 tags, mentions, comments; overlay actions: Cancel, Save Idea, Move in Board
 - add primary **New Idea** button in board header that opens overlay in create mode (hidden for ReadOnly users)
 - add filter chips (All / Created by me / Assigned to me) and search input (filters by title, tag, or assignee, client-side); filtering is combinable; empty columns remain visible with "No ideas" placeholder
-- implement card drag-and-drop: optimistic column move, idea status set to target swimlane's status, call `POST /api/v1/ideas/{ideaId}/status`, revert on failure with error toast
+- implement card drag-and-drop from a dedicated handle: optimistic column move, one status call, revert on failure with error toast
+- immediately relocate a card when status changes in Idea Detail without waiting for overlay close
+- open and focus comments from the card comment action; implement optimistic upvote state/count with rollback
+- add role-aware description editing and confirmed admin-only soft delete
 - implement column reorder drag for SiteAdmin and OrgAdmin: optimistic reorder, saves immediately on drop, call `PUT /api/v1/boards/{boardId}/statuses/{statusId}` per changed status, revert all on failure with error toast
 - implement components in `src/SargentNexus.Client/Shared/Kanban/`: `IdeaKanbanBoard.razor`, `KanbanColumn.razor`, `IdeaCard.razor`
+- add `IdeaAssignee` persistence and migrate every valid singular assignment before dropping the old `AssigneeUserId` relationship
+- replace singular assignee contracts with bounded collections; validate distinct active same-organization users, enforce author/admin assignment permission, update notifications/audit/CSV, and make Assigned to me use collection membership
+- implement searchable tag selection/creation with organization-scoped normalization and a 10-tag limit
+- render persona initials from first and last name followed by first name, with full accessible names and missing-name fallback
+- calculate age from viewer-local calendar dates with zero/singular/plural formatting and future clamping through a testable clock boundary
+
+**Primary navigation:**
+- remove border radius and the active left border from the selected primary-navigation item; use a flat selected background and stronger text/icon color while preserving `aria-current` and keyboard focus styling
+- leave tabs, pivots, filter chips, and segmented controls unchanged
+
+**Idea Fields settings:**
+- add `/settings/organizations/{orgId}/idea-fields` for Site Admin and in-scope Org Admin
+- manage separate sortable Idea Type and Business Impact lists; Business Impact includes editable chip color
+- block deletion of the last active option and show archived options without allowing new assignment
 
 **Uniform list conventions (all list pages):**
 - add a uniform search bar above every entity list
@@ -253,8 +280,8 @@ Tasks:
 Exit criteria:
 - all bug fixes from SPEC/20-feature-client-ui-revisions.md verified as resolved
 - header, horizontal menu, gear icon, and Settings area match the approved layout spec
-- Workflow page shows only a board list; clicking opens the swimlane view
-- Ideas page Kanban board is functional: board picker, compact cards (title/priority/assignee/upvote), title-click opens in-context overlay, New Idea button, search by title/tag/assignee, filter chips, card drag-to-move with immediate status update and rollback, admin column reorder with immediate-save and rollback
+- Boards page shows only a board list; clicking opens `/board/{boardId}`
+- Board detail is functional: expanded compact cards, title-click overlay, New Idea, search/filter, dedicated-handle drag with rollback, immediate overlay status movement, upvote/comment actions, and admin column reorder
 - all list pages have uniform search bar and server-side pagination with correct page sizes
 - no Admin-labeled routes, titles, or text remain
 

@@ -34,11 +34,11 @@ Defines a batch of client UI bug fixes and structural revisions covering layout,
 
 ### Menu
 - The primary menu is horizontal and sits directly under the main header (no vertical sidebar nav).
-- Menu items: Home, Workflows, Ideas.
+- Menu items: Home, Boards, Ideas.
 - Admin functionality is NOT in the horizontal menu; it is reached only via the header gear icon.
 - Change Password is NOT in the menu; it is accessible only from Settings → My Profile.
 - The protected menu is shown only for authenticated users with access to protected routes.
-- Menu links navigate to list-entry pages: Home (`/`), Workflows (`/workflow`), Ideas (`/ideas`).
+- Menu links navigate to list-entry pages: Home (`/`), Boards (`/board`), Ideas (`/ideas`).
 
 ### Unauthenticated and Unauthorized Shell
 - Unauthenticated users can access `/login` and `/register`.
@@ -121,9 +121,9 @@ Applies to Settings pages for Organizations, Users, and Boards & Statuses.
 > - `Board.IsArchived` (bool) — EF migration: `AddBoardIsArchived`
 > - `Status.Color` (string?, max 20), `Status.SortOrder` (int), `Status.IsDefault` (bool) — EF migration: `AddStatusListFields`
 
-## Workflow Page
+## Boards Page
 
-- The Workflow page displays ONLY a list of boards the user can access.
+- The Boards page displays ONLY a list of boards the user can access.
 - Columns: Name, Board Type, Status (Active/Archived).
 - Clicking a board row navigates to that board's swimlane/kanban view.
 
@@ -141,7 +141,7 @@ Applies to Settings pages for Organizations, Users, and Boards & Statuses.
 - The Home page becomes a lightweight authenticated dashboard rather than placeholder template content.
 - Initial MVP dashboard sections:
   - Welcome summary (user name + role).
-  - Quick actions: Workflows, Ideas, Settings.
+  - Quick actions: Boards, Ideas, Settings.
   - At-a-glance counts: accessible boards, ideas created by me, ideas assigned to me.
 - Dashboard data should use existing list/service endpoints where possible and degrade gracefully to zero/empty messaging when data is unavailable.
 - Dashboard follows the same role-aware visibility conventions as the rest of the authenticated shell.
@@ -163,14 +163,14 @@ Applies to Organizations, Users, Ideas, Boards, and any future entity list page.
 - [ ] Header uses `rgb(33, 37, 41)`; Username is white; Sign Out icon sits left of the Username.
 - [ ] Sign Out icon routes through `/logout` and returns the user to `/login`.
 - [ ] Unauthenticated shell shows only Login and Register links.
-- [ ] Horizontal menu under the header shows Home, Workflows, Ideas only for authenticated users.
+- [ ] Horizontal menu under the header shows Home, Boards, Ideas only for authenticated users.
 - [ ] Change Password is accessible only from Settings → My Profile (embedded section); no standalone nav link exists.
 - [ ] Gear icon navigates to `/settings`; area is titled "Settings" everywhere; old `/admin` routes return 404.
 - [ ] Settings landing shows My Profile for all users and role-correct admin links (Site Admin: Orgs/Users/Boards & Statuses; Org Admin: Users/Boards & Statuses own-org; Member: none).
 - [ ] Admin-style pages default to list view; Edit/Create swaps to form view and returns to list on save/cancel.
 - [ ] Org list shows Company, Description, City, State, Phone, Invite Code; search covers those 6 columns; no Status column.
 - [ ] Users list shows Name, Email, Role, Organization (Site Admin only), Status; all searchable.
-- [ ] Boards list on Workflow page shows Name, Board Type, Status; clicking a board opens its swimlane view.
+- [ ] Boards list page shows Name, Board Type, Status; clicking a board opens `/board/{id}` for its swimlane view.
 - [ ] Boards & Statuses Settings page shows boards list (Name/Board Type/Status) and statuses list (Name/Color/Sort Order/Is Default) — pending domain additions for `Board.IsArchived`, `Status.Color`, `Status.SortOrder`, `Status.IsDefault`.
 - [ ] Ideas page (`/ideas`) lists combined created-by/assigned-to ideas with All/Created/Assigned filter and Title/Created By/Assigned To/Status/Created Date columns; Details navigates to `/ideas/{id}/edit`.
 - [ ] All list pages have a uniform search bar and server-side pagination with 25/50/100/250 page sizes (default 25).

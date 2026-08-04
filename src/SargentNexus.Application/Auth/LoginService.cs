@@ -45,6 +45,8 @@ public interface IAuthAccountService
 {
     Task<AuthenticatedUserModel?> GetCurrentUserAsync(Guid userId, CancellationToken cancellationToken);
 
+    Task<UpdateProfileResult> UpdateProfileAsync(Guid userId, UpdateProfileRequestModel request, CancellationToken cancellationToken);
+
     Task<ChangePasswordResult> ChangePasswordAsync(Guid userId, ChangePasswordRequestModel request, CancellationToken cancellationToken);
 
     Task<TemporaryPasswordResult> IssueTemporaryPasswordAsync(Guid actorUserId, Guid targetUserId, CancellationToken cancellationToken);
@@ -64,6 +66,8 @@ public interface IAuthAuditWriter
     Task WriteLoginFailedAsync(string email, Guid? userId, Guid? organizationId, string reason, CancellationToken cancellationToken);
 
     Task WritePasswordChangedAsync(User user, CancellationToken cancellationToken);
+
+    Task WriteProfileUpdatedAsync(User user, CancellationToken cancellationToken);
 
     Task WritePasswordChangeFailedAsync(Guid? userId, Guid? organizationId, string reason, CancellationToken cancellationToken);
 
@@ -306,6 +310,32 @@ public sealed class AuthAccountService : IAuthAccountService
             Email = user.Email,
             Status = user.Status.ToString()
         };
+    }
+
+    public async Task<UpdateProfileResult> UpdateProfileAsync(Guid userId, UpdateProfileRequestModel request, CancellationToken cancellationToken)
+    {
+        var user = await _authUserLookup.FindByIdAsync(userId, cancellationToken);
+
+        if (user is null)
+        {
+            return UpdateProfileResult.Failure(UpdateProfileFailureReason.UserNotFound);
+        }
+
+        user.FirstName = request.FirstName.Trim();
+        user.LastName = request.LastName.Trim();
+        await _authUserLookup.SaveChangesAsync(cancellationToken);
+        await _authAuditWriter.WriteProfileUpdatedAsync(user, cancellationToken);
+
+        return UpdateProfileResult.Success(new AuthenticatedUserModel
+        {
+            UserId = user.Id,
+            OrganizationId = user.OrganizationId,
+            Role = user.Role.ToString(),
+            FirstName = user.FirstName,
+            LastName = user.LastName,
+            Email = user.Email,
+            Status = user.Status.ToString()
+        });
     }
 
     public async Task<ChangePasswordResult> ChangePasswordAsync(Guid userId, ChangePasswordRequestModel request, CancellationToken cancellationToken)

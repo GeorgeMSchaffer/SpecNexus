@@ -55,3 +55,15 @@ None.
 
 ## Remaining Post-MVP Clarifications
 - None currently blocking planning. New questions should be added here when introduced.
+
+## Decision Log (2026-08-04): Password Reset
+
+1. MVP/P1 retains the existing admin-issued temporary-password reset; anonymous email-only password replacement is not allowed.
+2. Post-MVP self-service reset uses a cryptographically random bearer token delivered by email to an anonymous reset page that is absent from application navigation.
+3. Reset tokens expire after 24 hours, are single-use, and are invalidated when a newer token is issued for the account.
+4. Reset requests always return the same generic response and do not reveal whether an account exists, is active, uses local credentials, or is throttled.
+5. Delivery is limited to 3 requests per normalized email and 10 requests per source IP in a rolling 15-minute window; excess requests silently suppress email delivery.
+6. The reset form requires matching `newPassword` and `confirmPassword` values that satisfy the existing password complexity policy.
+7. Invalid, expired, superseded, and used tokens display the same invalid-link state with an action to request a new email.
+8. A successful reset revokes all existing sessions and returns the user to Login without automatic authentication.
+9. Self-service reset is available only to active local-password accounts, including Site Admin and organization users.

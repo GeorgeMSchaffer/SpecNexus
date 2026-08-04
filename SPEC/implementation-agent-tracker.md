@@ -32,10 +32,11 @@ Track implementation work that Copilot-driven implementation agents should compl
 - O009 Add self-registration endpoint (`POST /api/v1/auth/register`), `SelfRegistrationService`, and invite code generation on org create.
 - O009-client Add invite code column to org list, Regenerate button in org form, `/register` self-registration page, and login page link.
 - C1 Fix errant `else {` on ChangePassword.razor; delete Weather.razor and Counter.razor.
-- C2 Rewrite MainLayout.razor with dark header `rgb(33,37,41)`, gear icon (→ `/settings`), sign-out icon, white username, horizontal nav (Home/Workflow/Ideas). NavMenu.razor removed.
-- C5 Simplify Workflow.razor to boards-only list (Name, Board Type, Open).
+- C2 Rewrite MainLayout.razor with dark header `rgb(33,37,41)`, gear icon (→ `/settings`), sign-out icon, white username, horizontal nav (Home/Boards/Ideas). NavMenu.razor removed.
+- C5 Simplify Boards list page (`Workflow.razor`) to boards-only list (Name, Board Type, Open).
 - Domain-additions Add `Board.IsArchived` (bool) and `Status.Color/SortOrder/IsDefault` to domain + EF config + seed. Migration `AddBoardIsArchived` generated.
 - T037–T039 Complete notification event wiring and coverage (idea/comment mentions, comment-added, status-changed), canonical `/ideas/{ideaId}/edit` links, self-notification suppression, and deferred-email DI guard coverage.
+- C7-Profile Add self-service first/last-name editing to `/settings/profile`, persist and audit changes through `PUT /api/v1/auth/me`, refresh the active client session, and retain the existing password-change workflow.
 
 ## In Progress
 - T049 Contract tests for schema and problem-details error behavior.
@@ -83,6 +84,7 @@ Track implementation work that Copilot-driven implementation agents should compl
 - T048 completed: added in-process API integration tests using `WebApplicationFactory` plus in-memory EF startup seeding to validate auth success/failure/lockout branches, unauthenticated protected-route rejection, and org-admin organization-scope collaboration read flows.
 - T048 quality gate: API test suite passes with integration coverage included.
 - Client slice progress: added Admin navigation entry for Site Admin/Org Admin plus new `/admin/organizations` client workflow for organization list/create/update/archive actions backed by the existing organization administration API.
+- C7-Profile completed: My Profile now provides independently validated name and password forms; successful name changes are trimmed, audited, persisted to browser session storage, and reflected immediately in authenticated UI state.
 
 ## Backlog By Slice
 

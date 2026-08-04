@@ -80,6 +80,7 @@ Users can be added to an organization through three paths:
 10. User accounts support `Active` and `Inactive` states only in MVP.
 11. Organization changes, user changes, role changes, account status changes, invite code regeneration, self-registrations, and CSV imports must be audited.
 12. Development startup seed creates one Org Admin, one User, and one Read Only user in each seeded demo organization.
+13. Every authenticated user can update their own First Name and Last Name; self-service profile editing cannot change Email, Role, Organization, or Status.
 
 ## User Fields
 - First Name (max 100 characters)
@@ -129,6 +130,7 @@ User profile text fields are trimmed before validation and persistence.
 - [ ] User email is available for collaboration features that resolve mentions
 - [ ] User email is globally unique across the system
 - [ ] Organization and user text fields are trimmed and validated against their maximum lengths
+- [ ] Authenticated users can update their own first and last name without changing administrator-controlled account fields
 - [ ] The last Org Admin in an organization cannot remove their own admin access or deactivate themselves
 - [ ] Inactive users cannot authenticate
 - [ ] Organization and user administration actions generate audit events
