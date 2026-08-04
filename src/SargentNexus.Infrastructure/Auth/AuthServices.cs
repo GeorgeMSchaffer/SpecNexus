@@ -396,7 +396,9 @@ internal sealed class AuthSeeder : IAuthSeeder
             var businessImpacts = await EnsureBusinessImpactsAsync(organization, cancellationToken);
             await EnsureBoardSwimlanesAsync(board, statuses, cancellationToken);
             var roleUsers = await EnsureRoleUsersAsync(organization, demoOrganization, demoPasswordHash, cancellationToken);
-            await EnsureIdeasAndCommentsAsync(organization, board, statuses, ideaTypes, businessImpacts, roleUsers, nowUtc, cancellationToken);        }
+            await _dbContext.SaveChangesAsync(cancellationToken);
+            await EnsureIdeasAndCommentsAsync(organization, board, statuses, ideaTypes, businessImpacts, roleUsers, nowUtc, cancellationToken);
+        }
 
         await _dbContext.SaveChangesAsync(cancellationToken);
     }
@@ -729,6 +731,7 @@ internal sealed class AuthSeeder : IAuthSeeder
                     Priority = IdeaPriority.Medium,
                     DueDate = null,
                     BusinessImpactId = businessImpact.Id,
+                    BusinessImpact = businessImpact,
                     IdeaTypeId = ideaType.Id,
                     StatusId = status.Id,
                     CreatedAtUtc = nowUtc,
@@ -744,6 +747,7 @@ internal sealed class AuthSeeder : IAuthSeeder
                 idea.Priority = IdeaPriority.Medium;
                 idea.DueDate = null;
                 idea.BusinessImpactId = businessImpact.Id;
+                idea.BusinessImpact = businessImpact;
                 idea.IdeaTypeId = ideaType.Id;
                 idea.StatusId = status.Id;
             }

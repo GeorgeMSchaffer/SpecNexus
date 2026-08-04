@@ -1,15 +1,15 @@
-@page "/settings/profile"
+﻿@page "/settings/profile"
 @inject IAuthSessionService AuthSessionService
 @inject IClientErrorMessageService ErrorMessageService
 @inject NavigationManager NavigationManager
 
-<PageTitle>My Profile — Settings</PageTitle>
+<PageTitle>My Profile â€” Settings</PageTitle>
 
 <AuthGate>
     <div class="container py-4 sn-page sn-settings-page">
         <div class="d-flex justify-content-between align-items-center mb-3">
             <h1 class="h3 mb-0">My Profile</h1>
-            <NavLink class="btn btn-sm btn-outline-secondary" href="/settings">← Settings</NavLink>
+            <NavLink class="btn btn-sm btn-outline-secondary" href="/settings">â† Settings</NavLink>
         </div>
 
         <div class="card mb-4">
@@ -53,7 +53,7 @@
                         }
 
                         <button class="btn btn-primary" type="submit" disabled="@_isProfileSubmitting">
-                            @(_isProfileSubmitting ? "Saving..." : "Save name")
+                            @(_isProfileSubmitting ? "Saving..." : "Save")
                         </button>
                 </EditForm>
             </div>
@@ -157,10 +157,11 @@
 
         try
         {
-            await AuthSessionService.UpdateProfileAsync(_profileModel.FirstName, _profileModel.LastName);
+            await AuthSessionService.UpdateProfileAsync(_profileModel.FirstName, _profileModel.LastName, _profileModel.Email);
             _profileModel.FirstName = AuthSessionService.User?.FirstName ?? _profileModel.FirstName.Trim();
             _profileModel.LastName = AuthSessionService.User?.LastName ?? _profileModel.LastName.Trim();
-            _profileSuccessMessage = "Name updated successfully.";
+            _profileModel.Email = AuthSessionService.User?.Email ?? _profileModel.Email.Trim();
+            _profileSuccessMessage = "Profile updated successfully.";
         }
         catch (AuthApiException ex)
         {
@@ -240,5 +241,19 @@
         [System.ComponentModel.DataAnnotations.Required]
         [System.ComponentModel.DataAnnotations.MaxLength(100)]
         public string LastName { get; set; } = string.Empty;
+    
+        
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.EmailAddress]
+        public string Email { get; set; } = string.Empty;
     }
 }
+
+
+
+
+
+
+
+
+

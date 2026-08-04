@@ -24,9 +24,10 @@ public interface IAuthSessionService
 
     Task<LoginResponseDto> LoginAsync(string email, string password, CancellationToken cancellationToken = default);
 
-    Task UpdateProfileAsync(string firstName, string lastName, CancellationToken cancellationToken = default);
+    Task UpdateProfileAsync(string firstName, string lastName, string email, CancellationToken cancellationToken = default);
 
     Task ChangePasswordAsync(string currentPassword, string newPassword, CancellationToken cancellationToken = default);
 
     Task LogoutAsync();
 }
+

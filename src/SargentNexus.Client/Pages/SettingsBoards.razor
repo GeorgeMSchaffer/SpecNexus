@@ -1,16 +1,16 @@
-@page "/settings/boards"
+﻿@page "/settings/boards"
 @inject IAuthSessionService AuthSessionService
 @inject IClientErrorMessageService ErrorMessageService
 @inject WorkflowApiClient WorkflowApiClient
 
-<PageTitle>Boards &amp; Statuses — Settings</PageTitle>
+<PageTitle>Boards — Settings</PageTitle>
 
 <AuthGate>
     <div class="container py-4 sn-page sn-settings-page">
         <div class="d-flex justify-content-between align-items-center mb-3">
             <div>
-                <h1 class="h3 mb-1">Boards &amp; Statuses</h1>
-                <p class="text-muted mb-0">Configure boards, statuses, and swimlanes.</p>
+                <h1 class="h3 mb-1">Boards</h1>
+                <p class="text-muted mb-0">Manage your boards and swimlanes.</p>
             </div>
             <div class="d-flex gap-2">
                 <NavLink class="btn btn-sm btn-outline-secondary" href="/settings">← Settings</NavLink>
@@ -19,7 +19,7 @@
 
         @if (!CanManageBoards)
         {
-            <div class="alert alert-warning" role="alert">You do not have permission to manage boards and statuses.</div>
+            <div class="alert alert-warning" role="alert">You do not have permission to manage boards.</div>
         }
         else
         {
@@ -27,8 +27,6 @@
             {
                 <div class="alert alert-danger" role="alert">@_errorMessage</div>
             }
-
-            <h2 class="h5 mb-3">Boards</h2>
 
             @if (_boardView == FormView.Form)
             {
@@ -110,108 +108,6 @@
                     </div>
                 }
             }
-
-            <hr />
-
-            <h2 class="h5 mb-3 mt-4">Statuses</h2>
-
-            @if (_statusView == FormView.Form)
-            {
-                <div class="card mb-4">
-                    <div class="card-body">
-                        <h3 class="h6">@(_statusEditTarget is not null ? "Edit status" : "Create status")</h3>
-                        <EditForm Model="_statusForm" OnValidSubmit="SaveStatusAsync">
-                            <DataAnnotationsValidator />
-                            <div class="row g-3">
-                                <div class="col-md-6">
-                                    <label class="form-label">Status name <span class="text-danger">*</span></label>
-                                    <InputText class="form-control" @bind-Value="_statusForm.Name" />
-                                    <ValidationMessage For="() => _statusForm.Name" />
-                                </div>
-                                <div class="col-md-3">
-                                    <label class="form-label">Color <span class="text-muted small">(hex, e.g. #3b82f6)</span></label>
-                                    <InputText class="form-control" @bind-Value="_statusForm.Color" placeholder="#3b82f6" />
-                                    <ValidationMessage For="() => _statusForm.Color" />
-                                </div>
-                                <div class="col-md-3">
-                                    <label class="form-label">Sort Order</label>
-                                    <InputNumber class="form-control" @bind-Value="_statusForm.SortOrder" />
-                                </div>
-                                <div class="col-md-12">
-                                    <div class="form-check">
-                                        <InputCheckbox class="form-check-input" id="statusIsDefault" @bind-Value="_statusForm.IsDefault" />
-                                        <label class="form-check-label" for="statusIsDefault">Default status (assigned to new ideas)</label>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="mt-3 d-flex gap-2">
-                                <button class="btn btn-primary" type="submit" disabled="@_isSubmitting">@(_isSubmitting ? "Saving..." : "Save")</button>
-                                <button class="btn btn-outline-secondary" type="button" @onclick="() => _statusView = FormView.List">Cancel</button>
-                            </div>
-                        </EditForm>
-                    </div>
-                </div>
-            }
-            else
-            {
-                <div class="mb-3">
-                    <button class="btn btn-outline-primary btn-sm" @onclick="StartCreateStatus">Create status</button>
-                </div>
-
-                @if (_isLoadingStatuses)
-                {
-                    <div class="alert alert-info">Loading statuses...</div>
-                }
-                else if (_statuses.Count == 0)
-                {
-                    <div class="alert alert-secondary">No statuses found.</div>
-                }
-                else
-                {
-                    <div class="table-responsive">
-                        <table class="table table-striped align-middle">
-                            <thead>
-                                <tr>
-                                    <th>Name</th>
-                                    <th>Color</th>
-                                    <th>Sort Order</th>
-                                    <th>Is Default</th>
-                                    <th></th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach (var status in _statuses.OrderBy(s => s.SortOrder).ThenBy(s => s.Name))
-                                {
-                                    <tr>
-                                        <td>
-                                            @status.Name
-                                            @if (status.IsDeleted)
-                                            {
-                                                <span class="badge text-bg-secondary ms-1">Deleted</span>
-                                            }
-                                        </td>
-                                        <td>
-                                            @if (!string.IsNullOrWhiteSpace(status.Color))
-                                            {
-                                                <span class="d-inline-block rounded" style="width:18px;height:18px;background:@status.Color;vertical-align:middle;border:1px solid #ccc"></span>
-                                                <span class="ms-1 small">@status.Color</span>
-                                            }
-                                        </td>
-                                        <td>@status.SortOrder</td>
-                                        <td>@(status.IsDefault ? "✓" : "")</td>
-                                        <td class="text-end">
-                                            @if (!status.IsDeleted)
-                                            {
-                                                <button class="btn btn-sm btn-outline-primary" @onclick="() => StartEditStatus(status)">Edit</button>
-                                            }
-                                        </td>
-                                    </tr>
-                                }
-                            </tbody>
-                        </table>
-                    </div>
-                }
-            }
         }
     </div>
 </AuthGate>
@@ -220,19 +116,12 @@
     private enum FormView { List, Form }
 
     private readonly List<BoardSummaryDto> _boards = new();
-    private readonly List<StatusSummaryDto> _statuses = new();
 
     private FormView _boardView = FormView.List;
-    private FormView _statusView = FormView.List;
-
     private BoardSummaryDto? _boardEditTarget;
-    private StatusSummaryDto? _statusEditTarget;
-
     private BoardFormModel _boardForm = new();
-    private StatusFormModel _statusForm = new();
 
     private bool _isLoadingBoards;
-    private bool _isLoadingStatuses;
     private bool _isSubmitting;
     private string? _errorMessage;
 
@@ -248,7 +137,7 @@
             return;
         }
 
-        await Task.WhenAll(LoadBoardsAsync(), LoadStatusesAsync());
+        await LoadBoardsAsync();
     }
 
     private async Task LoadBoardsAsync()
@@ -273,31 +162,6 @@
         finally
         {
             _isLoadingBoards = false;
-        }
-    }
-
-    private async Task LoadStatusesAsync()
-    {
-        if (!CurrentOrgId.HasValue || string.IsNullOrWhiteSpace(AuthSessionService.AccessToken))
-        {
-            return;
-        }
-
-        _isLoadingStatuses = true;
-
-        try
-        {
-            _statuses.Clear();
-            var statuses = await WorkflowApiClient.ListStatusesAsync(AuthSessionService.AccessToken!, CurrentOrgId.Value, CancellationToken.None);
-            _statuses.AddRange(statuses);
-        }
-        catch (Exception ex)
-        {
-            _errorMessage = ErrorMessageService.GetDisplayMessage(null, null, ex);
-        }
-        finally
-        {
-            _isLoadingStatuses = false;
         }
     }
 
@@ -380,81 +244,6 @@
         }
     }
 
-    private void StartCreateStatus()
-    {
-        _statusEditTarget = null;
-        _statusForm = new StatusFormModel();
-        _statusView = FormView.Form;
-    }
-
-    private void StartEditStatus(StatusSummaryDto status)
-    {
-        _statusEditTarget = status;
-        _statusForm = new StatusFormModel
-        {
-            Name = status.Name,
-            Color = status.Color,
-            SortOrder = status.SortOrder,
-            IsDefault = status.IsDefault
-        };
-        _statusView = FormView.Form;
-    }
-
-    private async Task SaveStatusAsync()
-    {
-        if (string.IsNullOrWhiteSpace(AuthSessionService.AccessToken))
-        {
-            return;
-        }
-
-        _isSubmitting = true;
-        _errorMessage = null;
-
-        try
-        {
-            if (_statusEditTarget is not null)
-            {
-                await WorkflowApiClient.UpdateStatusAsync(
-                    AuthSessionService.AccessToken!,
-                    _statusEditTarget.StatusId,
-                    new UpdateStatusRequestDto
-                    {
-                        Name = _statusForm.Name.Trim(),
-                        Color = string.IsNullOrWhiteSpace(_statusForm.Color) ? null : _statusForm.Color.Trim(),
-                        SortOrder = _statusForm.SortOrder,
-                        IsDefault = _statusForm.IsDefault
-                    },
-                    CancellationToken.None);
-            }
-            else if (CurrentOrgId.HasValue)
-            {
-                await WorkflowApiClient.CreateStatusAsync(
-                    AuthSessionService.AccessToken!,
-                    CurrentOrgId.Value,
-                    new CreateStatusRequestDto
-                    {
-                        Name = _statusForm.Name.Trim(),
-                        Color = string.IsNullOrWhiteSpace(_statusForm.Color) ? null : _statusForm.Color.Trim(),
-                        SortOrder = _statusForm.SortOrder,
-                        IsDefault = _statusForm.IsDefault
-                    },
-                    CancellationToken.None);
-            }
-
-            _statusView = FormView.List;
-            _statusEditTarget = null;
-            await LoadStatusesAsync();
-        }
-        catch (Exception ex)
-        {
-            _errorMessage = ErrorMessageService.GetDisplayMessage(null, null, ex);
-        }
-        finally
-        {
-            _isSubmitting = false;
-        }
-    }
-
     private sealed class BoardFormModel
     {
         [System.ComponentModel.DataAnnotations.Required]
@@ -462,19 +251,5 @@
         public string Name { get; set; } = string.Empty;
 
         public bool AllowUserStatusUpdate { get; set; }
-    }
-
-    private sealed class StatusFormModel
-    {
-        [System.ComponentModel.DataAnnotations.Required]
-        [System.ComponentModel.DataAnnotations.StringLength(100)]
-        public string Name { get; set; } = string.Empty;
-
-        [System.ComponentModel.DataAnnotations.StringLength(20)]
-        public string? Color { get; set; }
-
-        public int SortOrder { get; set; }
-
-        public bool IsDefault { get; set; }
     }
 }

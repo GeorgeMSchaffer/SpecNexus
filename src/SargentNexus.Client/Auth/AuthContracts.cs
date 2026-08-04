@@ -1,4 +1,4 @@
-namespace SargentNexus.Client.Auth;
+﻿namespace SargentNexus.Client.Auth;
 
 public sealed class LoginRequestDto
 {
@@ -47,6 +47,8 @@ public sealed class UpdateProfileRequestDto
     public string FirstName { get; set; } = string.Empty;
 
     public string LastName { get; set; } = string.Empty;
+
+    public string Email { get; set; } = string.Empty;
 }
 
 public sealed class SelfRegistrationRequestDto
@@ -124,3 +126,6 @@ public sealed class AuthValidationException : AuthApiException
 
     public Dictionary<string, string[]> Errors { get; }
 }
+
+
+

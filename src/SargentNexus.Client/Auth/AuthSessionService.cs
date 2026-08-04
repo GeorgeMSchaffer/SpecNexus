@@ -1,4 +1,4 @@
-using Microsoft.JSInterop;
+﻿﻿using Microsoft.JSInterop;
 using System.Security.Claims;
 
 namespace SargentNexus.Client.Auth;
@@ -167,7 +167,7 @@ public sealed class AuthSessionService : IAuthSessionService
         NotifyStateChanged();
     }
 
-    public async Task UpdateProfileAsync(string firstName, string lastName, CancellationToken cancellationToken = default)
+    public async Task UpdateProfileAsync(string firstName, string lastName, string email, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(_accessToken))
         {
@@ -177,7 +177,8 @@ public sealed class AuthSessionService : IAuthSessionService
         var updatedUser = await _authApiClient.UpdateProfileAsync(_accessToken, new UpdateProfileRequestDto
         {
             FirstName = firstName,
-            LastName = lastName
+            LastName = lastName,
+            Email = email
         }, cancellationToken);
 
         _user = new LoginUserDto
@@ -273,3 +274,6 @@ public sealed class AuthSessionService : IAuthSessionService
         StateChanged?.Invoke();
     }
 }
+
+
+

@@ -1,4 +1,4 @@
-@page "/settings"
+﻿@page "/settings"
 @inject IAuthSessionService AuthSessionService
 
 <PageTitle>Settings</PageTitle>
@@ -61,3 +61,4 @@
     private bool IsSiteAdmin => string.Equals(AuthSessionService.User?.Role, "SiteAdmin", StringComparison.OrdinalIgnoreCase);
     private bool IsOrgAdmin => string.Equals(AuthSessionService.User?.Role, "OrgAdmin", StringComparison.OrdinalIgnoreCase);
 }
+
