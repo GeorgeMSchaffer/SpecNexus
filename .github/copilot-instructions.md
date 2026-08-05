@@ -2,6 +2,22 @@
 
 SargentNexus is a spec-driven, organization-scoped collaboration and idea-tracking platform. Stack: .NET 8 (SDK pinned to `8.0.118` via `global.json`), ASP.NET Core API, Blazor client (Fluent UI Blazor), EF Core, xUnit.
 
+## Working Rules
+
+- Always seek clarification before implementing ambiguous behavior. See `.\github\skills\karpathy-guidelines\SKILL.md` skill for guidance.
+- Treat `SPEC/*.md` as the source of truth.
+- Read the relevant spec before changing behavior:
+  - `SPEC/00-project-brief.md`
+  - `SPEC/10-requirements.md`
+  - `SPEC/20-feature-*.md`
+  - `SPEC/30-Contracts.md`
+  - `SPEC/40-test-strategy.md`
+  - `SPEC/90-definition-of-done.md`
+- If implementation changes behavior, update the canonical spec first, then sync derived artifacts.
+- If behavior is ambiguous, ask before implementing.
+- Make surgical changes; avoid unrelated refactors.
+- Do not add NuGet packages without approval.
+
 ## Architecture
 
 Layered with strict boundaries — business rules live in Domain and Application, never in controllers or UI components.
@@ -13,65 +29,83 @@ Layered with strict boundaries — business rules live in Domain and Application
 | `src/SargentNexus.Domain` | Entities, enums, value objects, invariants | nothing (never API/Client/Infrastructure) |
 | `src/SargentNexus.Infrastructure` | Persistence, external integrations | implements Application/Domain abstractions |
 | `src/SargentNexus.Client` | Blazor UI (Fluent UI Blazor components) | — |
-| `tests/` | Unit tests mirroring src layers, plus `SargentNexus.BrowserTests` (Playwright) | — |
+| `tests/` | Unit tests mirroring src layers, plus browser tests | — |
 
-## Spec governance — SPEC is the source of truth
+## Spec Governance
 
-- Read the relevant `SPEC/*.md` before implementing: `10-requirements.md` → requirements, `20-feature-*.md` → feature specs, `30-Contracts.md` → API contracts, `40-test-strategy.md` → test strategy, `90-definition-of-done.md` → definition of done.
-- `SPEC/SPECKIT/` is derived. When behavior changes: update canonical `SPEC` docs first, then sync `SPECKIT`.
-- Specs unclear or ambiguous? Ask before implementing. Implementation changed behavior? Update the spec.
+- `SPEC/SPECKIT/` is derived.
+- Canonical behavior lives in `SPEC/*.md`.
+- When behavior changes:
+  1. update the relevant canonical spec,
+  2. update derived docs/artifacts,
+  3. verify tests still match the spec.
 
-Key domain rules (see `SPEC/20-feature-organizations-and-users.md`):
-- Only Site Admin creates organizations (title + description + optional logo address); each org gets a system-generated invite code.
-- Users join via invite-code self-registration, direct admin creation, or admin CSV import.
+Key domain rules:
+- Only Site Admin creates organizations.
+- Organization creation requires title, description, and optional logo address.
+- Each organization gets a system-generated invite code.
+- Users join by invite-code self-registration, direct admin creation, or admin CSV import.
+- Emails are globally unique.
+- Non-Site Admin users belong to exactly one organization.
 
-## Build, Test, Run
+## Implementation Guidance
 
-```powershell
-dotnet build SargentNexus.sln                    # build all
-dotnet test SargentNexus.sln                     # all tests
-dotnet test tests/SargentNexus.Application.Tests/SargentNexus.Application.Tests.csproj   # one project (API.Tests / Infrastructure.Tests / BrowserTests likewise)
-dotnet test tests/SargentNexus.Application.Tests/SargentNexus.Application.Tests.csproj --filter "FullyQualifiedName~ClassName.MethodName"
-dotnet run --project .\src\SargentNexus.API\SargentNexus.API.csproj   # Swagger at http://localhost:5027/playground
-```
-
-**Port 5027 in use?** A previous `dotnet run`/`dotnet watch` is still alive. Stop it by PID, or use an alternate port: `$env:ASPNETCORE_URLS='http://localhost:5030'; dotnet run --project .\src\SargentNexus.API\SargentNexus.API.csproj`. Always stop API/watch processes you started before finishing a task.
-
-## Coding standards
-
-- Follow the [.NET runtime coding style](https://github.com/dotnet/runtime/blob/main/docs/coding-guidelines/coding-style.md) and existing repo patterns; prefer surgical, minimal changes over rewrites.
-- **NuGet:** never add a package without approval. Propose name + version + why, and wait before running `dotnet add package`.
-- **EF Core:** all data access through DbContext; prefer LINQ over raw SQL; async/await for every database operation; schema changes via migrations.
-- **SQL:** UPPERCASE keywords, lowercase table/column names, no `SELECT *`, meaningful aliases, consistent indentation.
+- Keep business rules in Application/Domain.
+- Keep API controllers thin.
+- Keep Blazor components focused on rendering and user interaction.
+- Prefer existing helpers, patterns, and abstractions.
+- Use DbContext and LINQ for data access.
+- Use async/await for all database and I/O operations.
+- Use migrations for schema changes.
 
 ## Testing
 
-- Arrange/Act/Assert; names follow `Method_Scenario_ExpectedResult`.
-- Cover happy path, boundary values, null input, and invalid state.
-- Unit tests are hermetic: no network, file system, `DateTime.Now`, or randomness — inject fakes. EF Core tests use the InMemory provider, never a real database.
-- Avoid duplicate setup; use builder/factory helpers.
-- Integration coverage: API smoke tests in `SargentNexus.API.Tests`; end-to-end UI in `SargentNexus.BrowserTests` (Playwright).
-- Do not modify test projects unless adding a new API endpoint that needs a stub.
+- Follow Arrange / Act / Assert.
+- Test happy path, boundary values, null input, and invalid state.
+- Unit tests must be hermetic: no network, file system, `DateTime.Now`, or randomness.
+- EF Core tests use the InMemory provider, never a real database.
+- Avoid duplicate setup; use builders/factories.
+- Do not modify test projects unless required by the change.
 
-## Workspace hygiene
+## Build and Run
 
-- No temporary files, scratch code, or logs in the repo (`*.log`, `tmp-*.cs`, throwaway projects). Scratch work goes outside the repo; clean up before committing.
-- Never commit secrets or sensitive data.
-- Commit with clear, descriptive messages after a feature is implemented and tested.
+```powershell
+dotnet build SargentNexus.sln
+dotnet test SargentNexus.sln
+dotnet test tests/SargentNexus.Application.Tests/SargentNexus.Application.Tests.csproj
+dotnet run --project .\src\SargentNexus.API\SargentNexus.API.csproj
+```
 
-## Session and branch lifecycle
+If port 5027 is in use, use:
+```powershell
+$env:ASPNETCORE_URLS='http://localhost:5030'; dotnet run --project .\src\SargentNexus.API\SargentNexus.API.csproj
+```
 
-Every session **must** merge its feature branch into `dev` (the active integration branch) before closing, in addition to opening a PR to `main`. Skipping this leaves work untestable alongside other features.
+Stop any API/watch process you started before finishing.
+
+## Coding Standards
+
+- Follow .NET runtime coding style and existing repo patterns.
+- Prefer clear, minimal code over broad rewrites.
+- SQL: UPPERCASE keywords, lowercase table/column names, no `SELECT *`, meaningful aliases.
+- Keep comments rare and only where the code needs clarification.
+- Never commit secrets or temporary files.
+
+## Session and Branch Lifecycle
 
 After build and tests pass on the feature branch:
 
-1. **PR to main:** `gh pr create --base main --title "<title>" --body "<body>"`
-2. **Find the dev worktree:** `git worktree list | Select-String dev` — if none exists, create one: `git worktree add C:/tmp/sn-dev dev`
-3. **Merge into dev** (from the dev worktree):
-   ```powershell
-   git fetch origin
-   git merge origin/<feature-branch> --no-ff -m "Merge <feature-branch> into dev"
-   ```
-4. **Conflicts:** for server-side code (`src/SargentNexus.{API,Application,Domain,Infrastructure}`, `tests/`) where `dev` moved ahead, prefer `dev` (`--ours`); for `SPEC/` and `src/SargentNexus.Client/` files the feature branch owns, take the feature branch (`--theirs`). Then `git add .` and `git merge --continue`.
-5. **Push:** `git push origin dev`
-6. **Report** the merge commit hash on `dev` in your completion message. Remove any temporary dev worktree (`git worktree remove C:/tmp/sn-dev`).
+1. Create a PR to `main`.
+2. Merge the feature branch into `dev`.
+3. Resolve conflicts using repo rules:
+   - server-side code: prefer `dev` where it moved ahead
+   - `SPEC/` and `src/SargentNexus.Client/`: prefer the feature branch
+4. Push `dev`.
+5. Report the merge commit hash in your completion message.
+
+## Good Defaults for Copilot
+
+- Read the spec before proposing code.
+- Keep answers grounded in repo conventions.
+- When unsure, ask rather than assume.
+- Verify behavior with the smallest useful test/build command.

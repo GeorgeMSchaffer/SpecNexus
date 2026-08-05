@@ -1,0 +1,4 @@
+- The password validation error message on password fields needs to reflect the requirements of the password. The spec for a valid password is one that is at least 6 characters long, has lower and uppercase letters, at least a number and at least one symbol and error message should reflect what's missing.
+- The landing page after logging should default to / which should be a new page called Dashboard.  
+- We should do a check if the token has expired when deciding to resume an existing session. We need to avoid the case where the token in local storage seems correct for the browser but the same token causes a 401 with the API.
+- Remove the password update required text, it's redundant
