@@ -70,6 +70,8 @@ public sealed class IdeaListItemDto
 
     public Guid AuthorUserId { get; set; }
 
+    public string? AuthorDisplayName { get; set; }
+
     public DateTime CreatedAtUtc { get; set; }
 }
 
