@@ -8,7 +8,7 @@
 	- `SPEC/20-feature-user-login.md`
 	- `SPEC/30-Contracts.md`
 	- `SPEC/40-test-strategy.md`
-- Last Canonical Sync Date: 2026-08-04
+- Last Canonical Sync Date: 2026-08-05
 
 ## Summary
 Implement authentication with globally unique email credentials, seeded global Site Admin bootstrap, password rules, inactive-account denial, and account lockout behavior.
@@ -20,9 +20,12 @@ Implement authentication with globally unique email credentials, seeded global S
 - Five failed login attempts within 15 minutes cause a 15-minute lockout.
 - Inactive accounts cannot log in.
 - The global Site Admin is seeded from an environment-provided initial credential and must change it on first login.
-- In Development only, startup seed creates demo Org Admin, User, and Read Only accounts in each demo organization using temporary password `abc123!`.
-- Development seeded demo users must change password on first successful login.
+- In Development only, startup seed creates demo Org Admin, User, and Read Only accounts in each demo organization using demo password `abc123!` without a forced password change.
 - Admin-issued temporary password reset is an MVP/P1 capability and uses one-time display temporary passwords that expire after 24 hours and force password change on first use.
+- `User.MustChangePassword` gates the standalone required-change route for seeded Site Admin and admin-provided initial or temporary credentials. Authenticated users without the flag use My Profile for voluntary password changes.
+- Unauthenticated protected client routes redirect to `/login`; authenticated users without a required password change land on the Dashboard at `/`; `/logout` clears the session and returns to `/login`.
+- Persisted client authentication data is a cached session candidate. The client restores an authenticated principal only after `GET /api/v1/auth/me` accepts the stored bearer token and returns the current user.
+- An expired or API-unknown stored or active bearer token clears the persisted and in-memory client session and redirects to `/login`. Endpoint-specific `401` responses do not clear a token that `GET /api/v1/auth/me` still accepts.
 - Post-MVP self-service reset sends active local-password users a private, single-use bearer-token link that expires after 24 hours and is invalidated by a newer request.
 - Post-MVP reset requests use a generic response, limit delivery to 3 per normalized email and 10 per source IP within 15 minutes, and do not reveal account eligibility.
 - Post-MVP reset confirmation requires matching passwords that satisfy the existing complexity policy, consumes the token, revokes all sessions, and returns the user to Login.
