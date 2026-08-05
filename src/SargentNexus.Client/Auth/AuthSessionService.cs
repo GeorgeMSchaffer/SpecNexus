@@ -6,6 +6,7 @@ namespace SargentNexus.Client.Auth;
 public sealed class AuthSessionService : IAuthSessionService
 {
     private const string StorageAccessTokenKey = "sn.auth.accessToken";
+    private const string StorageAccessTokenExpiresAtKey = "sn.auth.accessTokenExpiresAtUtc";
     private const string StorageRequiresPasswordChangeKey = "sn.auth.requiresPasswordChange";
     private const string StorageUserEmailKey = "sn.auth.userEmail";
     private const string StorageUserRoleKey = "sn.auth.userRole";
@@ -19,6 +20,7 @@ public sealed class AuthSessionService : IAuthSessionService
     private readonly IJSRuntime _jsRuntime;
 
     private string? _accessToken;
+    private DateTimeOffset? _accessTokenExpiresAtUtc;
     private bool _requiresPasswordChange;
     private LoginUserDto? _user;
     private bool _initialized;
@@ -31,7 +33,7 @@ public sealed class AuthSessionService : IAuthSessionService
 
     public event Action? StateChanged;
 
-    public bool IsAuthenticated => !string.IsNullOrWhiteSpace(_accessToken) && _user is not null;
+    public bool IsAuthenticated => !string.IsNullOrWhiteSpace(_accessToken) && _user is not null && !IsAccessTokenExpired();
 
     public bool RequiresPasswordChange => _requiresPasswordChange;
 
@@ -45,7 +47,7 @@ public sealed class AuthSessionService : IAuthSessionService
 
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
     {
-        if (_initialized && !string.IsNullOrWhiteSpace(_accessToken) && _user is not null)
+        if (_initialized && IsAuthenticated)
         {
             return;
         }
@@ -53,66 +55,41 @@ public sealed class AuthSessionService : IAuthSessionService
         _initialized = true;
 
         _accessToken = await ReadStorageAsync(StorageAccessTokenKey);
+        _accessTokenExpiresAtUtc = await ReadExpiresAtUtcAsync(StorageAccessTokenExpiresAtKey);
         _requiresPasswordChange = bool.TryParse(await ReadStorageAsync(StorageRequiresPasswordChangeKey), out var parsed) && parsed;
 
-        var userEmail = await ReadStorageAsync(StorageUserEmailKey);
-        var userRole = await ReadStorageAsync(StorageUserRoleKey);
-        var userIdText = await ReadStorageAsync(StorageUserIdKey);
-        var organizationIdText = await ReadStorageAsync(StorageOrganizationIdKey);
-        var firstName = await ReadStorageAsync(StorageFirstNameKey);
-        var lastName = await ReadStorageAsync(StorageLastNameKey);
-        var status = await ReadStorageAsync(StorageStatusKey);
-
-        if (!string.IsNullOrWhiteSpace(_accessToken) &&
-            !string.IsNullOrWhiteSpace(userEmail) &&
-            !string.IsNullOrWhiteSpace(userRole) &&
-            Guid.TryParse(userIdText, out var userId))
+        if (string.IsNullOrWhiteSpace(_accessToken))
         {
-            _user = new LoginUserDto
-            {
-                UserId = userId,
-                Email = userEmail,
-                Role = userRole,
-                OrganizationId = Guid.TryParse(organizationIdText, out var organizationId) ? organizationId : null,
-                FirstName = firstName ?? string.Empty,
-                LastName = lastName ?? string.Empty,
-                Status = status ?? string.Empty
-            };
-
-            if (_requiresPasswordChange)
-            {
-                NotifyStateChanged();
-                return;
-            }
-
-            if (string.IsNullOrWhiteSpace(_user.Email) || _user.OrganizationId is null || _user.OrganizationId == Guid.Empty)
-            {
-                var me = await _authApiClient.GetCurrentUserAsync(_accessToken, cancellationToken);
-                if (me is null)
-                {
-                    await ClearSessionAsync();
-                    NotifyStateChanged();
-                    return;
-                }
-
-                _user = new LoginUserDto
-                {
-                    UserId = me.UserId,
-                    OrganizationId = me.OrganizationId,
-                    Role = me.Role,
-                    FirstName = me.FirstName,
-                    LastName = me.LastName,
-                    Email = me.Email,
-                    Status = me.Status
-                };
-            }
+            await ClearSessionAsync();
+            NotifyStateChanged();
+            return;
         }
-        else
+
+        if (IsAccessTokenExpired())
         {
-            _accessToken = null;
-            _user = null;
-            _requiresPasswordChange = false;
+            await ClearSessionAsync();
+            NotifyStateChanged();
+            return;
         }
+
+        var me = await _authApiClient.GetCurrentUserAsync(_accessToken, cancellationToken);
+        if (me is null)
+        {
+            await ClearSessionAsync();
+            NotifyStateChanged();
+            return;
+        }
+
+        _user = new LoginUserDto
+        {
+            UserId = me.UserId,
+            OrganizationId = me.OrganizationId,
+            Role = me.Role,
+            FirstName = me.FirstName,
+            LastName = me.LastName,
+            Email = me.Email,
+            Status = me.Status
+        };
 
         NotifyStateChanged();
     }
@@ -131,6 +108,9 @@ public sealed class AuthSessionService : IAuthSessionService
             }, cancellationToken);
 
             _accessToken = response.AccessToken;
+            _accessTokenExpiresAtUtc = response.ExpiresInSeconds.HasValue
+                ? DateTimeOffset.UtcNow.AddSeconds(response.ExpiresInSeconds.Value)
+                : null;
             _requiresPasswordChange = response.RequiresPasswordChange == true;
             _user = response.User;
 
@@ -226,6 +206,7 @@ public sealed class AuthSessionService : IAuthSessionService
     private async Task PersistSessionAsync()
     {
         await WriteStorageAsync(StorageAccessTokenKey, _accessToken);
+        await WriteStorageAsync(StorageAccessTokenExpiresAtKey, _accessTokenExpiresAtUtc?.ToString("O"));
         await WriteStorageAsync(StorageRequiresPasswordChangeKey, _requiresPasswordChange.ToString().ToLowerInvariant());
         await WriteStorageAsync(StorageUserEmailKey, _user?.Email);
         await WriteStorageAsync(StorageUserRoleKey, _user?.Role);
@@ -239,10 +220,12 @@ public sealed class AuthSessionService : IAuthSessionService
     private async Task ClearSessionAsync()
     {
         _accessToken = null;
+        _accessTokenExpiresAtUtc = null;
         _user = null;
         _requiresPasswordChange = false;
 
         await WriteStorageAsync(StorageAccessTokenKey, null);
+        await WriteStorageAsync(StorageAccessTokenExpiresAtKey, null);
         await WriteStorageAsync(StorageRequiresPasswordChangeKey, null);
         await WriteStorageAsync(StorageUserEmailKey, null);
         await WriteStorageAsync(StorageUserRoleKey, null);
@@ -267,6 +250,25 @@ public sealed class AuthSessionService : IAuthSessionService
         }
 
         await _jsRuntime.InvokeVoidAsync("localStorage.setItem", key, value);
+    }
+
+    private async Task<DateTimeOffset?> ReadExpiresAtUtcAsync(string key)
+    {
+        var value = await ReadStorageAsync(key);
+
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        return DateTimeOffset.TryParse(value, out var parsed)
+            ? parsed
+            : null;
+    }
+
+    private bool IsAccessTokenExpired()
+    {
+        return _accessTokenExpiresAtUtc.HasValue && _accessTokenExpiresAtUtc.Value <= DateTimeOffset.UtcNow;
     }
 
     private void NotifyStateChanged()
