@@ -1,4 +1,4 @@
-@page "/ideas"
+﻿@page "/ideas-legacy"
 @inject IAuthSessionService AuthSessionService
 @inject IClientErrorMessageService ErrorMessageService
 @inject NavigationManager NavigationManager
@@ -17,7 +17,7 @@
 
         @if (_loading)
         {
-            <div class="alert alert-info">Loading ideas…</div>
+            <div class="alert alert-info">Loading ideasâ€¦</div>
         }
         else if (_errorMessage is not null)
         {
@@ -72,12 +72,12 @@
 
                 <div class="d-flex justify-content-between align-items-center mt-2">
                     <span class="text-muted small">
-                        Showing @((_page - 1) * _pageSize + 1)–@Math.Min(_page * _pageSize, TotalFilteredCount) of @TotalFilteredCount
+                        Showing @((_page - 1) * _pageSize + 1)â€“@Math.Min(_page * _pageSize, TotalFilteredCount) of @TotalFilteredCount
                     </span>
                     <div class="d-flex gap-2">
-                        <button class="btn btn-sm btn-outline-secondary" @onclick="PrevPage" disabled="@(_page <= 1)">← Prev</button>
+                        <button class="btn btn-sm btn-outline-secondary" @onclick="PrevPage" disabled="@(_page <= 1)">â† Prev</button>
                         <span class="align-self-center small">Page @_page</span>
-                        <button class="btn btn-sm btn-outline-secondary" @onclick="NextPage" disabled="@(_page * _pageSize >= TotalFilteredCount)">Next →</button>
+                        <button class="btn btn-sm btn-outline-secondary" @onclick="NextPage" disabled="@(_page * _pageSize >= TotalFilteredCount)">Next â†’</button>
                     </div>
                 </div>
             }
@@ -193,3 +193,5 @@
         if (_page * _pageSize < TotalFilteredCount) _page++;
     }
 }
+
+

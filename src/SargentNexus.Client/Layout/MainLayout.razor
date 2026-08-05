@@ -1,77 +1,74 @@
-@inherits LayoutComponentBase
+﻿@inherits LayoutComponentBase
+@implements IDisposable
 @inject IAuthSessionService AuthSessionService
 @inject NavigationManager NavigationManager
 
-<div class="page">
-    <main>
-        <div class="app-header">
-            <span class="navbar-brand text-white fw-bold">SargentNexus</span>
-            <div class="d-flex align-items-center gap-2">
+<div class="sn-shell">
+    <header class="sn-topbar">
+        <div class="sn-topbar__inner">
+            <a class="sn-logo" href="/" aria-label="SargentNexus home">
+                <span class="sn-logo__mark">SN</span>
+                <span class="sn-logo__text">SargentNexus</span>
+            </a>
+
+            <div class="sn-topbar__actions">
                 @if (AuthSessionService.IsAuthenticated)
                 {
                     @if (AuthSessionService.RequiresPasswordChange)
                     {
-                        <a href="/change-password" class="text-warning small fw-semibold">Password update required</a>
+                        <a href="/change-password" class="sn-warning-link">Password update required</a>
                     }
-                    <div class="user-meta">
-                        <span class="user-role">@DisplayRole</span>
-                        <span class="username">@DisplayName</span>
-                    </div>
-                    <a class="btn-icon" href="/settings" title="Settings" aria-label="Settings">
+                    <a class="sn-icon-button" href="/settings" title="Settings" aria-label="Settings">
                         <i class="bi bi-gear-fill"></i>
                     </a>
-                    <button class="btn-icon" title="Sign out" @onclick="HandleLogoutAsync">
+                    <button class="sn-icon-button" type="button" title="Sign out" aria-label="Sign out" @onclick="HandleLogoutAsync">
                         <i class="bi bi-box-arrow-right"></i>
                     </button>
+                    <span class="sn-username">@DisplayName</span>
                 }
                 else
                 {
-                    <a href="/login" class="text-white">Sign in</a>
+                    <a href="/login" class="sn-auth-link">Login</a>
+                    <a href="/register" class="sn-auth-link">Register</a>
                 }
             </div>
         </div>
+    </header>
 
-        @if (AuthSessionService.IsAuthenticated)
-        {
-            <nav class="navbar navbar-expand navbar-dark app-nav">
-                <div class="container-fluid">
-                    <ul class="navbar-nav">
-                        <li class="nav-item">
-                            <NavLink class="nav-link" href="/" Match="NavLinkMatch.All">Home</NavLink>
-                        </li>
-                        <li class="nav-item">
-                            <NavLink class="nav-link" href="/workflow">Workflow</NavLink>
-                        </li>
-                        <li class="nav-item">
-                            <NavLink class="nav-link" href="/ideas">Ideas</NavLink>
-                        </li>
-                    </ul>
-                </div>
-            </nav>
-        }
+    @if (AuthSessionService.IsAuthenticated)
+    {
+        <nav class="sn-menu" aria-label="Primary navigation">
+            <div class="sn-menu__inner">
+                <NavLink class="sn-menu__link" href="/" Match="NavLinkMatch.All">Home</NavLink>
+                <NavLink class="sn-menu__link" href="/workflow">Workflows</NavLink>
+                <NavLink class="sn-menu__link" href="/ideas">Ideas</NavLink>
+            </div>
+        </nav>
+    }
 
-        <article class="content px-4">
+    <main class="sn-main">
+        <article class="content sn-content">
             @Body
         </article>
     </main>
 </div>
 
 @code {
-    private string DisplayRole =>
-        string.IsNullOrWhiteSpace(AuthSessionService.User?.Role)
-            ? "User"
-            : AuthSessionService.User!.Role;
-
     private string DisplayName =>
-        AuthSessionService.User is null
-            ? "Authenticated user"
-            : string.IsNullOrWhiteSpace($"{AuthSessionService.User.FirstName} {AuthSessionService.User.LastName}".Trim())
-                ? AuthSessionService.User.Email
-                : $"{AuthSessionService.User.FirstName} {AuthSessionService.User.LastName}".Trim();
+        AuthSessionService.User is { } user
+            ? string.IsNullOrWhiteSpace($"{user.FirstName} {user.LastName}".Trim())
+                ? user.Email
+                : $"{user.FirstName} {user.LastName}".Trim()
+            : "Authenticated user";
 
     protected override void OnInitialized()
     {
         AuthSessionService.StateChanged += HandleAuthStateChanged;
+    }
+
+    public void Dispose()
+    {
+        AuthSessionService.StateChanged -= HandleAuthStateChanged;
     }
 
     private async Task HandleLogoutAsync()
