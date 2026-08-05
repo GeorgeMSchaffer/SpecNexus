@@ -1,3 +1,4 @@
+@page "/ideas"
 @page "/ideas/{IdeaId:guid}"
 @page "/ideas/{IdeaId:guid}/edit"
 @inject IAuthSessionService AuthSessionService
@@ -5,9 +6,93 @@
 @inject NavigationManager NavigationManager
 @inject WorkflowApiClient WorkflowApiClient
 
-<PageTitle>Idea details</PageTitle>
+<PageTitle>@PageTitleText</PageTitle>
 
 <AuthGate>
+    @if (IsListView)
+    {
+        <div class="container py-4 sn-page sn-ideas-page">
+            <div class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-3">
+                <div>
+                    <h1 class="h3 mb-1">Ideas</h1>
+                    <p class="text-muted mb-0">Combined ideas created by you or assigned to you.</p>
+                </div>
+            </div>
+
+            @if (_listLoading)
+            {
+                <div class="d-flex align-items-center gap-2">
+                    <div class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></div>
+                    <span>Loading ideas...</span>
+                </div>
+            }
+            else if (_listErrorMessage is not null)
+            {
+                <div class="alert alert-danger">@_listErrorMessage</div>
+            }
+            else if (_listItems.Count == 0)
+            {
+                <div class="alert alert-secondary">No ideas matched your filters.</div>
+            }
+            else
+            {
+                <SearchPaginationBar @bind-SearchText="_search"
+                                     @bind-PageSize="_pageSize"
+                                     OnSearch="HandleSearchAsync" />
+
+                <div class="btn-group mb-3" role="group" aria-label="Idea filters">
+                    <button class="@GetFilterButtonClass(IdeaFilterAll)" @onclick="() => SetFilterAsync(IdeaFilterAll)">All</button>
+                    <button class="@GetFilterButtonClass(IdeaFilterCreatedByMe)" @onclick="() => SetFilterAsync(IdeaFilterCreatedByMe)">Created by me</button>
+                    <button class="@GetFilterButtonClass(IdeaFilterAssignedToMe)" @onclick="() => SetFilterAsync(IdeaFilterAssignedToMe)">Assigned to me</button>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-striped align-middle">
+                        <thead>
+                            <tr>
+                                <th>Title</th>
+                                <th>Created By</th>
+                                <th>Assigned To</th>
+                                <th>Status</th>
+                                <th>Created Date</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var item in _listItems)
+                            {
+                                <tr>
+                                    <td>
+                                        <NavLink class="fw-semibold text-decoration-none" href="@GetIdeaEditUrl(item.IdeaId)">
+                                            @item.Title
+                                        </NavLink>
+                                    </td>
+                                    <td>@(item.AuthorDisplayName ?? "-")</td>
+                                    <td>@(item.AssigneeDisplayName ?? "-")</td>
+                                    <td>@item.StatusName</td>
+                                    <td>@item.CreatedAtUtc.ToLocalTime().ToString("d")</td>
+                                    <td class="text-end">
+                                        <NavLink class="btn btn-sm btn-outline-primary" href="@GetIdeaEditUrl(item.IdeaId)">Details</NavLink>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="d-flex justify-content-between align-items-center mt-2 flex-wrap gap-2">
+                    <span class="text-muted small">@GetResultSummary()</span>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-sm btn-outline-secondary" @onclick="PrevPageAsync" disabled="@(_page <= 1)">Prev</button>
+                        <span class="align-self-center small">Page @_page</span>
+                        <button class="btn btn-sm btn-outline-secondary" @onclick="NextPageAsync" disabled="@(_page * _pageSize >= _totalCount)">Next</button>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+    else
+    {
     <div class="container py-4">
         <div class="d-flex gap-2 mb-3">
             <a class="btn btn-outline-secondary btn-sm" href="/ideas">← My Ideas</a>
@@ -119,34 +204,57 @@
             </div>
         }
     </div>
+    }
 </AuthGate>
 
 @code {
     [Parameter]
-    public Guid IdeaId { get; set; }
+    public Guid? IdeaId { get; set; }
 
+    private const string IdeaFilterAll = "all";
+    private const string IdeaFilterCreatedByMe = "createdByMe";
+    private const string IdeaFilterAssignedToMe = "assignedToMe";
+
+    private readonly List<IdeaListItemDto> _listItems = new();
     private IdeaDetailDto? _idea;
     private bool _loading = true;
+    private bool _listLoading = true;
     private bool _isSubmitting;
     private bool _hasUpvoted;
     private string? _errorMessage;
+    private string? _listErrorMessage;
     private Guid _selectedStatusId;
     private List<SwimlaneDto> _boardSwimlanes = new();
     private CommentFormModel _commentModel = new();
+    private string _search = string.Empty;
+    private string _filter = IdeaFilterAll;
+    private int _page = 1;
+    private int _pageSize = 25;
+    private int _totalCount;
 
-    protected override async Task OnInitializedAsync()
+    private bool IsListView => !IdeaId.HasValue;
+
+    private string PageTitleText => IsListView ? "Ideas" : "Idea details";
+
+    protected override async Task OnParametersSetAsync()
     {
         await LoadAsync();
     }
 
     private async Task LoadAsync()
     {
+        if (IsListView)
+        {
+            await LoadIdeasAsync();
+            return;
+        }
+
         _loading = true;
         _errorMessage = null;
 
         try
         {
-            _idea = await WorkflowApiClient.GetIdeaDetailAsync(AuthSessionService.AccessToken!, IdeaId, CancellationToken.None);
+            _idea = await WorkflowApiClient.GetIdeaDetailAsync(AuthSessionService.AccessToken!, IdeaId!.Value, CancellationToken.None);
 
             var board = await WorkflowApiClient.GetBoardDetailAsync(AuthSessionService.AccessToken!, _idea.BoardId, CancellationToken.None);
             _boardSwimlanes = board.Swimlanes.ToList();
@@ -160,6 +268,114 @@
         {
             _loading = false;
         }
+    }
+
+    private async Task LoadIdeasAsync()
+    {
+        _listLoading = true;
+        _listErrorMessage = null;
+
+        try
+        {
+            if (!AuthSessionService.IsAuthenticated)
+            {
+                NavigationManager.NavigateTo("/login");
+                return;
+            }
+
+            var organizationId = AuthSessionService.User?.OrganizationId;
+            if (organizationId is null || organizationId.Value == Guid.Empty)
+            {
+                _listItems.Clear();
+                _totalCount = 0;
+                return;
+            }
+
+            var accessToken = AuthSessionService.AccessToken
+                ?? throw new InvalidOperationException("Missing access token for authenticated session.");
+
+            var result = await WorkflowApiClient.ListMyIdeasAsync(
+                accessToken,
+                organizationId.Value,
+                _page,
+                _pageSize,
+                _search,
+                _filter,
+                CancellationToken.None);
+
+            _listItems.Clear();
+            _listItems.AddRange(result.Items);
+            _totalCount = result.TotalCount;
+        }
+        catch (Exception ex)
+        {
+            _listErrorMessage = ErrorMessageService.GetDisplayMessage(null, null, ex);
+        }
+        finally
+        {
+            _listLoading = false;
+        }
+    }
+
+    private async Task HandleSearchAsync()
+    {
+        _page = 1;
+        await LoadIdeasAsync();
+    }
+
+    private async Task SetFilterAsync(string filter)
+    {
+        if (string.Equals(_filter, filter, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        _filter = filter;
+        _page = 1;
+        await LoadIdeasAsync();
+    }
+
+    private async Task PrevPageAsync()
+    {
+        if (_page <= 1)
+        {
+            return;
+        }
+
+        _page--;
+        await LoadIdeasAsync();
+    }
+
+    private async Task NextPageAsync()
+    {
+        if (_page * _pageSize >= _totalCount)
+        {
+            return;
+        }
+
+        _page++;
+        await LoadIdeasAsync();
+    }
+
+    private string GetFilterButtonClass(string filter)
+    {
+        return string.Equals(_filter, filter, StringComparison.Ordinal)
+            ? "btn btn-primary"
+            : "btn btn-outline-primary";
+    }
+
+    private string GetIdeaEditUrl(Guid ideaId) => $"/ideas/{ideaId}/edit";
+
+    private string GetResultSummary()
+    {
+        if (_totalCount == 0)
+        {
+            return "Showing 0 of 0";
+        }
+
+        var start = (_page - 1) * _pageSize + 1;
+        var end = Math.Min(_page * _pageSize, _totalCount);
+        return $"Showing {start}-{end} of {_totalCount}";
     }
 
     private async Task HandleCommentAsync()

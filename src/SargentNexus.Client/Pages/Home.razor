@@ -1,8 +1,138 @@
 ﻿@page "/"
+@inject IAuthSessionService AuthSessionService
+@inject IClientErrorMessageService ErrorMessageService
+@inject NavigationManager NavigationManager
+@inject WorkflowApiClient WorkflowApiClient
 
 <PageTitle>Home</PageTitle>
 
 <AuthGate>
-    <h1>Hello, world!</h1>
-    <p>Welcome to your new app.</p>
+    <div class="container py-4">
+        <div class="mb-4">
+            <h1 class="h3 mb-1">Welcome back, @DisplayName</h1>
+            <p class="text-muted mb-0">Here is a quick summary of your workspace.</p>
+        </div>
+
+        @if (_loading)
+        {
+            <div class="d-flex align-items-center gap-2">
+                <div class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></div>
+                <span>Loading dashboard...</span>
+            </div>
+        }
+        else if (_errorMessage is not null)
+        {
+            <div class="alert alert-danger">@_errorMessage</div>
+        }
+        else if (_organizationId is null)
+        {
+            <div class="alert alert-warning">Your account is not linked to an organization yet.</div>
+        }
+        else
+        {
+            <div class="row g-3 mb-4">
+                <div class="col-md-4">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <div class="text-uppercase small text-muted">Boards</div>
+                            <div class="display-6 mb-2">@_boardCount</div>
+                            <p class="mb-0 text-muted">Workflows you can access.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <div class="text-uppercase small text-muted">My ideas</div>
+                            <div class="display-6 mb-2">@_myIdeaCount</div>
+                            <p class="mb-0 text-muted">Ideas you created.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <div class="text-uppercase small text-muted">Assigned ideas</div>
+                            <div class="display-6 mb-2">@_assignedIdeaCount</div>
+                            <p class="mb-0 text-muted">Ideas assigned to you.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-body">
+                    <h2 class="h5 mb-3">Quick actions</h2>
+                    <div class="d-flex flex-wrap gap-2">
+                        <NavLink class="btn btn-primary" href="/workflow">Workflows</NavLink>
+                        <NavLink class="btn btn-outline-primary" href="/ideas">Ideas</NavLink>
+                        <NavLink class="btn btn-outline-secondary" href="/settings">Settings</NavLink>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
 </AuthGate>
+
+@code {
+    private bool _loading = true;
+    private string? _errorMessage;
+    private Guid? _organizationId;
+    private int _boardCount;
+    private int _myIdeaCount;
+    private int _assignedIdeaCount;
+
+    private string DisplayName =>
+        AuthSessionService.User is { } user
+            ? string.IsNullOrWhiteSpace($"{user.FirstName} {user.LastName}".Trim())
+                ? user.Email
+                : $"{user.FirstName} {user.LastName}".Trim()
+            : "authenticated user";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDashboardAsync();
+    }
+
+    private async Task LoadDashboardAsync()
+    {
+        _loading = true;
+        _errorMessage = null;
+
+        try
+        {
+            if (!AuthSessionService.IsAuthenticated)
+            {
+                NavigationManager.NavigateTo("/login");
+                return;
+            }
+
+            _organizationId = AuthSessionService.User?.OrganizationId;
+            if (_organizationId is null || _organizationId.Value == Guid.Empty)
+            {
+                return;
+            }
+
+            var accessToken = AuthSessionService.AccessToken
+                ?? throw new InvalidOperationException("Missing access token for authenticated session.");
+
+            var boardCountTask = WorkflowApiClient.ListBoardsAsync(accessToken, _organizationId.Value, CancellationToken.None);
+            var myIdeasTask = WorkflowApiClient.ListMyIdeasAsync(accessToken, _organizationId.Value, 1, 1, null, "createdByMe", CancellationToken.None);
+            var assignedIdeasTask = WorkflowApiClient.ListMyIdeasAsync(accessToken, _organizationId.Value, 1, 1, null, "assignedToMe", CancellationToken.None);
+
+            await Task.WhenAll(boardCountTask, myIdeasTask, assignedIdeasTask);
+
+            _boardCount = boardCountTask.Result.Count;
+            _myIdeaCount = myIdeasTask.Result.TotalCount;
+            _assignedIdeaCount = assignedIdeasTask.Result.TotalCount;
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = ErrorMessageService.GetDisplayMessage(null, null, ex);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+}
