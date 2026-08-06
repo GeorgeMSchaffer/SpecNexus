@@ -1,32 +1,22 @@
-﻿﻿using Microsoft.JSInterop;
-using System.Security.Claims;
+﻿﻿using System.Security.Claims;
 
 namespace SargentNexus.Client.Auth;
 
-public sealed class AuthSessionService : IAuthSessionService
+public sealed class AuthSessionService : IAuthSessionService, IDisposable
 {
-    private const string StorageAccessTokenKey = "sn.auth.accessToken";
-    private const string StorageRequiresPasswordChangeKey = "sn.auth.requiresPasswordChange";
-    private const string StorageUserEmailKey = "sn.auth.userEmail";
-    private const string StorageUserRoleKey = "sn.auth.userRole";
-    private const string StorageUserIdKey = "sn.auth.userId";
-    private const string StorageOrganizationIdKey = "sn.auth.organizationId";
-    private const string StorageFirstNameKey = "sn.auth.firstName";
-    private const string StorageLastNameKey = "sn.auth.lastName";
-    private const string StorageStatusKey = "sn.auth.status";
-
     private readonly AuthApiClient _authApiClient;
-    private readonly IJSRuntime _jsRuntime;
+    private readonly AuthSessionStorage _sessionStorage;
 
     private string? _accessToken;
     private bool _requiresPasswordChange;
     private LoginUserDto? _user;
     private bool _initialized;
 
-    public AuthSessionService(AuthApiClient authApiClient, IJSRuntime jsRuntime)
+    public AuthSessionService(AuthApiClient authApiClient, AuthSessionStorage sessionStorage)
     {
         _authApiClient = authApiClient;
-        _jsRuntime = jsRuntime;
+        _sessionStorage = sessionStorage;
+        _sessionStorage.Invalidated += HandleSessionInvalidated;
     }
 
     public event Action? StateChanged;
@@ -52,69 +42,37 @@ public sealed class AuthSessionService : IAuthSessionService
 
         _initialized = true;
 
-        _accessToken = await ReadStorageAsync(StorageAccessTokenKey);
-        _requiresPasswordChange = bool.TryParse(await ReadStorageAsync(StorageRequiresPasswordChangeKey), out var parsed) && parsed;
-
-        var userEmail = await ReadStorageAsync(StorageUserEmailKey);
-        var userRole = await ReadStorageAsync(StorageUserRoleKey);
-        var userIdText = await ReadStorageAsync(StorageUserIdKey);
-        var organizationIdText = await ReadStorageAsync(StorageOrganizationIdKey);
-        var firstName = await ReadStorageAsync(StorageFirstNameKey);
-        var lastName = await ReadStorageAsync(StorageLastNameKey);
-        var status = await ReadStorageAsync(StorageStatusKey);
-
-        if (!string.IsNullOrWhiteSpace(_accessToken) &&
-            !string.IsNullOrWhiteSpace(userEmail) &&
-            !string.IsNullOrWhiteSpace(userRole) &&
-            Guid.TryParse(userIdText, out var userId))
+        var storedAccessToken = await _sessionStorage.ReadAccessTokenAsync();
+        if (string.IsNullOrWhiteSpace(storedAccessToken))
         {
-            _user = new LoginUserDto
-            {
-                UserId = userId,
-                Email = userEmail,
-                Role = userRole,
-                OrganizationId = Guid.TryParse(organizationIdText, out var organizationId) ? organizationId : null,
-                FirstName = firstName ?? string.Empty,
-                LastName = lastName ?? string.Empty,
-                Status = status ?? string.Empty
-            };
-
-            if (_requiresPasswordChange)
-            {
-                NotifyStateChanged();
-                return;
-            }
-
-            if (string.IsNullOrWhiteSpace(_user.Email) || _user.OrganizationId is null || _user.OrganizationId == Guid.Empty)
-            {
-                var me = await _authApiClient.GetCurrentUserAsync(_accessToken, cancellationToken);
-                if (me is null)
-                {
-                    await ClearSessionAsync();
-                    NotifyStateChanged();
-                    return;
-                }
-
-                _user = new LoginUserDto
-                {
-                    UserId = me.UserId,
-                    OrganizationId = me.OrganizationId,
-                    Role = me.Role,
-                    FirstName = me.FirstName,
-                    LastName = me.LastName,
-                    Email = me.Email,
-                    Status = me.Status
-                };
-            }
-        }
-        else
-        {
-            _accessToken = null;
-            _user = null;
-            _requiresPasswordChange = false;
+            await ClearSessionAsync();
+            NotifyStateChanged();
+            return;
         }
 
-        NotifyStateChanged();
+        var currentUser = await _authApiClient.GetCurrentUserAsync(storedAccessToken, cancellationToken);
+        if (currentUser is null)
+        {
+            await ClearSessionAsync();
+            NotifyStateChanged();
+            return;
+        }
+
+        _accessToken = storedAccessToken;
+        _requiresPasswordChange = await _sessionStorage.ReadRequiresPasswordChangeAsync();
+        _user = new LoginUserDto
+        {
+            UserId = currentUser.UserId,
+            OrganizationId = currentUser.OrganizationId,
+            Role = currentUser.Role,
+            FirstName = currentUser.FirstName,
+            LastName = currentUser.LastName,
+            Email = currentUser.Email,
+            Status = currentUser.Status
+        };
+
+        await PersistSessionAsync();
+        await PersistSessionAsync();
     }
 
     public async Task<LoginResponseDto> LoginAsync(string email, string password, CancellationToken cancellationToken = default)
@@ -163,7 +121,7 @@ public sealed class AuthSessionService : IAuthSessionService
         }, cancellationToken);
 
         _requiresPasswordChange = false;
-        await WriteStorageAsync(StorageRequiresPasswordChangeKey, "false");
+        await PersistSessionAsync();
         NotifyStateChanged();
     }
 
@@ -225,48 +183,25 @@ public sealed class AuthSessionService : IAuthSessionService
 
     private async Task PersistSessionAsync()
     {
-        await WriteStorageAsync(StorageAccessTokenKey, _accessToken);
-        await WriteStorageAsync(StorageRequiresPasswordChangeKey, _requiresPasswordChange.ToString().ToLowerInvariant());
-        await WriteStorageAsync(StorageUserEmailKey, _user?.Email);
-        await WriteStorageAsync(StorageUserRoleKey, _user?.Role);
-        await WriteStorageAsync(StorageUserIdKey, _user?.UserId.ToString());
-        await WriteStorageAsync(StorageOrganizationIdKey, _user?.OrganizationId?.ToString());
-        await WriteStorageAsync(StorageFirstNameKey, _user?.FirstName);
-        await WriteStorageAsync(StorageLastNameKey, _user?.LastName);
-        await WriteStorageAsync(StorageStatusKey, _user?.Status);
+        await _sessionStorage.PersistAsync(_accessToken, _requiresPasswordChange, _user);
     }
 
     private async Task ClearSessionAsync()
     {
+        await _sessionStorage.ClearAsync();
+    }
+
+    private void HandleSessionInvalidated()
+    {
         _accessToken = null;
         _user = null;
         _requiresPasswordChange = false;
-
-        await WriteStorageAsync(StorageAccessTokenKey, null);
-        await WriteStorageAsync(StorageRequiresPasswordChangeKey, null);
-        await WriteStorageAsync(StorageUserEmailKey, null);
-        await WriteStorageAsync(StorageUserRoleKey, null);
-        await WriteStorageAsync(StorageUserIdKey, null);
-        await WriteStorageAsync(StorageOrganizationIdKey, null);
-        await WriteStorageAsync(StorageFirstNameKey, null);
-        await WriteStorageAsync(StorageLastNameKey, null);
-        await WriteStorageAsync(StorageStatusKey, null);
+        NotifyStateChanged();
     }
 
-    private async Task<string?> ReadStorageAsync(string key)
+    public void Dispose()
     {
-        return await _jsRuntime.InvokeAsync<string?>("localStorage.getItem", key);
-    }
-
-    private async Task WriteStorageAsync(string key, string? value)
-    {
-        if (value is null)
-        {
-            await _jsRuntime.InvokeVoidAsync("localStorage.removeItem", key);
-            return;
-        }
-
-        await _jsRuntime.InvokeVoidAsync("localStorage.setItem", key, value);
+        _sessionStorage.Invalidated -= HandleSessionInvalidated;
     }
 
     private void NotifyStateChanged()

@@ -45,14 +45,26 @@ public sealed class Pbkdf2PasswordHasherTests
 public sealed class PasswordPolicyValidatorTests
 {
     [Fact]
-    public void Validate_WithCompliantPassword_ReturnsNoErrors()
+    public void Validate_WithSixCharacterCompliantPassword_ReturnsNoErrors()
     {
         var validator = TestActivator.CreateInternal<IPasswordPolicyValidator>("SargentNexus.Infrastructure.PasswordPolicyValidator");
 
-        var result = validator.Validate("ValidPassword1!");
+        var result = validator.Validate("Ab1!cd");
 
         Assert.True(result.IsValid);
         Assert.Empty(result.Errors);
+    }
+
+    [Fact]
+    public void Validate_WithFiveCharacterCompliantPassword_ReturnsLengthError()
+    {
+        var validator = TestActivator.CreateInternal<IPasswordPolicyValidator>("SargentNexus.Infrastructure.PasswordPolicyValidator");
+
+        var result = validator.Validate("Ab1!c");
+
+        Assert.False(result.IsValid);
+        Assert.Single(result.Errors);
+        Assert.Contains("Password must be at least 6 characters long.", result.Errors);
     }
 
     [Fact]
@@ -64,7 +76,7 @@ public sealed class PasswordPolicyValidatorTests
 
         Assert.False(result.IsValid);
         Assert.Equal(4, result.Errors.Count);
-        Assert.Contains("Password must be at least 8 characters long.", result.Errors);
+        Assert.Contains("Password must be at least 6 characters long.", result.Errors);
         Assert.Contains("Password must contain at least one uppercase letter.", result.Errors);
         Assert.Contains("Password must contain at least one number.", result.Errors);
         Assert.Contains("Password must contain at least one special character.", result.Errors);

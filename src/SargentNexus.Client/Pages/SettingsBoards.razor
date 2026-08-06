@@ -14,6 +14,10 @@
             </div>
             <div class="d-flex gap-2">
                 <NavLink class="btn btn-sm btn-outline-secondary" href="/settings">← Settings</NavLink>
+                @if (_boardView == FormView.List && CanManageBoards)
+                {
+                    <button class="btn btn-primary" type="button" aria-label="Add new board" @onclick="StartCreateBoard">Add New</button>
+                }
             </div>
         </div>
 
@@ -58,10 +62,6 @@
             }
             else
             {
-                <div class="mb-3">
-                    <button class="btn btn-outline-primary btn-sm" @onclick="StartCreateBoard">Create board</button>
-                </div>
-
                 @if (_isLoadingBoards)
                 {
                     <div class="alert alert-info">Loading boards...</div>
@@ -115,6 +115,9 @@
 @code {
     private enum FormView { List, Form }
 
+    [SupplyParameterFromQuery(Name = "create")]
+    public bool CreateRequested { get; set; }
+
     private readonly List<BoardSummaryDto> _boards = new();
 
     private FormView _boardView = FormView.List;
@@ -138,6 +141,11 @@
         }
 
         await LoadBoardsAsync();
+
+        if (CreateRequested)
+        {
+            StartCreateBoard();
+        }
     }
 
     private async Task LoadBoardsAsync()

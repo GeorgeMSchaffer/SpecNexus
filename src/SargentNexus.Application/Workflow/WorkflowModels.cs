@@ -56,6 +56,64 @@ public sealed class UpdateStatusRequestModel
     public bool IsDefault { get; set; }
 }
 
+public sealed class IdeaTypeSummaryModel
+{
+    public Guid IdeaTypeId { get; init; }
+
+    public Guid OrganizationId { get; init; }
+
+    public string Name { get; init; } = string.Empty;
+
+    public int SortOrder { get; init; }
+
+    public bool IsDeleted { get; init; }
+}
+
+public sealed class IdeaTypeWriteRequestModel
+{
+    [Required]
+    [StringLength(100)]
+    public string Name { get; set; } = string.Empty;
+}
+
+public sealed class ReorderIdeaTypesRequestModel
+{
+    [Required]
+    public IReadOnlyList<Guid> OrderedIdeaTypeIds { get; set; } = Array.Empty<Guid>();
+}
+
+public sealed class BusinessImpactSummaryModel
+{
+    public Guid BusinessImpactId { get; init; }
+
+    public Guid OrganizationId { get; init; }
+
+    public string Name { get; init; } = string.Empty;
+
+    public string Color { get; init; } = string.Empty;
+
+    public int SortOrder { get; init; }
+
+    public bool IsDeleted { get; init; }
+}
+
+public sealed class BusinessImpactWriteRequestModel
+{
+    [Required]
+    [StringLength(100)]
+    public string Name { get; set; } = string.Empty;
+
+    [Required]
+    [RegularExpression("^#[0-9A-Fa-f]{6}$")]
+    public string Color { get; set; } = string.Empty;
+}
+
+public sealed class ReorderBusinessImpactsRequestModel
+{
+    [Required]
+    public IReadOnlyList<Guid> OrderedBusinessImpactIds { get; set; } = Array.Empty<Guid>();
+}
+
 public sealed class SwimlaneModel
 {
     public Guid StatusId { get; init; }
@@ -401,7 +459,9 @@ public enum WorkflowFailureReason
     BoardNotFound = 5,
     ValidationError = 6,
     IdeaNotFound = 7,
-    CommentNotFound = 8
+    CommentNotFound = 8,
+    IdeaTypeNotFound = 9,
+    BusinessImpactNotFound = 10
 }
 
 public sealed class WorkflowResult<T>

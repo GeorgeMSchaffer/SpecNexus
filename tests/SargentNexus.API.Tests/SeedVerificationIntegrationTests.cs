@@ -8,17 +8,32 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using SargentNexus.Domain;
 using SargentNexus.Infrastructure;
 
 namespace SargentNexus.API.Tests;
 
 /// <summary>
 /// T050: End-to-end seed verification covering organization bootstrap defaults,
-/// invite code generation, audit event persistence, and deferred-scope boundaries
-/// (OAuth and SAML remain unimplemented in MVP).
+/// invite code generation, persisted audit and notification events, and canonical
+/// deferred-scope boundaries.
 /// </summary>
 public sealed class SeedVerificationIntegrationTests
 {
+    private static readonly (string Name, string Color)[] ExpectedBusinessImpacts =
+    {
+        ("Low", "#16A34A"),
+        ("Medium", "#2563EB"),
+        ("High", "#D97706"),
+        ("Critical", "#DC2626")
+    };
+
+    private static readonly string[] ExpectedIdeaTypeNames =
+    {
+        "Continuous Improvement",
+        "Process Revision"
+    };
+
     // ── Organization bootstrap via API ────────────────────────────────────────
 
     [Fact]
@@ -154,9 +169,26 @@ public sealed class SeedVerificationIntegrationTests
         var swimlaneCount = await dbContext.BoardSwimlanes
             .CountAsync(sw => sw.BoardId == defaultBoardId);
 
+        var ideaTypes = await dbContext.IdeaTypes
+            .Where(item => item.OrganizationId == organizationId)
+            .OrderBy(item => item.SortOrder)
+            .ToListAsync();
+
+        var businessImpacts = await dbContext.BusinessImpacts
+            .Where(item => item.OrganizationId == organizationId)
+            .OrderBy(item => item.SortOrder)
+            .ToListAsync();
+
         Assert.Equal(5, statusCount);
         Assert.NotNull(board);
         Assert.Equal(5, swimlaneCount);
+        Assert.Equal(ExpectedIdeaTypeNames, ideaTypes.Select(item => item.Name));
+        Assert.Equal(new[] { 0, 1 }, ideaTypes.Select(item => item.SortOrder));
+        Assert.All(ideaTypes, item => Assert.False(item.IsDeleted));
+        Assert.Equal(ExpectedBusinessImpacts.Select(item => item.Name), businessImpacts.Select(item => item.Name));
+        Assert.Equal(ExpectedBusinessImpacts.Select(item => item.Color), businessImpacts.Select(item => item.Color));
+        Assert.Equal(new[] { 0, 1, 2, 3 }, businessImpacts.Select(item => item.SortOrder));
+        Assert.All(businessImpacts, item => Assert.False(item.IsDeleted));
     }
 
     // ── Seeded demo organization invite codes ─────────────────────────────────
@@ -207,65 +239,80 @@ public sealed class SeedVerificationIntegrationTests
             "Seeded Site Admin must be forced through password change on first login.");
     }
 
-    // ── Deferred-scope boundary: OAuth not implemented ─────────────────────────
+    // ── Collaboration event persistence ───────────────────────────────────────
 
     [Fact]
-    public async Task DeferredScope_OAuthChallengeEndpoint_ReturnsNotFound()
+    public async Task OrgAdmin_CreateComment_PersistsAuditAndNotificationEvents()
     {
         await using var factory = new SeedVerificationApiFactory();
         using var client = factory.CreateClient();
 
-        var response = await client.PostAsync("/api/v1/auth/oauth/challenge", null);
+        var loginResponse = await client.PostAsJsonAsync("/api/v1/auth/login", new
+        {
+            email = "demo.acme.orgadmin@sargentnexus.local",
+            password = "abc123!"
+        });
 
-        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
-    }
+        Assert.Equal(HttpStatusCode.OK, loginResponse.StatusCode);
 
-    [Fact]
-    public async Task DeferredScope_OAuthCallbackEndpoint_ReturnsNotFound()
-    {
-        await using var factory = new SeedVerificationApiFactory();
-        using var client = factory.CreateClient();
+        using var loginPayload = await JsonDocument.ParseAsync(await loginResponse.Content.ReadAsStreamAsync());
+        var token = loginPayload.RootElement.GetProperty("accessToken").GetString();
+        var user = loginPayload.RootElement.GetProperty("user");
+        var actorUserId = user.GetProperty("userId").GetGuid();
+        var organizationId = user.GetProperty("organizationId").GetGuid();
+        Assert.False(string.IsNullOrWhiteSpace(token));
 
-        var response = await client.GetAsync("/api/v1/auth/oauth/callback");
+        Guid ideaId;
+        Guid boardId;
+        Guid recipientUserId;
+        using (var scope = factory.Services.CreateScope())
+        {
+            var dbContext = scope.ServiceProvider.GetRequiredService<SargentNexusDbContext>();
+            var idea = await dbContext.Ideas
+                .Where(item => item.OrganizationId == organizationId && item.AuthorUserId != actorUserId)
+                .OrderBy(item => item.CreatedAtUtc)
+                .FirstAsync();
 
-        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
-    }
+            ideaId = idea.Id;
+            boardId = idea.BoardId;
+            recipientUserId = idea.AuthorUserId;
+        }
 
-    // ── Deferred-scope boundary: SAML not implemented ─────────────────────────
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        var response = await client.PostAsJsonAsync($"/api/v1/ideas/{ideaId}/comments", new
+        {
+            body = "T050 persistence verification comment."
+        });
 
-    [Fact]
-    public async Task DeferredScope_SamlLoginEndpoint_ReturnsNotFound()
-    {
-        await using var factory = new SeedVerificationApiFactory();
-        using var client = factory.CreateClient();
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
 
-        var response = await client.PostAsync("/api/v1/auth/saml/login", null);
+        using var commentPayload = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync());
+        var commentId = commentPayload.RootElement.GetProperty("commentId").GetGuid();
 
-        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
-    }
+        using var verificationScope = factory.Services.CreateScope();
+        var verificationDbContext = verificationScope.ServiceProvider.GetRequiredService<SargentNexusDbContext>();
+        var auditEvent = await verificationDbContext.AuditEvents.SingleAsync(item =>
+            item.EventType == "Workflow.CommentCreated" && item.EntityId == commentId);
+        var notificationEvent = await verificationDbContext.NotificationEvents.SingleAsync(item =>
+            item.EventType == "CommentAdded" &&
+            item.IdeaId == ideaId &&
+            item.ActorUserId == actorUserId &&
+            item.RecipientUserId == recipientUserId);
 
-    [Fact]
-    public async Task DeferredScope_SamlCallbackEndpoint_ReturnsNotFound()
-    {
-        await using var factory = new SeedVerificationApiFactory();
-        using var client = factory.CreateClient();
+        Assert.Equal("Comment", auditEvent.EntityType);
+        Assert.Equal(organizationId, auditEvent.OrganizationId);
+        Assert.Equal(actorUserId, auditEvent.ActorUserId);
+        using (var metadata = JsonDocument.Parse(auditEvent.Metadata))
+        {
+            Assert.Equal(ideaId, metadata.RootElement.GetProperty("IdeaId").GetGuid());
+            Assert.Equal(actorUserId, metadata.RootElement.GetProperty("AuthorUserId").GetGuid());
+        }
 
-        var response = await client.PostAsync("/api/v1/auth/saml/callback", null);
-
-        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
-    }
-
-    // ── Deferred-scope boundary: DI does not include OAuth or SAML services ───
-
-    [Fact]
-    public async Task DeferredScope_OAuthConfigEndpoint_ReturnsNotFound()
-    {
-        await using var factory = new SeedVerificationApiFactory();
-        using var client = factory.CreateClient();
-
-        var response = await client.GetAsync("/api/v1/organizations/" + Guid.NewGuid() + "/oauth/config");
-
-        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.Equal(organizationId, notificationEvent.OrganizationId);
+        Assert.Equal(boardId, notificationEvent.BoardId);
+        Assert.Equal(actorUserId, notificationEvent.ActorUserId);
+        Assert.False(string.IsNullOrWhiteSpace(notificationEvent.Message));
+        Assert.Equal($"/ideas/{ideaId}/edit", notificationEvent.IdeaLink);
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────

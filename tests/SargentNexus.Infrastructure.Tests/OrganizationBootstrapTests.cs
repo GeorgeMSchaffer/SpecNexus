@@ -12,6 +12,20 @@ namespace SargentNexus.Infrastructure.Tests;
 /// </summary>
 public sealed class OrganizationBootstrapTests
 {
+    private static readonly string[] ExpectedDefaultIdeaTypeNames =
+    {
+        "Continuous Improvement",
+        "Process Revision"
+    };
+
+    private static readonly (string Name, string Color)[] ExpectedDefaultBusinessImpacts =
+    {
+        ("Low", "#16A34A"),
+        ("Medium", "#2563EB"),
+        ("High", "#D97706"),
+        ("Critical", "#DC2626")
+    };
+
     private static readonly string[] ExpectedDefaultStatusNames =
     {
         "New / Pending",
@@ -136,6 +150,45 @@ public sealed class OrganizationBootstrapTests
 
         var actualNames = orderedSwimlaneStatusNames.Select(id => statuses[id]).ToArray();
         Assert.Equal(ExpectedDefaultStatusNames, actualNames);
+    }
+
+    [Fact]
+    public async Task AddOrganizationWithDefaultsAsync_CreatesCanonicalIdeaTypesInSortOrder()
+    {
+        await using var dbContext = CreateDbContext();
+        var store = CreateAdministrationStore(dbContext);
+        var organization = CreateOrganization();
+
+        await store.AddOrganizationWithDefaultsAsync(organization, CancellationToken.None);
+
+        var ideaTypes = await dbContext.IdeaTypes
+            .Where(item => item.OrganizationId == organization.Id)
+            .OrderBy(item => item.SortOrder)
+            .ToListAsync();
+
+        Assert.Equal(ExpectedDefaultIdeaTypeNames, ideaTypes.Select(item => item.Name));
+        Assert.Equal(new[] { 0, 1 }, ideaTypes.Select(item => item.SortOrder));
+        Assert.All(ideaTypes, item => Assert.False(item.IsDeleted));
+    }
+
+    [Fact]
+    public async Task AddOrganizationWithDefaultsAsync_CreatesCanonicalBusinessImpactsInSortOrder()
+    {
+        await using var dbContext = CreateDbContext();
+        var store = CreateAdministrationStore(dbContext);
+        var organization = CreateOrganization();
+
+        await store.AddOrganizationWithDefaultsAsync(organization, CancellationToken.None);
+
+        var businessImpacts = await dbContext.BusinessImpacts
+            .Where(item => item.OrganizationId == organization.Id)
+            .OrderBy(item => item.SortOrder)
+            .ToListAsync();
+
+        Assert.Equal(ExpectedDefaultBusinessImpacts.Select(item => item.Name), businessImpacts.Select(item => item.Name));
+        Assert.Equal(ExpectedDefaultBusinessImpacts.Select(item => item.Color), businessImpacts.Select(item => item.Color));
+        Assert.Equal(new[] { 0, 1, 2, 3 }, businessImpacts.Select(item => item.SortOrder));
+        Assert.All(businessImpacts, item => Assert.False(item.IsDeleted));
     }
 
     // ── Administration Audit Writer Persistence ────────────────────────────────

@@ -1,0 +1,210 @@
+@inject IClientErrorMessageService ErrorMessageService
+@inject WorkflowApiClient WorkflowApiClient
+
+<section class="border-top pt-4 mb-5" aria-labelledby="idea-types-heading">
+    <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+        <div>
+            <h2 id="idea-types-heading" class="h5 mb-1">Idea Types</h2>
+            <p class="text-muted small mb-0">The first active option is the default for new ideas.</p>
+        </div>
+        @if (!_showForm)
+        {
+            <button class="btn btn-sm btn-outline-primary" type="button" @onclick="StartCreate">Create Idea Type</button>
+        }
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(_errorMessage))
+    {
+        <div class="alert alert-danger" role="alert">@_errorMessage</div>
+    }
+
+    @if (_showForm)
+    {
+        <EditForm Model="_form" OnValidSubmit="SaveAsync" class="border rounded p-3 mb-3">
+            <DataAnnotationsValidator />
+            <h3 class="h6">@(_editTarget is null ? "Create Idea Type" : "Edit Idea Type")</h3>
+            <div class="row g-3 align-items-end">
+                <div class="col-md-8">
+                    <label class="form-label" for="ideaTypeName">Name</label>
+                    <InputText id="ideaTypeName" class="form-control" @bind-Value="_form.Name" />
+                    <ValidationMessage For="() => _form.Name" />
+                </div>
+                <div class="col-md-4 d-flex gap-2">
+                    <button class="btn btn-primary" type="submit" disabled="@_isSaving">@(_isSaving ? "Saving..." : "Save")</button>
+                    <button class="btn btn-outline-secondary" type="button" @onclick="CancelForm">Cancel</button>
+                </div>
+            </div>
+        </EditForm>
+    }
+
+    @if (_isLoading)
+    {
+        <div class="alert alert-info">Loading Idea Types...</div>
+    }
+    else if (_items.Count == 0)
+    {
+        <div class="alert alert-secondary">No Idea Types found.</div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-striped align-middle">
+                <thead><tr><th>Name</th><th>State</th><th class="text-end">Actions</th></tr></thead>
+                <tbody>
+                    @for (var index = 0; index < _items.Count; index++)
+                    {
+                        var item = _items[index];
+                        <tr @key="item.IdeaTypeId" class="@(item.IsDeleted ? "text-muted" : null)">
+                            <td>
+                                @item.Name
+                                @if (IsFirstActive(index))
+                                {
+                                    <span class="badge text-bg-primary ms-1">Default</span>
+                                }
+                            </td>
+                            <td><span class="badge @(item.IsDeleted ? "text-bg-secondary" : "text-bg-success")">@(item.IsDeleted ? "Archived" : "Active")</span></td>
+                            <td class="text-end text-nowrap">
+                                <button class="btn btn-sm btn-outline-secondary" type="button" title="Move Idea Type up" aria-label="Move @item.Name up" disabled="@(index == 0 || _isReordering)" @onclick="() => MoveAsync(index, -1)"><i class="bi bi-arrow-up" aria-hidden="true"></i></button>
+                                <button class="btn btn-sm btn-outline-secondary ms-1" type="button" title="Move Idea Type down" aria-label="Move @item.Name down" disabled="@(index == _items.Count - 1 || _isReordering)" @onclick="() => MoveAsync(index, 1)"><i class="bi bi-arrow-down" aria-hidden="true"></i></button>
+                                @if (!item.IsDeleted)
+                                {
+                                    <button class="btn btn-sm btn-outline-primary ms-1" type="button" title="Edit Idea Type" aria-label="Edit @item.Name" @onclick="() => StartEdit(item)"><i class="bi bi-pencil" aria-hidden="true"></i></button>
+                                    <button class="btn btn-sm btn-outline-danger ms-1" type="button" title="Archive Idea Type" aria-label="Archive @item.Name" disabled="@_isDeleting" @onclick="() => DeleteAsync(item)"><i class="bi bi-trash" aria-hidden="true"></i></button>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</section>
+
+@code {
+    [Parameter, EditorRequired] public Guid OrganizationId { get; set; }
+    [Parameter, EditorRequired] public string AccessToken { get; set; } = string.Empty;
+
+    private readonly List<IdeaTypeSummaryDto> _items = new();
+    private IdeaTypeFormModel _form = new();
+    private IdeaTypeSummaryDto? _editTarget;
+    private bool _showForm;
+    private bool _isLoading = true;
+    private bool _isSaving;
+    private bool _isDeleting;
+    private bool _isReordering;
+    private string? _errorMessage;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _isLoading = true;
+        _errorMessage = null;
+        try
+        {
+            var items = await WorkflowApiClient.ListIdeaTypesAsync(AccessToken, OrganizationId, CancellationToken.None);
+            _items.Clear();
+            _items.AddRange(items.OrderBy(item => item.SortOrder).ThenBy(item => item.Name));
+        }
+        catch (Exception ex) { SetError(ex); }
+        finally { _isLoading = false; }
+    }
+
+    private void StartCreate()
+    {
+        _editTarget = null;
+        _form = new IdeaTypeFormModel();
+        _showForm = true;
+        _errorMessage = null;
+    }
+
+    private void StartEdit(IdeaTypeSummaryDto item)
+    {
+        _editTarget = item;
+        _form = new IdeaTypeFormModel { Name = item.Name };
+        _showForm = true;
+        _errorMessage = null;
+    }
+
+    private void CancelForm()
+    {
+        _showForm = false;
+        _editTarget = null;
+    }
+
+    private async Task SaveAsync()
+    {
+        _isSaving = true;
+        _errorMessage = null;
+        try
+        {
+            var request = new IdeaTypeWriteRequestDto { Name = _form.Name.Trim() };
+            if (_editTarget is null)
+            {
+                await WorkflowApiClient.CreateIdeaTypeAsync(AccessToken, OrganizationId, request, CancellationToken.None);
+            }
+            else
+            {
+                await WorkflowApiClient.UpdateIdeaTypeAsync(AccessToken, _editTarget.IdeaTypeId, request, CancellationToken.None);
+            }
+
+            CancelForm();
+            await LoadAsync();
+        }
+        catch (Exception ex) { SetError(ex); }
+        finally { _isSaving = false; }
+    }
+
+    private async Task DeleteAsync(IdeaTypeSummaryDto item)
+    {
+        _isDeleting = true;
+        _errorMessage = null;
+        try
+        {
+            await WorkflowApiClient.DeleteIdeaTypeAsync(AccessToken, item.IdeaTypeId, CancellationToken.None);
+            await LoadAsync();
+        }
+        catch (Exception ex) { SetError(ex); }
+        finally { _isDeleting = false; }
+    }
+
+    private async Task MoveAsync(int index, int offset)
+    {
+        var targetIndex = index + offset;
+        if (targetIndex < 0 || targetIndex >= _items.Count) return;
+
+        _isReordering = true;
+        _errorMessage = null;
+        (_items[index], _items[targetIndex]) = (_items[targetIndex], _items[index]);
+        try
+        {
+            await WorkflowApiClient.ReorderIdeaTypesAsync(
+                AccessToken,
+                OrganizationId,
+                new ReorderIdeaTypesRequestDto { OrderedIdeaTypeIds = _items.Select(item => item.IdeaTypeId).ToArray() },
+                CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            (_items[index], _items[targetIndex]) = (_items[targetIndex], _items[index]);
+            SetError(ex);
+        }
+        finally { _isReordering = false; }
+    }
+
+    private bool IsFirstActive(int index) => !_items[index].IsDeleted && !_items.Take(index).Any(item => !item.IsDeleted);
+
+    private void SetError(Exception exception)
+    {
+        _errorMessage = exception is AuthApiException apiException
+            ? ErrorMessageService.GetDisplayMessage(apiException.Title, apiException.Detail, apiException)
+            : ErrorMessageService.GetDisplayMessage(null, null, exception);
+    }
+
+    private sealed class IdeaTypeFormModel
+    {
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.StringLength(100)]
+        public string Name { get; set; } = string.Empty;
+    }
+}

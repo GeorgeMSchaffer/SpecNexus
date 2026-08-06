@@ -111,7 +111,7 @@
             }
             else if (_filter == IdeaFilter.AssignedToMe && userId.HasValue)
             {
-                ideas = ideas.Where(i => i.AssigneeUserId == userId.Value);
+                ideas = ideas.Where(i => i.Assignees.Any(assignee => assignee.UserId == userId.Value));
             }
 
             if (!string.IsNullOrWhiteSpace(_search))

@@ -18,7 +18,7 @@
                 @if (_view == PageView.List && CanManageUsers && CurrentOrgId.HasValue)
                 {
                     <button class="btn btn-outline-secondary" @onclick="DownloadTemplateAsync">Download CSV template</button>
-                    <button class="btn btn-primary" @onclick="StartCreate">Create user</button>
+                    <button class="btn btn-primary" aria-label="Add new user" @onclick="StartCreate">Add New</button>
                 }
             </div>
         </div>

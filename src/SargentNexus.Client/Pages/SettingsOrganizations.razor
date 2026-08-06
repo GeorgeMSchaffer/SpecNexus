@@ -16,7 +16,7 @@
                 <NavLink class="btn btn-sm btn-outline-secondary" href="/settings">← Settings</NavLink>
                 @if (_view == PageView.List && IsSiteAdmin)
                 {
-                    <button class="btn btn-primary" @onclick="StartCreate">Create organization</button>
+                    <button class="btn btn-primary" aria-label="Add new organization" @onclick="StartCreate">Add New</button>
                 }
             </div>
         </div>
@@ -185,6 +185,8 @@
                                         }
                                     </td>
                                     <td class="text-end">
+                                        <NavLink class="btn btn-sm btn-outline-secondary me-1"
+                                                 href="@($"/settings/organizations/{item.OrganizationId}/idea-fields")">Idea Fields</NavLink>
                                         <button class="btn btn-sm btn-outline-primary" @onclick="() => StartEditAsync(item.OrganizationId)">Edit</button>
                                     </td>
                                 </tr>

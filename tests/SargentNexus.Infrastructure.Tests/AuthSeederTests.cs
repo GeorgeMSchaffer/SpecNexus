@@ -6,6 +6,20 @@ using SargentNexus.Infrastructure;
 
 public sealed class AuthSeederTests
 {
+    private static readonly (string Name, string Color)[] ExpectedBusinessImpacts =
+    {
+        ("Low", "#16A34A"),
+        ("Medium", "#2563EB"),
+        ("High", "#D97706"),
+        ("Critical", "#DC2626")
+    };
+
+    private static readonly string[] ExpectedIdeaTypeNames =
+    {
+        "Continuous Improvement",
+        "Process Revision"
+    };
+
     private static readonly string[] DefaultStatusNames =
     {
         "New / Pending",
@@ -49,10 +63,51 @@ public sealed class AuthSeederTests
 
         Assert.All(seededUsers, item =>
         {
-            Assert.True(item.MustChangePassword);
+            Assert.False(item.MustChangePassword);
             Assert.Equal(UserLifecycleStatus.Active, item.Status);
             Assert.True(hasher.Verify("abc123!", item.PasswordHash));
         });
+    }
+
+    [Fact]
+    public async Task SeedDevelopmentDemoEnvironmentAsync_LegacyDemoPasswordPrompt_ClearsPrompt()
+    {
+        await using var dbContext = CreateDbContext();
+        var hasher = CreateInternal<IPasswordHasher>("SargentNexus.Infrastructure.Pbkdf2PasswordHasher");
+        var seeder = CreateSeeder(dbContext, hasher);
+
+        await seeder.SeedDevelopmentDemoEnvironmentAsync(CancellationToken.None);
+
+        var demoUser = await dbContext.Users.FirstAsync(item => item.Role != UserRole.SiteAdmin);
+        demoUser.MustChangePassword = true;
+        await dbContext.SaveChangesAsync();
+
+        await seeder.SeedDevelopmentDemoEnvironmentAsync(CancellationToken.None);
+
+        Assert.False(demoUser.MustChangePassword);
+    }
+
+    [Fact]
+    public async Task SeedDevelopmentDemoEnvironmentAsync_PendingTemporaryPassword_PreservesPrompt()
+    {
+        await using var dbContext = CreateDbContext();
+        var hasher = CreateInternal<IPasswordHasher>("SargentNexus.Infrastructure.Pbkdf2PasswordHasher");
+        var seeder = CreateSeeder(dbContext, hasher);
+
+        await seeder.SeedDevelopmentDemoEnvironmentAsync(CancellationToken.None);
+
+        var demoUser = await dbContext.Users.FirstAsync(item => item.Role != UserRole.SiteAdmin);
+        var expiresAtUtc = DateTime.UtcNow.AddHours(1);
+        demoUser.MustChangePassword = true;
+        demoUser.TemporaryPasswordHash = hasher.Hash("TemporaryPassword1!");
+        demoUser.TemporaryPasswordExpiresAtUtc = expiresAtUtc;
+        await dbContext.SaveChangesAsync();
+
+        await seeder.SeedDevelopmentDemoEnvironmentAsync(CancellationToken.None);
+
+        Assert.True(demoUser.MustChangePassword);
+        Assert.NotNull(demoUser.TemporaryPasswordHash);
+        Assert.Equal(expiresAtUtc, demoUser.TemporaryPasswordExpiresAtUtc);
     }
 
     [Fact]
@@ -71,6 +126,64 @@ public sealed class AuthSeederTests
         Assert.Equal(15, await dbContext.BoardSwimlanes.CountAsync());
         Assert.Equal(15, await dbContext.Ideas.CountAsync());
         Assert.Equal(30, await dbContext.Comments.CountAsync());
+    }
+
+    [Fact]
+    public async Task SeedDevelopmentDemoEnvironmentAsync_FirstRun_CreatesCanonicalIdeaFields()
+    {
+        await using var dbContext = CreateDbContext();
+        var hasher = CreateInternal<IPasswordHasher>("SargentNexus.Infrastructure.Pbkdf2PasswordHasher");
+        var seeder = CreateSeeder(dbContext, hasher);
+
+        await seeder.SeedDevelopmentDemoEnvironmentAsync(CancellationToken.None);
+
+        var organizations = await dbContext.Organizations.ToListAsync();
+        foreach (var organization in organizations)
+        {
+            var ideaTypes = await dbContext.IdeaTypes
+                .Where(item => item.OrganizationId == organization.Id)
+                .OrderBy(item => item.SortOrder)
+                .ToListAsync();
+            var businessImpacts = await dbContext.BusinessImpacts
+                .Where(item => item.OrganizationId == organization.Id)
+                .OrderBy(item => item.SortOrder)
+                .ToListAsync();
+
+            Assert.Equal(ExpectedIdeaTypeNames, ideaTypes.Select(item => item.Name));
+            Assert.Equal(ExpectedBusinessImpacts.Select(item => item.Name), businessImpacts.Select(item => item.Name));
+            Assert.Equal(ExpectedBusinessImpacts.Select(item => item.Color), businessImpacts.Select(item => item.Color));
+        }
+    }
+
+    [Fact]
+    public async Task SeedDevelopmentDemoEnvironmentAsync_Rerun_PreservesAdministratorManagedIdeaFields()
+    {
+        await using var dbContext = CreateDbContext();
+        var hasher = CreateInternal<IPasswordHasher>("SargentNexus.Infrastructure.Pbkdf2PasswordHasher");
+        var seeder = CreateSeeder(dbContext, hasher);
+
+        await seeder.SeedDevelopmentDemoEnvironmentAsync(CancellationToken.None);
+
+        var ideaType = await dbContext.IdeaTypes.OrderBy(item => item.SortOrder).FirstAsync();
+        var businessImpact = await dbContext.BusinessImpacts.OrderBy(item => item.SortOrder).FirstAsync();
+        ideaType.Name = "Administrator Type";
+        ideaType.SortOrder = 7;
+        ideaType.IsDeleted = true;
+        businessImpact.Name = "Administrator Impact";
+        businessImpact.Color = "#123456";
+        businessImpact.SortOrder = 9;
+        businessImpact.IsDeleted = true;
+        await dbContext.SaveChangesAsync();
+
+        await seeder.SeedDevelopmentDemoEnvironmentAsync(CancellationToken.None);
+
+        Assert.Equal("Administrator Type", ideaType.Name);
+        Assert.Equal(7, ideaType.SortOrder);
+        Assert.True(ideaType.IsDeleted);
+        Assert.Equal("Administrator Impact", businessImpact.Name);
+        Assert.Equal("#123456", businessImpact.Color);
+        Assert.Equal(9, businessImpact.SortOrder);
+        Assert.True(businessImpact.IsDeleted);
     }
 
     [Fact]

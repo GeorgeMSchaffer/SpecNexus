@@ -7,6 +7,20 @@ namespace SargentNexus.Infrastructure.Administration;
 
 internal sealed class OrganizationUserAdministrationStore : IOrganizationUserAdministrationStore
 {
+    private static readonly (string Name, string Color)[] DefaultBusinessImpacts =
+    {
+        ("Low", "#16A34A"),
+        ("Medium", "#2563EB"),
+        ("High", "#D97706"),
+        ("Critical", "#DC2626")
+    };
+
+    private static readonly string[] DefaultIdeaTypeNames =
+    {
+        "Continuous Improvement",
+        "Process Revision"
+    };
+
     private static readonly string[] DefaultStatusNames =
     {
         "New / Pending",
@@ -93,6 +107,25 @@ internal sealed class OrganizationUserAdministrationStore : IOrganizationUserAdm
     public async Task<(Guid BoardId, int StatusCount)> AddOrganizationWithDefaultsAsync(Organization organization, CancellationToken cancellationToken)
     {
         _dbContext.Organizations.Add(organization);
+
+        _dbContext.IdeaTypes.AddRange(DefaultIdeaTypeNames.Select((name, index) => new IdeaType
+        {
+            Id = Guid.NewGuid(),
+            OrganizationId = organization.Id,
+            Name = name,
+            SortOrder = index,
+            IsDeleted = false
+        }));
+
+        _dbContext.BusinessImpacts.AddRange(DefaultBusinessImpacts.Select((item, index) => new BusinessImpact
+        {
+            Id = Guid.NewGuid(),
+            OrganizationId = organization.Id,
+            Name = item.Name,
+            Color = item.Color,
+            SortOrder = index,
+            IsDeleted = false
+        }));
 
         var statuses = DefaultStatusNames
             .Select((name, index) => new

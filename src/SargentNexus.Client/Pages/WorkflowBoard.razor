@@ -1,16 +1,17 @@
 @page "/board/{BoardId:guid}"
-@page "/workflow/{BoardId:guid}"
 @inject IAuthSessionService AuthSessionService
 @inject IClientErrorMessageService ErrorMessageService
 @inject NavigationManager NavigationManager
 @inject WorkflowApiClient WorkflowApiClient
+@inject AdministrationApiClient AdministrationApiClient
+@inject IClientClock ClientClock
 
 <PageTitle>@(_board?.Name ?? "Board")</PageTitle>
 
 <AuthGate>
     <main class="workflow-board workflow-board--@_boardStyle">
         <header class="workflow-board__toolbar">
-            <NavLink class="workflow-board__back" href="/board" aria-label="Back to boards">←</NavLink>
+            <NavLink class="workflow-board__back" href="/boards" aria-label="Back to boards">←</NavLink>
 
             @if (_board is not null)
             {
@@ -60,8 +61,17 @@
                     <button type="button" class="@FilterButtonClass("created")" aria-pressed="@(_ideaFilter == "created")" @onclick="ShowCreatedIdeas">Created by me</button>
                     <button type="button" class="@FilterButtonClass("assigned")" aria-pressed="@(_ideaFilter == "assigned")" @onclick="ShowAssignedIdeas">Assigned to me</button>
                 </div>
-                <span class="workflow-board__result-count">@VisibleIdeaCount of @_ideasResult.Items.Count ideas</span>
+                <span class="workflow-board__result-count">@VisibleIdeaCount of @_ideas.Count ideas</span>
             </div>
+
+            @if (!string.IsNullOrWhiteSpace(_operationError))
+            {
+                <div class="workflow-board__operation-error" role="alert">
+                    <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
+                    <span>@_operationError</span>
+                    <button type="button" aria-label="Dismiss error" @onclick="() => _operationError = null">×</button>
+                </div>
+            }
 
             @if (_showCreateForm)
             {
@@ -89,7 +99,6 @@
                                 <div class="workflow-board__field">
                                     <label class="form-label">Priority</label>
                                     <InputSelect class="form-select" @bind-Value="_createForm.Priority">
-                                        <option value="">No priority</option>
                                         <option value="Low">Low</option>
                                         <option value="Medium">Medium</option>
                                         <option value="High">High</option>
@@ -101,6 +110,56 @@
                                     <input type="date" class="form-control"
                                            value="@_createForm.DueDateString"
                                            @onchange="e => _createForm.DueDateString = e.Value?.ToString()" />
+                                </div>
+                            </div>
+                            <div class="workflow-board__form-grid">
+                                <div class="workflow-board__field">
+                                    <label class="form-label">Idea Type <span class="text-danger">*</span></label>
+                                    <InputSelect class="form-select" @bind-Value="_createForm.IdeaTypeId">
+                                        @foreach (var item in _ideaTypes.Where(item => !item.IsDeleted))
+                                        {
+                                            <option value="@item.IdeaTypeId">@item.Name</option>
+                                        }
+                                    </InputSelect>
+                                    <ValidationMessage For="() => _createForm.IdeaTypeId" />
+                                </div>
+                                <div class="workflow-board__field">
+                                    <label class="form-label">Business Impact <span class="text-danger">*</span></label>
+                                    <InputSelect class="form-select" @bind-Value="_createForm.BusinessImpactId">
+                                        @foreach (var item in _businessImpacts.Where(item => !item.IsDeleted))
+                                        {
+                                            <option value="@item.BusinessImpactId">@item.Name</option>
+                                        }
+                                    </InputSelect>
+                                    <ValidationMessage For="() => _createForm.BusinessImpactId" />
+                                </div>
+                            </div>
+                            <fieldset class="workflow-board__selection-list">
+                                <legend>Assignees <span>@_createForm.AssigneeUserIds.Count/5</span></legend>
+                                @foreach (var user in _organizationUsers)
+                                {
+                                    var isSelected = _createForm.AssigneeUserIds.Contains(user.UserId);
+                                    <label>
+                                        <input type="checkbox"
+                                               checked="@isSelected"
+                                               disabled="@(!isSelected && _createForm.AssigneeUserIds.Count >= 5)"
+                                               @onchange="args => ToggleSelection(_createForm.AssigneeUserIds, user.UserId, args.Value is true)" />
+                                        <span>@user.FirstName @user.LastName</span>
+                                    </label>
+                                }
+                            </fieldset>
+                            <div class="workflow-board__field">
+                                <label class="form-label" for="create-tag">Tags <span>@_createForm.TagNames.Count/10</span></label>
+                                <div class="workflow-board__tag-entry">
+                                    <InputText id="create-tag" class="form-control" @bind-Value="_createForm.TagEntry" />
+                                    <button type="button" class="btn btn-outline-secondary" disabled="@(_createForm.TagNames.Count >= 10)"
+                                            @onclick="() => { AddTag(_createForm.TagNames, _createForm.TagEntry); _createForm.TagEntry = string.Empty; }">Add</button>
+                                </div>
+                                <div class="workflow-board__tag-list" aria-label="Selected tags">
+                                    @foreach (var tag in _createForm.TagNames)
+                                    {
+                                        <span>@tag <button type="button" aria-label="Remove @tag" @onclick="() => _createForm.TagNames.Remove(tag)">×</button></span>
+                                    }
                                 </div>
                             </div>
                             @if (!string.IsNullOrWhiteSpace(_createError))
@@ -132,7 +191,9 @@
                     @foreach (var swimlane in _swimlanes)
                     {
                         var laneIdeas = IdeasForSwimlane(swimlane.StatusId);
-                        <section class="board-column">
+                        <section class="board-column @(_draggedIdeaId.HasValue ? "is-drop-target" : null)"
+                                 @ondragover:preventDefault="true"
+                                 @ondrop="() => DropOnLaneAsync(swimlane.StatusId)">
                             <div class="board-column-header">
                                 <span class="board-column-title">@swimlane.StatusName</span>
                                 <span class="board-column-count">@laneIdeas.Count</span>
@@ -162,27 +223,61 @@
                                 @foreach (var idea in laneIdeas)
                                 {
                                     var ideaId = idea.IdeaId;
-                                    <article class="board-card" tabindex="0" @onclick="() => OpenIdeaOverlay(ideaId)" @onkeydown="args => HandleCardKeyDown(args, ideaId)">
+                                    <article class="board-card">
                                         <div class="board-card__body">
-                                            <div class="board-card__title" title="@idea.Title">@idea.Title</div>
-                                            <div class="board-card__meta">
-                                                @if (!string.IsNullOrWhiteSpace(idea.Priority))
+                                            <div class="board-card__topline">
+                                                @if (CanMoveIdeas)
                                                 {
-                                                    <span class="badge @PriorityBadgeClass(idea.Priority)">@idea.Priority</span>
+                                                    <button type="button" class="board-card__drag" draggable="true"
+                                                            title="Drag to move" aria-label="Drag @idea.Title to another lane"
+                                                            @ondragstart="() => BeginDrag(ideaId)" @ondragend="() => _draggedIdeaId = null">
+                                                        <i class="bi bi-grip-vertical" aria-hidden="true"></i>
+                                                    </button>
                                                 }
-                                                @if (idea.DueDate is not null)
-                                                {
-                                                    <span>Due @idea.DueDate.Value.ToString("MMM d")</span>
-                                                }
-                                                @if (idea.UpvoteCount > 0)
-                                                {
-                                                    <span class="board-card__votes">▲ @idea.UpvoteCount</span>
-                                                }
+                                                <button type="button" class="board-card__title" title="@idea.Title" @onclick="() => OpenIdeaOverlay(ideaId)">@idea.Title</button>
                                             </div>
-                                            @if (!string.IsNullOrWhiteSpace(idea.AssigneeDisplayName))
+                                            <div class="board-card__meta">
+                                                <span class="board-card__impact" style="--impact-color:@idea.BusinessImpactColor" title="Business Impact: @idea.BusinessImpactName">@idea.BusinessImpactName</span>
+                                                <span title="Created @ClientClock.FormatLocalDayAge(idea.CreatedAtUtc)">@ClientClock.FormatLocalDayAge(idea.CreatedAtUtc)</span>
+                                            </div>
+                                            @if (idea.TagNames.Count > 0)
                                             {
-                                                <div class="board-card__assignee"><span aria-hidden="true">@AssigneeInitials(idea.AssigneeDisplayName)</span>@idea.AssigneeDisplayName</div>
+                                                <div class="board-card__tags" aria-label="Tags: @string.Join(", ", idea.TagNames)">
+                                                    @foreach (var tag in idea.TagNames.OrderBy(tag => tag, StringComparer.OrdinalIgnoreCase).Take(3))
+                                                    {
+                                                        <span>@tag</span>
+                                                    }
+                                                    @if (idea.TagNames.Count > 3)
+                                                    {
+                                                        <span>+@(idea.TagNames.Count - 3)</span>
+                                                    }
+                                                </div>
                                             }
+                                            @if (idea.Assignees.Count > 0)
+                                            {
+                                                var orderedAssignees = idea.Assignees.OrderBy(item => item.FirstName).ThenBy(item => item.LastName).ToList();
+                                                <div class="board-card__assignees" aria-label="Assignees: @FormatAssignees(orderedAssignees)">
+                                                    @foreach (var assignee in orderedAssignees.Take(3))
+                                                    {
+                                                        <span title="@assignee.DisplayName">@AssigneeInitials(assignee.DisplayName)</span>
+                                                    }
+                                                    @if (orderedAssignees.Count > 3)
+                                                    {
+                                                        <span title="@(orderedAssignees.Count - 3) more assignees">+@(orderedAssignees.Count - 3)</span>
+                                                    }
+                                                </div>
+                                            }
+                                            <div class="board-card__actions">
+                                                <button type="button" class="@(idea.HasUpvoted ? "is-active" : null)"
+                                                        aria-label="@(idea.HasUpvoted ? "Remove upvote" : "Upvote") @idea.Title"
+                                                        aria-pressed="@idea.HasUpvoted" disabled="@_upvoteInFlight.Contains(ideaId)"
+                                                        @onclick="() => ToggleCardUpvoteAsync(ideaId)">
+                                                    <i class="bi bi-caret-up-fill" aria-hidden="true"></i><span>@idea.UpvoteCount</span>
+                                                </button>
+                                                <button type="button" aria-label="Open comments for @idea.Title" @onclick="() => OpenIdeaOverlay(ideaId, true)">
+                                                    <i class="bi bi-chat-left-text" aria-hidden="true"></i><span>@idea.CommentCount</span>
+                                                </button>
+                                            </div>
                                         </div>
                                     </article>
                                 }
@@ -208,6 +303,20 @@
                 <div class="idea-overlay__header-actions">
                     @if (_overlayIdea is not null)
                     {
+                        @if (CanCreateIdea && !_overlayEditing)
+                        {
+                            <button type="button" class="idea-overlay__open" @onclick="StartOverlayEdit">
+                                <i class="bi bi-pencil" aria-hidden="true"></i> Edit
+                            </button>
+                        }
+                        @if (IsAdmin)
+                        {
+                            <button type="button" class="idea-overlay__delete @(_overlayDeleteConfirming ? "is-confirming" : null)"
+                                    disabled="@_overlaySubmitting" @onclick="DeleteOverlayIdeaAsync">
+                                <i class="bi bi-trash" aria-hidden="true"></i>
+                                @(_overlayDeleteConfirming ? "Confirm delete" : "Delete")
+                            </button>
+                        }
                         <a class="idea-overlay__open"
                            href="/ideas/@_overlayIdea.IdeaId/edit"
                            title="Open full edit page">Open full view</a>
@@ -223,16 +332,116 @@
                     <span>Loading…</span>
                 </div>
             }
-            else if (_overlayError is not null)
+            else if (_overlayIdea is null && _overlayError is not null)
             {
                 <div class="alert alert-danger py-2">@_overlayError</div>
             }
             else if (_overlayIdea is not null)
             {
                 <div class="idea-overlay__content">
+                @if (!string.IsNullOrWhiteSpace(_overlayError))
+                {
+                    <div class="alert alert-danger py-2" role="alert">@_overlayError</div>
+                }
+                @if (_overlayEditing)
+                {
+                    <EditForm Model="_overlayEditForm" OnValidSubmit="SaveOverlayEditAsync" class="idea-overlay__edit-form">
+                        <DataAnnotationsValidator />
+                        <div class="idea-overlay__field">
+                            <label for="edit-title">Title</label>
+                            <InputText id="edit-title" class="form-control" @bind-Value="_overlayEditForm.Title" />
+                            <ValidationMessage For="() => _overlayEditForm.Title" />
+                        </div>
+                        <div class="idea-overlay__field">
+                            <label for="edit-description">Description</label>
+                            <InputTextArea id="edit-description" class="form-control" rows="5"
+                                           disabled="@(!CanEditRestrictedFields)" @bind-Value="_overlayEditForm.Description" />
+                            @if (!CanEditRestrictedFields)
+                            {
+                                <small>Only the author or an administrator can change the description.</small>
+                            }
+                        </div>
+                        <div class="idea-overlay__edit-grid">
+                            <div class="idea-overlay__field">
+                                <label for="edit-priority">Priority</label>
+                                <InputSelect id="edit-priority" class="form-select" @bind-Value="_overlayEditForm.Priority">
+                                    <option value="Low">Low</option>
+                                    <option value="Medium">Medium</option>
+                                    <option value="High">High</option>
+                                    <option value="Critical">Critical</option>
+                                </InputSelect>
+                            </div>
+                            <div class="idea-overlay__field">
+                                <label for="edit-due-date">Due date</label>
+                                <input id="edit-due-date" type="date" class="form-control" value="@_overlayEditForm.DueDateString"
+                                       @onchange="args => _overlayEditForm.DueDateString = args.Value?.ToString()" />
+                            </div>
+                            <div class="idea-overlay__field">
+                                <label for="edit-idea-type">Idea Type</label>
+                                <InputSelect id="edit-idea-type" class="form-select" @bind-Value="_overlayEditForm.IdeaTypeId">
+                                    @foreach (var item in _ideaTypes.Where(item => !item.IsDeleted || item.IdeaTypeId == _overlayEditForm.IdeaTypeId))
+                                    {
+                                        <option value="@item.IdeaTypeId">@item.Name@(item.IsDeleted ? " (archived)" : null)</option>
+                                    }
+                                </InputSelect>
+                            </div>
+                            <div class="idea-overlay__field">
+                                <label for="edit-impact">Business Impact</label>
+                                <InputSelect id="edit-impact" class="form-select" @bind-Value="_overlayEditForm.BusinessImpactId">
+                                    @foreach (var item in _businessImpacts.Where(item => !item.IsDeleted || item.BusinessImpactId == _overlayEditForm.BusinessImpactId))
+                                    {
+                                        <option value="@item.BusinessImpactId">@item.Name@(item.IsDeleted ? " (archived)" : null)</option>
+                                    }
+                                </InputSelect>
+                            </div>
+                        </div>
+                        @if (CanEditRestrictedFields)
+                        {
+                            <fieldset class="workflow-board__selection-list">
+                                <legend>Assignees <span>@_overlayEditForm.AssigneeUserIds.Count/5</span></legend>
+                                @foreach (var assignee in _overlayIdea.Assignees.Where(item => !item.IsActive))
+                                {
+                                    <label class="is-inactive"><input type="checkbox" checked disabled /> <span>@assignee.DisplayName (inactive)</span></label>
+                                }
+                                @foreach (var user in _organizationUsers)
+                                {
+                                    var isSelected = _overlayEditForm.AssigneeUserIds.Contains(user.UserId);
+                                    <label>
+                                        <input type="checkbox" checked="@isSelected"
+                                               disabled="@(!isSelected && _overlayEditForm.AssigneeUserIds.Count >= 5)"
+                                               @onchange="args => ToggleSelection(_overlayEditForm.AssigneeUserIds, user.UserId, args.Value is true)" />
+                                        <span>@user.FirstName @user.LastName</span>
+                                    </label>
+                                }
+                            </fieldset>
+                        }
+                        <div class="idea-overlay__field">
+                            <label for="edit-tag">Tags <span>@_overlayEditForm.TagNames.Count/10</span></label>
+                            <div class="workflow-board__tag-entry">
+                                <InputText id="edit-tag" class="form-control" @bind-Value="_overlayEditForm.TagEntry" />
+                                <button type="button" class="btn btn-outline-secondary" disabled="@(_overlayEditForm.TagNames.Count >= 10)"
+                                        @onclick="() => { AddTag(_overlayEditForm.TagNames, _overlayEditForm.TagEntry); _overlayEditForm.TagEntry = string.Empty; }">Add</button>
+                            </div>
+                            <div class="workflow-board__tag-list">
+                                @foreach (var tag in _overlayEditForm.TagNames)
+                                {
+                                    <span>@tag <button type="button" aria-label="Remove @tag" @onclick="() => _overlayEditForm.TagNames.Remove(tag)">×</button></span>
+                                }
+                            </div>
+                        </div>
+                        <div class="idea-overlay__edit-actions">
+                            <button type="button" class="btn btn-outline-secondary" @onclick="() => _overlayEditing = false">Cancel</button>
+                            <button type="submit" class="btn btn-primary" disabled="@_overlaySubmitting">@(_overlaySubmitting ? "Saving…" : "Save changes")</button>
+                        </div>
+                    </EditForm>
+                }
+                else
+                {
                 <h3 class="idea-overlay__title">@_overlayIdea.Title</h3>
                 <div class="idea-overlay__summary">
                     <span class="idea-overlay__priority">@_overlayIdea.Priority</span>
+                    <span class="idea-overlay__impact" style="--impact-color:@_overlayIdea.BusinessImpactColor">@_overlayIdea.BusinessImpactName</span>
+                    <span>@_overlayIdea.IdeaTypeName</span>
                     @if (_overlayIdea.DueDate is not null)
                     {
                         <span>Due @_overlayIdea.DueDate.Value.ToString("MMM d, yyyy")</span>
@@ -255,6 +464,19 @@
                     <section class="idea-overlay__section">
                         <h4>Description</h4>
                         <p>@_overlayIdea.Description</p>
+                    </section>
+                }
+
+                @if (_overlayIdea.Assignees.Count > 0)
+                {
+                    <section class="idea-overlay__section">
+                        <h4>Assignees</h4>
+                        <div class="idea-overlay__assignees">
+                            @foreach (var assignee in _overlayIdea.Assignees.OrderBy(item => item.FirstName).ThenBy(item => item.LastName))
+                            {
+                                <span class="@(!assignee.IsActive ? "is-inactive" : null)">@AssigneeInitials(assignee.DisplayName) <strong>@assignee.DisplayName</strong></span>
+                            }
+                        </div>
                     </section>
                 }
 
@@ -303,9 +525,10 @@
                     <DataAnnotationsValidator />
                     <div>
                         <label for="idea-comment">Add a comment</label>
-                        <InputTextArea id="idea-comment" class="form-control" rows="3"
-                                       placeholder="Add a comment…"
-                                       @bind-Value="_overlayComment.Body" />
+                        <textarea id="idea-comment" class="form-control" rows="3"
+                                  @ref="_commentComposer"
+                                  placeholder="Add a comment…"
+                                  @bind="_overlayComment.Body"></textarea>
                         <ValidationMessage For="() => _overlayComment.Body" />
                     </div>
                     <button type="submit" disabled="@_overlaySubmitting">
@@ -313,6 +536,7 @@
                     </button>
                 </EditForm>
                 </section>
+                }
                 </div>
             }
         </aside>
@@ -323,19 +547,30 @@
     [Parameter]
     public Guid BoardId { get; set; }
 
+    [SupplyParameterFromQuery(Name = "create")]
+    public bool CreateRequested { get; set; }
+
     private BoardSummaryDto? _board;
     private SargentNexus.Client.Workflow.PagedResultDto<IdeaListItemDto> _ideasResult = new();
+    private readonly List<IdeaListItemDto> _ideas = new();
     private List<SwimlaneDto> _swimlanes = new();
+    private List<IdeaTypeSummaryDto> _ideaTypes = new();
+    private List<BusinessImpactSummaryDto> _businessImpacts = new();
+    private List<UserListItemDto> _organizationUsers = new();
 
     private bool _loading = true;
     private bool _isSubmitting;
     private bool _showCreateForm;
+    private bool _createRequestHandled;
     private string _boardStyle = "jira";
     private string _ideaFilter = "all";
     private string _searchText = string.Empty;
     private string? _errorMessage;
+    private string? _operationError;
     private string? _createError;
     private CreateIdeaFormModel _createForm = new();
+    private Guid? _draggedIdeaId;
+    private readonly HashSet<Guid> _upvoteInFlight = new();
 
     // Overlay state
     private Guid? _overlayIdeaId;
@@ -345,7 +580,11 @@
     private string? _overlayError;
     private Guid _overlaySelectedStatusId;
     private bool _overlayHasUpvoted;
-    private bool _boardNeedsRefresh;
+    private bool _overlayEditing;
+    private bool _overlayDeleteConfirming;
+    private bool _focusCommentsAfterRender;
+    private ElementReference _commentComposer;
+    private IdeaEditFormModel _overlayEditForm = new();
     private OverlayCommentModel _overlayComment = new();
 
     private bool CanCreateIdea
@@ -359,6 +598,24 @@
         }
     }
 
+    private bool IsAdmin =>
+        string.Equals(AuthSessionService.User?.Role, "SiteAdmin", StringComparison.OrdinalIgnoreCase)
+        || string.Equals(AuthSessionService.User?.Role, "OrgAdmin", StringComparison.OrdinalIgnoreCase);
+
+    private bool CanMoveIdeas => IsAdmin || (_board?.AllowUserStatusUpdate == true && CanCreateIdea);
+
+    private bool CanEditRestrictedFields =>
+        IsAdmin || (_overlayIdeaId.HasValue && FindCard(_overlayIdeaId.Value)?.AuthorUserId == AuthSessionService.User?.UserId);
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_focusCommentsAfterRender && _overlayIdea is not null && !_overlayLoading)
+        {
+            _focusCommentsAfterRender = false;
+            await _commentComposer.FocusAsync();
+        }
+    }
+
     protected override async Task OnInitializedAsync()
     {
         await LoadAsync();
@@ -369,6 +626,12 @@
         if (_board is null || _board.BoardId != BoardId)
         {
             await LoadAsync();
+        }
+
+        if (CreateRequested && !_createRequestHandled && CanCreateIdea && _board is not null)
+        {
+            _createRequestHandled = true;
+            StartCreateIdea();
         }
     }
 
@@ -392,6 +655,10 @@
                 .ToList();
 
             _ideasResult = await WorkflowApiClient.ListIdeasAsync(AuthSessionService.AccessToken!, BoardId, CancellationToken.None);
+            _ideas.Clear();
+            _ideas.AddRange(_ideasResult.Items);
+            SynchronizeIdeaResult();
+            await LoadEditorOptionsAsync();
         }
         catch (Exception ex)
         {
@@ -405,10 +672,108 @@
 
     private bool HasActiveFilters => _ideaFilter != "all" || !string.IsNullOrWhiteSpace(_searchText);
 
-    private int VisibleIdeaCount => _ideasResult.Items.Count(MatchesActiveFilters);
+    private int VisibleIdeaCount => _ideas.Count(MatchesActiveFilters);
 
     private List<IdeaListItemDto> IdeasForSwimlane(Guid statusId) =>
-        _ideasResult.Items.Where(idea => idea.StatusId == statusId && MatchesActiveFilters(idea)).ToList();
+        _ideas.Where(idea => idea.StatusId == statusId && MatchesActiveFilters(idea)).ToList();
+
+    private async Task LoadEditorOptionsAsync()
+    {
+        if (_board is null)
+        {
+            return;
+        }
+
+        var ideaTypesTask = WorkflowApiClient.ListIdeaTypesAsync(
+            AuthSessionService.AccessToken!, _board.OrganizationId, CancellationToken.None);
+        var businessImpactsTask = WorkflowApiClient.ListBusinessImpactsAsync(
+            AuthSessionService.AccessToken!, _board.OrganizationId, CancellationToken.None);
+        var usersTask = AdministrationApiClient.ListUsersAsync(
+            AuthSessionService.AccessToken!, _board.OrganizationId, 1, 200, null, CancellationToken.None);
+
+        try
+        {
+            _ideaTypes = (await ideaTypesTask).OrderBy(item => item.SortOrder).ThenBy(item => item.Name).ToList();
+        }
+        catch
+        {
+            _ideaTypes = _ideas
+                .GroupBy(item => item.IdeaTypeId)
+                .Select(group => new IdeaTypeSummaryDto
+                {
+                    IdeaTypeId = group.Key,
+                    OrganizationId = _board.OrganizationId,
+                    Name = group.First().IdeaTypeName
+                })
+                .OrderBy(item => item.Name)
+                .ToList();
+        }
+
+        try
+        {
+            _businessImpacts = (await businessImpactsTask).OrderBy(item => item.SortOrder).ThenBy(item => item.Name).ToList();
+        }
+        catch
+        {
+            _businessImpacts = _ideas
+                .GroupBy(item => item.BusinessImpactId)
+                .Select(group => new BusinessImpactSummaryDto
+                {
+                    BusinessImpactId = group.Key,
+                    OrganizationId = _board.OrganizationId,
+                    Name = group.First().BusinessImpactName,
+                    Color = group.First().BusinessImpactColor
+                })
+                .OrderBy(item => item.Name)
+                .ToList();
+        }
+
+        try
+        {
+            _organizationUsers = (await usersTask).Items
+                .Where(item => string.Equals(item.Status, "Active", StringComparison.OrdinalIgnoreCase))
+                .OrderBy(item => item.FirstName)
+                .ThenBy(item => item.LastName)
+                .ToList();
+        }
+        catch
+        {
+            _organizationUsers = new List<UserListItemDto>();
+        }
+    }
+
+    private void SynchronizeIdeaResult()
+    {
+        _ideasResult.Items = _ideas.ToArray();
+        _ideasResult.TotalCount = _ideas.Count;
+    }
+
+    private IdeaListItemDto? FindCard(Guid ideaId) => _ideas.FirstOrDefault(item => item.IdeaId == ideaId);
+
+    private void ApplyDetailToCard(IdeaDetailDto detail)
+    {
+        var card = FindCard(detail.IdeaId);
+        if (card is null)
+        {
+            return;
+        }
+
+        card.Title = detail.Title;
+        card.Priority = detail.Priority;
+        card.IdeaTypeId = detail.IdeaTypeId;
+        card.IdeaTypeName = detail.IdeaTypeName;
+        card.BusinessImpactId = detail.BusinessImpactId;
+        card.BusinessImpactName = detail.BusinessImpactName;
+        card.BusinessImpactColor = detail.BusinessImpactColor;
+        card.DueDate = detail.DueDate;
+        card.Assignees = detail.Assignees;
+        card.TagNames = detail.TagNames;
+        card.StatusId = detail.StatusId;
+        card.StatusName = detail.StatusName;
+        card.UpvoteCount = detail.UpvoteCount;
+        card.HasUpvoted = detail.HasUpvoted;
+        card.CommentCount = detail.CommentCount;
+    }
 
     private bool MatchesActiveFilters(IdeaListItemDto idea)
     {
@@ -416,7 +781,7 @@
         var matchesPersonalFilter = _ideaFilter switch
         {
             "created" => currentUserId.HasValue && idea.AuthorUserId == currentUserId.Value,
-            "assigned" => currentUserId.HasValue && idea.AssigneeUserId == currentUserId.Value,
+            "assigned" => currentUserId.HasValue && idea.Assignees.Any(assignee => assignee.UserId == currentUserId.Value),
             _ => true
         };
 
@@ -427,7 +792,7 @@
 
         var searchText = _searchText.Trim();
         return idea.Title.Contains(searchText, StringComparison.OrdinalIgnoreCase)
-            || (idea.AssigneeDisplayName?.Contains(searchText, StringComparison.OrdinalIgnoreCase) ?? false)
+            || idea.Assignees.Any(assignee => assignee.DisplayName.Contains(searchText, StringComparison.OrdinalIgnoreCase))
             || (idea.AuthorDisplayName?.Contains(searchText, StringComparison.OrdinalIgnoreCase) ?? false);
     }
 
@@ -452,6 +817,9 @@
     private static string AssigneeInitials(string displayName) =>
         string.Concat(displayName.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(part => char.ToUpperInvariant(part[0])));
 
+    private static string FormatAssignees(IReadOnlyList<IdeaAssigneeSummaryDto> assignees) =>
+        string.Join(", ", assignees.Select(assignee => assignee.DisplayName));
+
     private async Task HandleCardKeyDown(KeyboardEventArgs args, Guid ideaId)
     {
         if (args.Key is "Enter" or " ")
@@ -460,20 +828,22 @@
         }
     }
 
-    private async Task OpenIdeaOverlay(Guid ideaId)
+    private async Task OpenIdeaOverlay(Guid ideaId, bool focusComments = false)
     {
         _overlayIdeaId = ideaId;
         _overlayIdea = null;
         _overlayLoading = true;
         _overlayError = null;
         _overlayComment = new OverlayCommentModel();
-        _boardNeedsRefresh = false;
+        _overlayEditing = false;
+        _overlayDeleteConfirming = false;
+        _focusCommentsAfterRender = focusComments;
 
         try
         {
             _overlayIdea = await WorkflowApiClient.GetIdeaDetailAsync(AuthSessionService.AccessToken!, ideaId, CancellationToken.None);
             _overlaySelectedStatusId = _overlayIdea.StatusId;
-            _overlayHasUpvoted = false;
+            _overlayHasUpvoted = _overlayIdea.HasUpvoted;
         }
         catch (Exception ex)
         {
@@ -489,11 +859,9 @@
     {
         _overlayIdeaId = null;
         _overlayIdea = null;
-
-        if (_boardNeedsRefresh)
-        {
-            await LoadAsync();
-        }
+        _overlayEditing = false;
+        _overlayDeleteConfirming = false;
+        await Task.CompletedTask;
     }
 
     private async Task OverlayHandleStatusChangeAsync(ChangeEventArgs args)
@@ -503,23 +871,7 @@
             return;
         }
 
-        _overlaySubmitting = true;
-        try
-        {
-            await WorkflowApiClient.MoveIdeaStatusAsync(AuthSessionService.AccessToken!, _overlayIdea.IdeaId, statusId, CancellationToken.None);
-            _overlaySelectedStatusId = statusId;
-            _overlayIdea.StatusId = statusId;
-            _overlayIdea.StatusName = _swimlanes.FirstOrDefault(x => x.StatusId == statusId)?.StatusName ?? _overlayIdea.StatusName;
-            _boardNeedsRefresh = true;
-        }
-        catch (Exception ex)
-        {
-            _overlayError = ErrorMessageService.GetDisplayMessage(null, null, ex);
-        }
-        finally
-        {
-            _overlaySubmitting = false;
-        }
+        await MoveCardAsync(_overlayIdea.IdeaId, statusId);
     }
 
     private async Task OverlayToggleUpvoteAsync()
@@ -529,22 +881,7 @@
             return;
         }
 
-        _overlaySubmitting = true;
-        try
-        {
-            var result = await WorkflowApiClient.ToggleUpvoteAsync(AuthSessionService.AccessToken!, _overlayIdea.IdeaId, CancellationToken.None);
-            _overlayHasUpvoted = result.HasUpvoted;
-            _overlayIdea.UpvoteCount = result.UpvoteCount;
-            _boardNeedsRefresh = true;
-        }
-        catch (Exception ex)
-        {
-            _overlayError = ErrorMessageService.GetDisplayMessage(null, null, ex);
-        }
-        finally
-        {
-            _overlaySubmitting = false;
-        }
+        await ToggleCardUpvoteAsync(_overlayIdea.IdeaId);
     }
 
     private async Task OverlayAddCommentAsync()
@@ -564,8 +901,9 @@
                 CancellationToken.None);
 
             _overlayComment = new OverlayCommentModel();
-            // Reload overlay data to show new comment
             _overlayIdea = await WorkflowApiClient.GetIdeaDetailAsync(AuthSessionService.AccessToken!, _overlayIdea.IdeaId, CancellationToken.None);
+            _overlayHasUpvoted = _overlayIdea.HasUpvoted;
+            ApplyDetailToCard(_overlayIdea);
         }
         catch (Exception ex)
         {
@@ -579,7 +917,12 @@
 
     private void StartCreateIdea()
     {
-        _createForm = new CreateIdeaFormModel();
+        _createForm = new CreateIdeaFormModel
+        {
+            Priority = "Medium",
+            IdeaTypeId = _ideaTypes.FirstOrDefault(item => !item.IsDeleted)?.IdeaTypeId ?? Guid.Empty,
+            BusinessImpactId = _businessImpacts.FirstOrDefault(item => !item.IsDeleted)?.BusinessImpactId ?? Guid.Empty
+        };
         _createError = null;
         _showCreateForm = true;
     }
@@ -611,8 +954,12 @@
                 {
                     Title = _createForm.Title.Trim(),
                     Description = _createForm.Description?.Trim() ?? string.Empty,
-                    Priority = _createForm.Priority ?? string.Empty,
-                    DueDate = dueDate
+                    Priority = _createForm.Priority,
+                    IdeaTypeId = _createForm.IdeaTypeId,
+                    BusinessImpactId = _createForm.BusinessImpactId,
+                    DueDate = dueDate,
+                    AssigneeUserIds = _createForm.AssigneeUserIds.ToArray(),
+                    TagNames = _createForm.TagNames.ToArray()
                 },
                 CancellationToken.None);
 
@@ -626,6 +973,243 @@
         finally
         {
             _isSubmitting = false;
+        }
+    }
+
+    private void BeginDrag(Guid ideaId)
+    {
+        if (CanMoveIdeas)
+        {
+            _draggedIdeaId = ideaId;
+            _operationError = null;
+        }
+    }
+
+    private async Task DropOnLaneAsync(Guid statusId)
+    {
+        if (_draggedIdeaId is Guid ideaId)
+        {
+            _draggedIdeaId = null;
+            await MoveCardAsync(ideaId, statusId);
+        }
+    }
+
+    private async Task MoveCardAsync(Guid ideaId, Guid statusId)
+    {
+        var card = FindCard(ideaId);
+        var targetLane = _swimlanes.FirstOrDefault(item => item.StatusId == statusId);
+        if (card is null || targetLane is null || card.StatusId == statusId || !CanMoveIdeas)
+        {
+            return;
+        }
+
+        var previousStatusId = card.StatusId;
+        var previousStatusName = card.StatusName;
+        card.StatusId = statusId;
+        card.StatusName = targetLane.StatusName;
+        _operationError = null;
+        _overlayError = null;
+
+        if (_overlayIdea?.IdeaId == ideaId)
+        {
+            _overlaySubmitting = true;
+            _overlaySelectedStatusId = statusId;
+            _overlayIdea.StatusId = statusId;
+            _overlayIdea.StatusName = targetLane.StatusName;
+        }
+
+        try
+        {
+            await WorkflowApiClient.MoveIdeaStatusAsync(AuthSessionService.AccessToken!, ideaId, statusId, CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            card.StatusId = previousStatusId;
+            card.StatusName = previousStatusName;
+            var message = ErrorMessageService.GetDisplayMessage(null, null, ex);
+            _operationError = message;
+
+            if (_overlayIdea?.IdeaId == ideaId)
+            {
+                _overlaySelectedStatusId = previousStatusId;
+                _overlayIdea.StatusId = previousStatusId;
+                _overlayIdea.StatusName = previousStatusName;
+                _overlayError = message;
+            }
+        }
+        finally
+        {
+            _overlaySubmitting = false;
+        }
+    }
+
+    private async Task ToggleCardUpvoteAsync(Guid ideaId)
+    {
+        var card = FindCard(ideaId);
+        if (card is null || !_upvoteInFlight.Add(ideaId))
+        {
+            return;
+        }
+
+        var previousHasUpvoted = card.HasUpvoted;
+        var previousCount = card.UpvoteCount;
+        card.HasUpvoted = !card.HasUpvoted;
+        card.UpvoteCount = Math.Max(0, card.UpvoteCount + (card.HasUpvoted ? 1 : -1));
+        SynchronizeOverlayUpvote(card);
+        _operationError = null;
+
+        try
+        {
+            var result = await WorkflowApiClient.ToggleUpvoteAsync(AuthSessionService.AccessToken!, ideaId, CancellationToken.None);
+            card.HasUpvoted = result.HasUpvoted;
+            card.UpvoteCount = result.UpvoteCount;
+            SynchronizeOverlayUpvote(card);
+        }
+        catch (Exception ex)
+        {
+            card.HasUpvoted = previousHasUpvoted;
+            card.UpvoteCount = previousCount;
+            SynchronizeOverlayUpvote(card);
+            _operationError = ErrorMessageService.GetDisplayMessage(null, null, ex);
+            _overlayError = _overlayIdea?.IdeaId == ideaId ? _operationError : _overlayError;
+        }
+        finally
+        {
+            _upvoteInFlight.Remove(ideaId);
+        }
+    }
+
+    private void SynchronizeOverlayUpvote(IdeaListItemDto card)
+    {
+        if (_overlayIdea?.IdeaId == card.IdeaId)
+        {
+            _overlayHasUpvoted = card.HasUpvoted;
+            _overlayIdea.HasUpvoted = card.HasUpvoted;
+            _overlayIdea.UpvoteCount = card.UpvoteCount;
+        }
+    }
+
+    private void StartOverlayEdit()
+    {
+        if (_overlayIdea is null)
+        {
+            return;
+        }
+
+        _overlayEditForm = new IdeaEditFormModel
+        {
+            Title = _overlayIdea.Title,
+            Description = _overlayIdea.Description,
+            Priority = _overlayIdea.Priority,
+            IdeaTypeId = _overlayIdea.IdeaTypeId,
+            BusinessImpactId = _overlayIdea.BusinessImpactId,
+            DueDateString = _overlayIdea.DueDate?.ToString("yyyy-MM-dd"),
+            AssigneeUserIds = _overlayIdea.Assignees.Select(item => item.UserId).ToHashSet(),
+            TagNames = _overlayIdea.TagNames.ToList()
+        };
+        _overlayEditing = true;
+        _overlayError = null;
+    }
+
+    private async Task SaveOverlayEditAsync()
+    {
+        if (_overlayIdea is null)
+        {
+            return;
+        }
+
+        _overlaySubmitting = true;
+        _overlayError = null;
+        try
+        {
+            var updated = await WorkflowApiClient.UpdateIdeaAsync(
+                AuthSessionService.AccessToken!,
+                _overlayIdea.IdeaId,
+                new IdeaWriteRequestDto
+                {
+                    Title = _overlayEditForm.Title.Trim(),
+                    Description = _overlayEditForm.Description.Trim(),
+                    Priority = _overlayEditForm.Priority,
+                    IdeaTypeId = _overlayEditForm.IdeaTypeId,
+                    BusinessImpactId = _overlayEditForm.BusinessImpactId,
+                    DueDate = ParseDate(_overlayEditForm.DueDateString),
+                    AssigneeUserIds = _overlayEditForm.AssigneeUserIds.ToArray(),
+                    StatusId = _overlayIdea.StatusId,
+                    TagNames = _overlayEditForm.TagNames.ToArray()
+                },
+                CancellationToken.None);
+
+            _overlayIdea = updated;
+            _overlayHasUpvoted = updated.HasUpvoted;
+            _overlaySelectedStatusId = updated.StatusId;
+            ApplyDetailToCard(updated);
+            _overlayEditing = false;
+        }
+        catch (Exception ex)
+        {
+            _overlayError = ErrorMessageService.GetDisplayMessage(null, null, ex);
+        }
+        finally
+        {
+            _overlaySubmitting = false;
+        }
+    }
+
+    private async Task DeleteOverlayIdeaAsync()
+    {
+        if (_overlayIdea is null || !IsAdmin)
+        {
+            return;
+        }
+
+        if (!_overlayDeleteConfirming)
+        {
+            _overlayDeleteConfirming = true;
+            return;
+        }
+
+        _overlaySubmitting = true;
+        try
+        {
+            var ideaId = _overlayIdea.IdeaId;
+            await WorkflowApiClient.DeleteIdeaAsync(AuthSessionService.AccessToken!, ideaId, CancellationToken.None);
+            _ideas.RemoveAll(item => item.IdeaId == ideaId);
+            SynchronizeIdeaResult();
+            await CloseOverlay();
+        }
+        catch (Exception ex)
+        {
+            _overlayError = ErrorMessageService.GetDisplayMessage(null, null, ex);
+            _overlayDeleteConfirming = false;
+        }
+        finally
+        {
+            _overlaySubmitting = false;
+        }
+    }
+
+    private static DateOnly? ParseDate(string? value) =>
+        DateOnly.TryParse(value, out var parsed) ? parsed : null;
+
+    private static void ToggleSelection(HashSet<Guid> selections, Guid userId, bool isSelected)
+    {
+        if (isSelected && selections.Count < 5)
+        {
+            selections.Add(userId);
+        }
+        else if (!isSelected)
+        {
+            selections.Remove(userId);
+        }
+    }
+
+    private static void AddTag(List<string> tags, string value)
+    {
+        var tag = value.Trim();
+        if (tag.Length > 0 && tags.Count < 10 && !tags.Contains(tag, StringComparer.OrdinalIgnoreCase))
+        {
+            tags.Add(tag);
+            tags.Sort(StringComparer.OrdinalIgnoreCase);
         }
     }
 
@@ -646,9 +1230,46 @@
 
         public string Description { get; set; } = string.Empty;
 
-        public string? Priority { get; set; }
+        public string Priority { get; set; } = "Medium";
+
+        [System.ComponentModel.DataAnnotations.Required]
+        public Guid IdeaTypeId { get; set; }
+
+        [System.ComponentModel.DataAnnotations.Required]
+        public Guid BusinessImpactId { get; set; }
 
         public string? DueDateString { get; set; }
+
+        public HashSet<Guid> AssigneeUserIds { get; set; } = new();
+
+        public List<string> TagNames { get; set; } = new();
+
+        public string TagEntry { get; set; } = string.Empty;
+    }
+
+    private sealed class IdeaEditFormModel
+    {
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.StringLength(150)]
+        public string Title { get; set; } = string.Empty;
+
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.StringLength(4000)]
+        public string Description { get; set; } = string.Empty;
+
+        public string Priority { get; set; } = "Medium";
+
+        public Guid IdeaTypeId { get; set; }
+
+        public Guid BusinessImpactId { get; set; }
+
+        public string? DueDateString { get; set; }
+
+        public HashSet<Guid> AssigneeUserIds { get; set; } = new();
+
+        public List<string> TagNames { get; set; } = new();
+
+        public string TagEntry { get; set; } = string.Empty;
     }
 
     private sealed class OverlayCommentModel

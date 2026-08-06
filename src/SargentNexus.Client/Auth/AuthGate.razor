@@ -44,6 +44,13 @@ else
             return;
         }
 
+        if (RequirePasswordChange && !AuthSessionService.RequiresPasswordChange)
+        {
+            NavigationManager.NavigateTo("/settings/profile", replace: true);
+            _isAllowed = false;
+            return;
+        }
+
         _isAllowed = true;
     }
 }

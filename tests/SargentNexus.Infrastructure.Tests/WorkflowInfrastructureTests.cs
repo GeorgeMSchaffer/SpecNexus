@@ -55,6 +55,105 @@ public sealed class WorkflowInfrastructureTests
     }
 
     [Fact]
+    public async Task WorkflowDataAccess_IdeaQueries_ExcludeDeletedAndAssignedToMeUsesAssigneeJoin()
+    {
+        await using var dbContext = CreateDbContext();
+        var organizationId = Guid.NewGuid();
+        var boardId = Guid.NewGuid();
+        var authorUserId = Guid.NewGuid();
+        var assigneeUserId = Guid.NewGuid();
+        var statusId = Guid.NewGuid();
+        var ideaTypeId = Guid.NewGuid();
+        var businessImpactId = Guid.NewGuid();
+        var activeIdeaId = Guid.NewGuid();
+        var deletedIdeaId = Guid.NewGuid();
+
+        dbContext.Organizations.Add(new Organization { Id = organizationId, CompanyName = "Organization" });
+        dbContext.Users.AddRange(
+            new User
+            {
+                Id = authorUserId,
+                OrganizationId = organizationId,
+                Email = "author@test.local",
+                FirstName = "Author",
+                LastName = "User",
+                PasswordHash = "hash",
+                Role = UserRole.User,
+                Status = UserLifecycleStatus.Active
+            },
+            new User
+            {
+                Id = assigneeUserId,
+                OrganizationId = organizationId,
+                Email = "assignee@test.local",
+                FirstName = "Assigned",
+                LastName = "User",
+                PasswordHash = "hash",
+                Role = UserRole.User,
+                Status = UserLifecycleStatus.Active
+            });
+        dbContext.Statuses.Add(new Status { Id = statusId, OrganizationId = organizationId, Name = "New" });
+        dbContext.IdeaTypes.Add(new IdeaType { Id = ideaTypeId, OrganizationId = organizationId, Name = "Type" });
+        dbContext.BusinessImpacts.Add(new BusinessImpact
+        {
+            Id = businessImpactId,
+            OrganizationId = organizationId,
+            Name = "Impact",
+            Color = "#123456"
+        });
+        dbContext.Boards.Add(new Board { Id = boardId, OrganizationId = organizationId, Name = "Board" });
+        dbContext.Ideas.AddRange(
+            new Idea
+            {
+                Id = activeIdeaId,
+                OrganizationId = organizationId,
+                BoardId = boardId,
+                AuthorUserId = authorUserId,
+                Title = "Active idea",
+                Description = "Visible",
+                Priority = IdeaPriority.Medium,
+                StatusId = statusId,
+                IdeaTypeId = ideaTypeId,
+                BusinessImpactId = businessImpactId,
+                CreatedAtUtc = DateTime.UtcNow
+            },
+            new Idea
+            {
+                Id = deletedIdeaId,
+                OrganizationId = organizationId,
+                BoardId = boardId,
+                AuthorUserId = authorUserId,
+                Title = "Deleted idea",
+                Description = "Hidden",
+                Priority = IdeaPriority.Medium,
+                StatusId = statusId,
+                IdeaTypeId = ideaTypeId,
+                BusinessImpactId = businessImpactId,
+                CreatedAtUtc = DateTime.UtcNow,
+                IsDeleted = true
+            });
+        dbContext.IdeaAssignees.Add(new IdeaAssignee { IdeaId = activeIdeaId, UserId = assigneeUserId });
+        await dbContext.SaveChangesAsync();
+
+        var dataAccess = new WorkflowDataAccess(dbContext);
+
+        Assert.NotNull(await dataAccess.FindIdeaByIdAsync(activeIdeaId, CancellationToken.None));
+        Assert.Null(await dataAccess.FindIdeaByIdAsync(deletedIdeaId, CancellationToken.None));
+        var boardIdeas = await dataAccess.ListIdeasByBoardIdAsync(boardId, CancellationToken.None);
+        Assert.Equal(activeIdeaId, Assert.Single(boardIdeas).Id);
+        var (assignedIdeas, totalCount) = await dataAccess.ListIdeasByOrgAsync(
+            organizationId,
+            null,
+            assigneeUserId,
+            null,
+            1,
+            20,
+            CancellationToken.None);
+        Assert.Equal(1, totalCount);
+        Assert.Equal(activeIdeaId, Assert.Single(assignedIdeas).Id);
+    }
+
+    [Fact]
     public async Task WorkflowAuditWriter_WriteBoardSwimlanesReorderedAsync_PersistsAuditEvent()
     {
         await using var dbContext = CreateDbContext();
@@ -122,6 +221,45 @@ public sealed class WorkflowInfrastructureTests
         using var metadata = JsonDocument.Parse(auditEvent.Metadata);
         Assert.True(metadata.RootElement.GetProperty("HasUpvoted").GetBoolean());
         Assert.Equal(3, metadata.RootElement.GetProperty("UpvoteCount").GetInt32());
+    }
+
+    [Fact]
+    public async Task WorkflowAuditWriter_WriteIdeaDeletedAsync_PersistsAuditEvent()
+    {
+        await using var dbContext = CreateDbContext();
+        var nowUtc = new DateTime(2026, 8, 6, 14, 30, 0, DateTimeKind.Utc);
+        var writer = new WorkflowAuditWriter(dbContext, new FixedTimeProvider(nowUtc));
+        var actorUserId = Guid.NewGuid();
+        var idea = new Idea
+        {
+            Id = Guid.NewGuid(),
+            OrganizationId = Guid.NewGuid(),
+            BoardId = Guid.NewGuid(),
+            AuthorUserId = Guid.NewGuid(),
+            Title = "Deleted idea",
+            Description = "Audit deletion",
+            Priority = IdeaPriority.Medium,
+            StatusId = Guid.NewGuid(),
+            CreatedAtUtc = nowUtc.AddDays(-1),
+            IsDeleted = true,
+            DeletedAtUtc = nowUtc,
+            DeletedByUserId = actorUserId
+        };
+
+        await writer.WriteIdeaDeletedAsync(actorUserId, idea, CancellationToken.None);
+
+        var auditEvent = await dbContext.AuditEvents.SingleAsync();
+        Assert.Equal("Workflow.IdeaDeleted", auditEvent.EventType);
+        Assert.Equal("Idea", auditEvent.EntityType);
+        Assert.Equal(idea.Id, auditEvent.EntityId);
+        Assert.Equal(idea.OrganizationId, auditEvent.OrganizationId);
+        Assert.Equal(actorUserId, auditEvent.ActorUserId);
+        Assert.Equal(nowUtc, auditEvent.OccurredAtUtc);
+
+        using var metadata = JsonDocument.Parse(auditEvent.Metadata);
+        Assert.True(metadata.RootElement.GetProperty("IsDeleted").GetBoolean());
+        Assert.Equal(nowUtc, metadata.RootElement.GetProperty("DeletedAtUtc").GetDateTime());
+        Assert.Equal(actorUserId, metadata.RootElement.GetProperty("DeletedByUserId").GetGuid());
     }
 
     private static SargentNexusDbContext CreateDbContext()

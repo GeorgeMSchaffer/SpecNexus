@@ -195,12 +195,14 @@ internal sealed class FakeWorkflowDataAccess : IWorkflowDataAccess
     public Task<Idea?> FindIdeaByIdAsync(Guid ideaId, CancellationToken cancellationToken)
     {
         _ideas.TryGetValue(ideaId, out var idea);
-        return Task.FromResult(idea);
+        return Task.FromResult(idea is { IsDeleted: false } ? idea : null);
     }
 
     public Task<IReadOnlyList<Idea>> ListIdeasByBoardIdAsync(Guid boardId, CancellationToken cancellationToken)
     {
-        return Task.FromResult<IReadOnlyList<Idea>>(_ideas.Values.Where(item => item.BoardId == boardId).ToArray());
+        return Task.FromResult<IReadOnlyList<Idea>>(_ideas.Values
+            .Where(item => item.BoardId == boardId && !item.IsDeleted)
+            .ToArray());
     }
 
     public Task<(IReadOnlyList<Idea> Items, int TotalCount)> ListIdeasByOrgAsync(
@@ -277,6 +279,16 @@ internal sealed class FakeWorkflowDataAccess : IWorkflowDataAccess
     public void AddStatus(Status status)
     {
         _statuses[status.Id] = status;
+    }
+
+    public void AddIdeaType(IdeaType ideaType)
+    {
+        _ideaTypes[ideaType.Id] = ideaType;
+    }
+
+    public void AddBusinessImpact(BusinessImpact businessImpact)
+    {
+        _businessImpacts[businessImpact.Id] = businessImpact;
     }
 
     public void AddBoard(Board board)
@@ -552,6 +564,8 @@ internal sealed class FakeWorkflowAuditWriter : IWorkflowAuditWriter
 
     public List<Idea> IdeaUpdatedEvents { get; } = new();
 
+    public List<(Guid ActorUserId, Idea Idea)> IdeaDeletedEvents { get; } = new();
+
     public List<(Idea Idea, Guid PreviousStatusId)> IdeaStatusMovedEvents { get; } = new();
 
     public List<(Guid OrganizationId, Comment Comment)> CommentCreatedEvents { get; } = new();
@@ -619,6 +633,12 @@ internal sealed class FakeWorkflowAuditWriter : IWorkflowAuditWriter
     public Task WriteIdeaUpdatedAsync(Guid actorUserId, Idea idea, CancellationToken cancellationToken)
     {
         IdeaUpdatedEvents.Add(idea);
+        return Task.CompletedTask;
+    }
+
+    public Task WriteIdeaDeletedAsync(Guid actorUserId, Idea idea, CancellationToken cancellationToken)
+    {
+        IdeaDeletedEvents.Add((actorUserId, idea));
         return Task.CompletedTask;
     }
 

@@ -42,6 +42,62 @@ public interface IWorkflowManagementService
         Guid statusId,
         CancellationToken cancellationToken);
 
+    Task<WorkflowResult<IReadOnlyList<IdeaTypeSummaryModel>>> ListIdeaTypesAsync(
+        WorkflowActorContext actor,
+        Guid organizationId,
+        CancellationToken cancellationToken);
+
+    Task<WorkflowResult<IdeaTypeSummaryModel>> CreateIdeaTypeAsync(
+        WorkflowActorContext actor,
+        Guid organizationId,
+        IdeaTypeWriteRequestModel request,
+        CancellationToken cancellationToken);
+
+    Task<WorkflowResult<IdeaTypeSummaryModel>> UpdateIdeaTypeAsync(
+        WorkflowActorContext actor,
+        Guid ideaTypeId,
+        IdeaTypeWriteRequestModel request,
+        CancellationToken cancellationToken);
+
+    Task<WorkflowResult> ReorderIdeaTypesAsync(
+        WorkflowActorContext actor,
+        Guid organizationId,
+        ReorderIdeaTypesRequestModel request,
+        CancellationToken cancellationToken);
+
+    Task<WorkflowResult> SoftDeleteIdeaTypeAsync(
+        WorkflowActorContext actor,
+        Guid ideaTypeId,
+        CancellationToken cancellationToken);
+
+    Task<WorkflowResult<IReadOnlyList<BusinessImpactSummaryModel>>> ListBusinessImpactsAsync(
+        WorkflowActorContext actor,
+        Guid organizationId,
+        CancellationToken cancellationToken);
+
+    Task<WorkflowResult<BusinessImpactSummaryModel>> CreateBusinessImpactAsync(
+        WorkflowActorContext actor,
+        Guid organizationId,
+        BusinessImpactWriteRequestModel request,
+        CancellationToken cancellationToken);
+
+    Task<WorkflowResult<BusinessImpactSummaryModel>> UpdateBusinessImpactAsync(
+        WorkflowActorContext actor,
+        Guid businessImpactId,
+        BusinessImpactWriteRequestModel request,
+        CancellationToken cancellationToken);
+
+    Task<WorkflowResult> ReorderBusinessImpactsAsync(
+        WorkflowActorContext actor,
+        Guid organizationId,
+        ReorderBusinessImpactsRequestModel request,
+        CancellationToken cancellationToken);
+
+    Task<WorkflowResult> SoftDeleteBusinessImpactAsync(
+        WorkflowActorContext actor,
+        Guid businessImpactId,
+        CancellationToken cancellationToken);
+
     Task<WorkflowResult<IReadOnlyList<BoardSummaryModel>>> ListBoardsAsync(
         WorkflowActorContext actor,
         Guid organizationId,
@@ -208,6 +264,10 @@ public interface IWorkflowDataAccess
 
     void AddStatus(Status status);
 
+    void AddIdeaType(IdeaType ideaType);
+
+    void AddBusinessImpact(BusinessImpact businessImpact);
+
     void AddBoard(Board board);
 
     void AddBoardSwimlanes(IEnumerable<BoardSwimlane> swimlanes);
@@ -269,6 +329,8 @@ public interface IWorkflowAuditWriter
 
     Task WriteIdeaUpdatedAsync(Guid actorUserId, Idea idea, CancellationToken cancellationToken);
 
+    Task WriteIdeaDeletedAsync(Guid actorUserId, Idea idea, CancellationToken cancellationToken);
+
     Task WriteIdeaStatusMovedAsync(Guid actorUserId, Idea idea, Guid previousStatusId, CancellationToken cancellationToken);
 
     Task WriteCommentCreatedAsync(Guid actorUserId, Guid organizationId, Comment comment, CancellationToken cancellationToken);
@@ -284,6 +346,10 @@ public sealed class WorkflowManagementService : IWorkflowManagementService
 {
     private static readonly Regex MentionPattern = new(
         @"(?<![\w@])@([A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,})",
+        RegexOptions.Compiled);
+
+    private static readonly Regex BusinessImpactColorPattern = new(
+        "^#[0-9A-Fa-f]{6}$",
         RegexOptions.Compiled);
 
     private static readonly HashSet<UserRole> ReadRoles = new()
@@ -486,6 +552,414 @@ public sealed class WorkflowManagementService : IWorkflowManagementService
         status.IsDeleted = true;
         await _dataAccess.SaveChangesAsync(cancellationToken);
         await _auditWriter.WriteStatusDeletedAsync(actor.UserId, status, cancellationToken);
+
+        return WorkflowResult.Success();
+    }
+
+    public async Task<WorkflowResult<IReadOnlyList<IdeaTypeSummaryModel>>> ListIdeaTypesAsync(
+        WorkflowActorContext actor,
+        Guid organizationId,
+        CancellationToken cancellationToken)
+    {
+        var authorization = await AuthorizeAsync(actor, organizationId, ManageRoles, cancellationToken);
+
+        if (!authorization.Succeeded)
+        {
+            return WorkflowResult<IReadOnlyList<IdeaTypeSummaryModel>>.Failure(authorization.FailureReason!.Value, authorization.Errors);
+        }
+
+        var ideaTypes = await _dataAccess.ListIdeaTypesAsync(organizationId, cancellationToken);
+        var results = ideaTypes
+            .OrderBy(item => item.SortOrder)
+            .ThenBy(item => item.Name)
+            .Select(ToIdeaTypeSummary)
+            .ToArray();
+
+        return WorkflowResult<IReadOnlyList<IdeaTypeSummaryModel>>.Success(results);
+    }
+
+    public async Task<WorkflowResult<IdeaTypeSummaryModel>> CreateIdeaTypeAsync(
+        WorkflowActorContext actor,
+        Guid organizationId,
+        IdeaTypeWriteRequestModel request,
+        CancellationToken cancellationToken)
+    {
+        var authorization = await AuthorizeAsync(actor, organizationId, ManageRoles, cancellationToken);
+
+        if (!authorization.Succeeded)
+        {
+            return WorkflowResult<IdeaTypeSummaryModel>.Failure(authorization.FailureReason!.Value, authorization.Errors);
+        }
+
+        var name = request.Name.Trim();
+        var nameError = ValidateOptionName(name, "Idea Type");
+
+        if (nameError is not null)
+        {
+            return WorkflowResult<IdeaTypeSummaryModel>.Failure(WorkflowFailureReason.ValidationError, new[] { nameError });
+        }
+
+        var ideaTypes = await _dataAccess.ListIdeaTypesAsync(organizationId, cancellationToken);
+
+        if (ideaTypes.Any(item => !item.IsDeleted && string.Equals(item.Name, name, StringComparison.OrdinalIgnoreCase)))
+        {
+            return WorkflowResult<IdeaTypeSummaryModel>.Failure(
+                WorkflowFailureReason.ValidationError,
+                new[] { "Idea Type name must be unique within the organization." });
+        }
+
+        var ideaType = new IdeaType
+        {
+            Id = Guid.NewGuid(),
+            OrganizationId = organizationId,
+            Name = name,
+            SortOrder = ideaTypes.Count == 0 ? 0 : ideaTypes.Max(item => item.SortOrder) + 1,
+            IsDeleted = false
+        };
+
+        _dataAccess.AddIdeaType(ideaType);
+        await _dataAccess.SaveChangesAsync(cancellationToken);
+
+        return WorkflowResult<IdeaTypeSummaryModel>.Success(ToIdeaTypeSummary(ideaType));
+    }
+
+    public async Task<WorkflowResult<IdeaTypeSummaryModel>> UpdateIdeaTypeAsync(
+        WorkflowActorContext actor,
+        Guid ideaTypeId,
+        IdeaTypeWriteRequestModel request,
+        CancellationToken cancellationToken)
+    {
+        var ideaType = await _dataAccess.FindIdeaTypeByIdAsync(ideaTypeId, cancellationToken);
+
+        if (ideaType is null)
+        {
+            return WorkflowResult<IdeaTypeSummaryModel>.Failure(WorkflowFailureReason.IdeaTypeNotFound);
+        }
+
+        var authorization = await AuthorizeAsync(actor, ideaType.OrganizationId, ManageRoles, cancellationToken);
+
+        if (!authorization.Succeeded)
+        {
+            return WorkflowResult<IdeaTypeSummaryModel>.Failure(authorization.FailureReason!.Value, authorization.Errors);
+        }
+
+        if (ideaType.IsDeleted)
+        {
+            return WorkflowResult<IdeaTypeSummaryModel>.Failure(
+                WorkflowFailureReason.ValidationError,
+                new[] { "Archived Idea Types cannot be updated." });
+        }
+
+        var name = request.Name.Trim();
+        var nameError = ValidateOptionName(name, "Idea Type");
+
+        if (nameError is not null)
+        {
+            return WorkflowResult<IdeaTypeSummaryModel>.Failure(WorkflowFailureReason.ValidationError, new[] { nameError });
+        }
+
+        var ideaTypes = await _dataAccess.ListIdeaTypesAsync(ideaType.OrganizationId, cancellationToken);
+
+        if (ideaTypes.Any(item =>
+            item.Id != ideaType.Id &&
+            !item.IsDeleted &&
+            string.Equals(item.Name, name, StringComparison.OrdinalIgnoreCase)))
+        {
+            return WorkflowResult<IdeaTypeSummaryModel>.Failure(
+                WorkflowFailureReason.ValidationError,
+                new[] { "Idea Type name must be unique within the organization." });
+        }
+
+        ideaType.Name = name;
+        await _dataAccess.SaveChangesAsync(cancellationToken);
+
+        return WorkflowResult<IdeaTypeSummaryModel>.Success(ToIdeaTypeSummary(ideaType));
+    }
+
+    public async Task<WorkflowResult> ReorderIdeaTypesAsync(
+        WorkflowActorContext actor,
+        Guid organizationId,
+        ReorderIdeaTypesRequestModel request,
+        CancellationToken cancellationToken)
+    {
+        var authorization = await AuthorizeAsync(actor, organizationId, ManageRoles, cancellationToken);
+
+        if (!authorization.Succeeded)
+        {
+            return WorkflowResult.Failure(authorization.FailureReason!.Value, authorization.Errors);
+        }
+
+        var ideaTypes = await _dataAccess.ListIdeaTypesAsync(organizationId, cancellationToken);
+        var requestedIds = request.OrderedIdeaTypeIds;
+
+        if (!IsCompleteReorder(ideaTypes.Select(item => item.Id), requestedIds))
+        {
+            return WorkflowResult.Failure(
+                WorkflowFailureReason.ValidationError,
+                new[] { "Idea Type reorder must include every organization option exactly once." });
+        }
+
+        var orderById = requestedIds
+            .Select((id, index) => new { id, index })
+            .ToDictionary(item => item.id, item => item.index);
+
+        foreach (var ideaType in ideaTypes)
+        {
+            ideaType.SortOrder = orderById[ideaType.Id];
+        }
+
+        await _dataAccess.SaveChangesAsync(cancellationToken);
+        return WorkflowResult.Success();
+    }
+
+    public async Task<WorkflowResult> SoftDeleteIdeaTypeAsync(
+        WorkflowActorContext actor,
+        Guid ideaTypeId,
+        CancellationToken cancellationToken)
+    {
+        var ideaType = await _dataAccess.FindIdeaTypeByIdAsync(ideaTypeId, cancellationToken);
+
+        if (ideaType is null)
+        {
+            return WorkflowResult.Failure(WorkflowFailureReason.IdeaTypeNotFound);
+        }
+
+        var authorization = await AuthorizeAsync(actor, ideaType.OrganizationId, ManageRoles, cancellationToken);
+
+        if (!authorization.Succeeded)
+        {
+            return WorkflowResult.Failure(authorization.FailureReason!.Value, authorization.Errors);
+        }
+
+        if (ideaType.IsDeleted)
+        {
+            return WorkflowResult.Success();
+        }
+
+        var ideaTypes = await _dataAccess.ListIdeaTypesAsync(ideaType.OrganizationId, cancellationToken);
+
+        if (ideaTypes.Count(item => !item.IsDeleted) <= 1)
+        {
+            return WorkflowResult.Failure(
+                WorkflowFailureReason.ValidationError,
+                new[] { "The last active Idea Type cannot be deleted." });
+        }
+
+        ideaType.IsDeleted = true;
+        await _dataAccess.SaveChangesAsync(cancellationToken);
+
+        return WorkflowResult.Success();
+    }
+
+    public async Task<WorkflowResult<IReadOnlyList<BusinessImpactSummaryModel>>> ListBusinessImpactsAsync(
+        WorkflowActorContext actor,
+        Guid organizationId,
+        CancellationToken cancellationToken)
+    {
+        var authorization = await AuthorizeAsync(actor, organizationId, ManageRoles, cancellationToken);
+
+        if (!authorization.Succeeded)
+        {
+            return WorkflowResult<IReadOnlyList<BusinessImpactSummaryModel>>.Failure(authorization.FailureReason!.Value, authorization.Errors);
+        }
+
+        var businessImpacts = await _dataAccess.ListBusinessImpactsAsync(organizationId, cancellationToken);
+        var results = businessImpacts
+            .OrderBy(item => item.SortOrder)
+            .ThenBy(item => item.Name)
+            .Select(ToBusinessImpactSummary)
+            .ToArray();
+
+        return WorkflowResult<IReadOnlyList<BusinessImpactSummaryModel>>.Success(results);
+    }
+
+    public async Task<WorkflowResult<BusinessImpactSummaryModel>> CreateBusinessImpactAsync(
+        WorkflowActorContext actor,
+        Guid organizationId,
+        BusinessImpactWriteRequestModel request,
+        CancellationToken cancellationToken)
+    {
+        var authorization = await AuthorizeAsync(actor, organizationId, ManageRoles, cancellationToken);
+
+        if (!authorization.Succeeded)
+        {
+            return WorkflowResult<BusinessImpactSummaryModel>.Failure(authorization.FailureReason!.Value, authorization.Errors);
+        }
+
+        var name = request.Name.Trim();
+        var nameError = ValidateOptionName(name, "Business Impact");
+        var color = request.Color.Trim();
+
+        if (nameError is not null)
+        {
+            return WorkflowResult<BusinessImpactSummaryModel>.Failure(WorkflowFailureReason.ValidationError, new[] { nameError });
+        }
+
+        if (!BusinessImpactColorPattern.IsMatch(color))
+        {
+            return WorkflowResult<BusinessImpactSummaryModel>.Failure(
+                WorkflowFailureReason.ValidationError,
+                new[] { "Business Impact color must be a valid #RRGGBB value." });
+        }
+
+        var businessImpacts = await _dataAccess.ListBusinessImpactsAsync(organizationId, cancellationToken);
+
+        if (businessImpacts.Any(item => !item.IsDeleted && string.Equals(item.Name, name, StringComparison.OrdinalIgnoreCase)))
+        {
+            return WorkflowResult<BusinessImpactSummaryModel>.Failure(
+                WorkflowFailureReason.ValidationError,
+                new[] { "Business Impact name must be unique within the organization." });
+        }
+
+        var businessImpact = new BusinessImpact
+        {
+            Id = Guid.NewGuid(),
+            OrganizationId = organizationId,
+            Name = name,
+            Color = color.ToUpperInvariant(),
+            SortOrder = businessImpacts.Count == 0 ? 0 : businessImpacts.Max(item => item.SortOrder) + 1,
+            IsDeleted = false
+        };
+
+        _dataAccess.AddBusinessImpact(businessImpact);
+        await _dataAccess.SaveChangesAsync(cancellationToken);
+
+        return WorkflowResult<BusinessImpactSummaryModel>.Success(ToBusinessImpactSummary(businessImpact));
+    }
+
+    public async Task<WorkflowResult<BusinessImpactSummaryModel>> UpdateBusinessImpactAsync(
+        WorkflowActorContext actor,
+        Guid businessImpactId,
+        BusinessImpactWriteRequestModel request,
+        CancellationToken cancellationToken)
+    {
+        var businessImpact = await _dataAccess.FindBusinessImpactByIdAsync(businessImpactId, cancellationToken);
+
+        if (businessImpact is null)
+        {
+            return WorkflowResult<BusinessImpactSummaryModel>.Failure(WorkflowFailureReason.BusinessImpactNotFound);
+        }
+
+        var authorization = await AuthorizeAsync(actor, businessImpact.OrganizationId, ManageRoles, cancellationToken);
+
+        if (!authorization.Succeeded)
+        {
+            return WorkflowResult<BusinessImpactSummaryModel>.Failure(authorization.FailureReason!.Value, authorization.Errors);
+        }
+
+        if (businessImpact.IsDeleted)
+        {
+            return WorkflowResult<BusinessImpactSummaryModel>.Failure(
+                WorkflowFailureReason.ValidationError,
+                new[] { "Archived Business Impacts cannot be updated." });
+        }
+
+        var name = request.Name.Trim();
+        var nameError = ValidateOptionName(name, "Business Impact");
+        var color = request.Color.Trim();
+
+        if (nameError is not null)
+        {
+            return WorkflowResult<BusinessImpactSummaryModel>.Failure(WorkflowFailureReason.ValidationError, new[] { nameError });
+        }
+
+        if (!BusinessImpactColorPattern.IsMatch(color))
+        {
+            return WorkflowResult<BusinessImpactSummaryModel>.Failure(
+                WorkflowFailureReason.ValidationError,
+                new[] { "Business Impact color must be a valid #RRGGBB value." });
+        }
+
+        var businessImpacts = await _dataAccess.ListBusinessImpactsAsync(businessImpact.OrganizationId, cancellationToken);
+
+        if (businessImpacts.Any(item =>
+            item.Id != businessImpact.Id &&
+            !item.IsDeleted &&
+            string.Equals(item.Name, name, StringComparison.OrdinalIgnoreCase)))
+        {
+            return WorkflowResult<BusinessImpactSummaryModel>.Failure(
+                WorkflowFailureReason.ValidationError,
+                new[] { "Business Impact name must be unique within the organization." });
+        }
+
+        businessImpact.Name = name;
+        businessImpact.Color = color.ToUpperInvariant();
+        await _dataAccess.SaveChangesAsync(cancellationToken);
+
+        return WorkflowResult<BusinessImpactSummaryModel>.Success(ToBusinessImpactSummary(businessImpact));
+    }
+
+    public async Task<WorkflowResult> ReorderBusinessImpactsAsync(
+        WorkflowActorContext actor,
+        Guid organizationId,
+        ReorderBusinessImpactsRequestModel request,
+        CancellationToken cancellationToken)
+    {
+        var authorization = await AuthorizeAsync(actor, organizationId, ManageRoles, cancellationToken);
+
+        if (!authorization.Succeeded)
+        {
+            return WorkflowResult.Failure(authorization.FailureReason!.Value, authorization.Errors);
+        }
+
+        var businessImpacts = await _dataAccess.ListBusinessImpactsAsync(organizationId, cancellationToken);
+        var requestedIds = request.OrderedBusinessImpactIds;
+
+        if (!IsCompleteReorder(businessImpacts.Select(item => item.Id), requestedIds))
+        {
+            return WorkflowResult.Failure(
+                WorkflowFailureReason.ValidationError,
+                new[] { "Business Impact reorder must include every organization option exactly once." });
+        }
+
+        var orderById = requestedIds
+            .Select((id, index) => new { id, index })
+            .ToDictionary(item => item.id, item => item.index);
+
+        foreach (var businessImpact in businessImpacts)
+        {
+            businessImpact.SortOrder = orderById[businessImpact.Id];
+        }
+
+        await _dataAccess.SaveChangesAsync(cancellationToken);
+        return WorkflowResult.Success();
+    }
+
+    public async Task<WorkflowResult> SoftDeleteBusinessImpactAsync(
+        WorkflowActorContext actor,
+        Guid businessImpactId,
+        CancellationToken cancellationToken)
+    {
+        var businessImpact = await _dataAccess.FindBusinessImpactByIdAsync(businessImpactId, cancellationToken);
+
+        if (businessImpact is null)
+        {
+            return WorkflowResult.Failure(WorkflowFailureReason.BusinessImpactNotFound);
+        }
+
+        var authorization = await AuthorizeAsync(actor, businessImpact.OrganizationId, ManageRoles, cancellationToken);
+
+        if (!authorization.Succeeded)
+        {
+            return WorkflowResult.Failure(authorization.FailureReason!.Value, authorization.Errors);
+        }
+
+        if (businessImpact.IsDeleted)
+        {
+            return WorkflowResult.Success();
+        }
+
+        var businessImpacts = await _dataAccess.ListBusinessImpactsAsync(businessImpact.OrganizationId, cancellationToken);
+
+        if (businessImpacts.Count(item => !item.IsDeleted) <= 1)
+        {
+            return WorkflowResult.Failure(
+                WorkflowFailureReason.ValidationError,
+                new[] { "The last active Business Impact cannot be deleted." });
+        }
+
+        businessImpact.IsDeleted = true;
+        await _dataAccess.SaveChangesAsync(cancellationToken);
 
         return WorkflowResult.Success();
     }
@@ -1343,7 +1817,7 @@ public sealed class WorkflowManagementService : IWorkflowManagementService
             return WorkflowResult<IdeaDetailModel>.Failure(WorkflowFailureReason.IdeaNotFound);
         }
 
-        var authorization = await AuthorizeAsync(actor, idea.OrganizationId, EngageRoles, cancellationToken);
+        var authorization = await AuthorizeAsync(actor, idea.OrganizationId, CollaborateRoles, cancellationToken);
 
         if (!authorization.Succeeded)
         {
@@ -1357,14 +1831,15 @@ public sealed class WorkflowManagementService : IWorkflowManagementService
             return WorkflowResult<IdeaDetailModel>.Failure(WorkflowFailureReason.BoardNotFound);
         }
 
-        var validationErrors = await ValidateIdeaWriteRequestAsync(board, request, cancellationToken);
+        var existingAssigneeUserIds = idea.Assignees.Select(item => item.UserId).ToHashSet();
+        var validationErrors = await ValidateIdeaWriteRequestAsync(board, request, cancellationToken, existingAssigneeUserIds);
 
         if (validationErrors.Count > 0)
         {
             return WorkflowResult<IdeaDetailModel>.Failure(WorkflowFailureReason.ValidationError, validationErrors);
         }
 
-        var assignmentsChanged = !idea.Assignees.Select(item => item.UserId).OrderBy(item => item)
+        var assignmentsChanged = !existingAssigneeUserIds.OrderBy(item => item)
             .SequenceEqual(request.AssigneeUserIds.OrderBy(item => item));
         var descriptionChanged = !string.Equals(idea.Description, request.Description.Trim(), StringComparison.Ordinal);
 
@@ -1435,6 +1910,7 @@ public sealed class WorkflowManagementService : IWorkflowManagementService
         idea.DeletedByUserId = actor.UserId;
         idea.UpdatedAtUtc = idea.DeletedAtUtc;
         await _dataAccess.SaveChangesAsync(cancellationToken);
+        await _auditWriter.WriteIdeaDeletedAsync(actor.UserId, idea, cancellationToken);
         return WorkflowResult.Success();
     }
 
@@ -1945,7 +2421,7 @@ public sealed class WorkflowManagementService : IWorkflowManagementService
             PendingApprovalExpiresAtUtc = idea.PendingApprovalExpiresAtUtc,
             TagNames = idea.IdeaTags
                 .Select(item => item.Tag.Name)
-                .OrderBy(item => item)
+                .OrderBy(item => item, StringComparer.OrdinalIgnoreCase)
                 .ToArray(),
             Mentions = idea.Mentions
                 .Select(item => item.MentionedUser.Email)
@@ -1994,7 +2470,8 @@ public sealed class WorkflowManagementService : IWorkflowManagementService
     private async Task<IReadOnlyList<string>> ValidateIdeaWriteRequestAsync(
         Board board,
         IdeaWriteRequestModel request,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        IReadOnlySet<Guid>? existingAssigneeUserIds = null)
     {
         var errors = new List<string>();
 
@@ -2051,6 +2528,11 @@ public sealed class WorkflowManagementService : IWorkflowManagementService
 
         foreach (var assigneeUserId in request.AssigneeUserIds.Distinct())
         {
+            if (existingAssigneeUserIds?.Contains(assigneeUserId) == true)
+            {
+                continue;
+            }
+
             var assignee = await _dataAccess.FindOrganizationUserByIdAsync(board.OrganizationId, assigneeUserId, cancellationToken);
             if (assignee is null || assignee.Status != UserLifecycleStatus.Active)
             {
@@ -2397,6 +2879,52 @@ public sealed class WorkflowManagementService : IWorkflowManagementService
             SortOrder = status.SortOrder,
             IsDefault = status.IsDefault
         };
+    }
+
+    private static IdeaTypeSummaryModel ToIdeaTypeSummary(IdeaType ideaType)
+    {
+        return new IdeaTypeSummaryModel
+        {
+            IdeaTypeId = ideaType.Id,
+            OrganizationId = ideaType.OrganizationId,
+            Name = ideaType.Name,
+            SortOrder = ideaType.SortOrder,
+            IsDeleted = ideaType.IsDeleted
+        };
+    }
+
+    private static BusinessImpactSummaryModel ToBusinessImpactSummary(BusinessImpact businessImpact)
+    {
+        return new BusinessImpactSummaryModel
+        {
+            BusinessImpactId = businessImpact.Id,
+            OrganizationId = businessImpact.OrganizationId,
+            Name = businessImpact.Name,
+            Color = businessImpact.Color,
+            SortOrder = businessImpact.SortOrder,
+            IsDeleted = businessImpact.IsDeleted
+        };
+    }
+
+    private static string? ValidateOptionName(string name, string optionType)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return $"{optionType} name is required.";
+        }
+
+        return name.Length > 100
+            ? $"{optionType} name must be 100 characters or fewer."
+            : null;
+    }
+
+    private static bool IsCompleteReorder(IEnumerable<Guid> existingIds, IReadOnlyList<Guid> requestedIds)
+    {
+        var existingIdSet = existingIds.ToHashSet();
+
+        return requestedIds.Count == existingIdSet.Count &&
+            requestedIds.Distinct().Count() == requestedIds.Count &&
+            requestedIds.All(existingIdSet.Contains);
     }
 
     private async Task<WorkflowResult> AuthorizeAsync(

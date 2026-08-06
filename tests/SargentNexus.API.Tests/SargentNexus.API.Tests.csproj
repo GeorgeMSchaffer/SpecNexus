@@ -26,6 +26,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\SargentNexus.API\SargentNexus.API.csproj" />
+    <ProjectReference Include="..\..\src\SargentNexus.Client\SargentNexus.Client.csproj" />
   </ItemGroup>
 
 </Project>

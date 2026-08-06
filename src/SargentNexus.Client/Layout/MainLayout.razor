@@ -1,7 +1,6 @@
 ﻿@inherits LayoutComponentBase
 @implements IDisposable
 @inject IAuthSessionService AuthSessionService
-@inject NavigationManager NavigationManager
 
 <div class="sn-shell">
     <header class="sn-topbar">
@@ -14,16 +13,12 @@
             <div class="sn-topbar__actions">
                 @if (AuthSessionService.IsAuthenticated)
                 {
-                    @if (AuthSessionService.RequiresPasswordChange)
-                    {
-                        <a href="/change-password" class="sn-warning-link">Password update required</a>
-                    }
                     <a class="sn-icon-button" href="/settings" title="Settings" aria-label="Settings">
                         <i class="bi bi-gear-fill"></i>
                     </a>
-                    <button class="sn-icon-button" type="button" title="Sign out" aria-label="Sign out" @onclick="HandleLogoutAsync">
+                    <a class="sn-icon-button" href="/logout" title="Sign out" aria-label="Sign out">
                         <i class="bi bi-box-arrow-right"></i>
-                    </button>
+                    </a>
                     <span class="sn-username">@DisplayName</span>
                 }
                 else
@@ -40,7 +35,7 @@
         <nav class="sn-menu" aria-label="Primary navigation">
             <div class="sn-menu__inner">
                 <NavLink class="sn-menu__link" href="/" Match="NavLinkMatch.All">Home</NavLink>
-                <NavLink class="sn-menu__link" href="/workflow">Workflows</NavLink>
+                <NavLink class="sn-menu__link" href="/boards">Boards</NavLink>
                 <NavLink class="sn-menu__link" href="/ideas">Ideas</NavLink>
             </div>
         </nav>
@@ -69,12 +64,6 @@
     public void Dispose()
     {
         AuthSessionService.StateChanged -= HandleAuthStateChanged;
-    }
-
-    private async Task HandleLogoutAsync()
-    {
-        await AuthSessionService.LogoutAsync();
-        NavigationManager.NavigateTo("/login");
     }
 
     private void HandleAuthStateChanged()

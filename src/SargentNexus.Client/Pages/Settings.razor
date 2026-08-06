@@ -52,6 +52,15 @@
                         </div>
                     </div>
                 </div>
+                <div class="col-md-4">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <h2 class="h6">Idea Fields</h2>
+                            <p class="mb-0 text-muted">Configure Idea Type and Business Impact options.</p>
+                            <NavLink class="btn btn-sm btn-outline-primary mt-3" href="@IdeaFieldsLink">Open Idea Fields</NavLink>
+                        </div>
+                    </div>
+                </div>
             }
         </div>
     </div>
@@ -60,5 +69,8 @@
 @code {
     private bool IsSiteAdmin => string.Equals(AuthSessionService.User?.Role, "SiteAdmin", StringComparison.OrdinalIgnoreCase);
     private bool IsOrgAdmin => string.Equals(AuthSessionService.User?.Role, "OrgAdmin", StringComparison.OrdinalIgnoreCase);
+    private string IdeaFieldsLink => IsOrgAdmin && AuthSessionService.User?.OrganizationId is Guid organizationId
+        ? $"/settings/organizations/{organizationId}/idea-fields"
+        : "/settings/organizations";
 }
 

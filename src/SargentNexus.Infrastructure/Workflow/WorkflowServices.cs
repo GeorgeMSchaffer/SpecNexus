@@ -244,6 +244,16 @@ public sealed class WorkflowDataAccess : IWorkflowDataAccess
         _dbContext.Statuses.Add(status);
     }
 
+    public void AddIdeaType(IdeaType ideaType)
+    {
+        _dbContext.IdeaTypes.Add(ideaType);
+    }
+
+    public void AddBusinessImpact(BusinessImpact businessImpact)
+    {
+        _dbContext.BusinessImpacts.Add(businessImpact);
+    }
+
     public void AddBoard(Board board)
     {
         _dbContext.Boards.Add(board);
@@ -496,6 +506,24 @@ public sealed class WorkflowAuditWriter : IWorkflowAuditWriter
                 idea.DueDate,
                 AssigneeUserIds = idea.Assignees.Select(item => item.UserId),
                 idea.UpdatedAtUtc
+            },
+            cancellationToken);
+    }
+
+    public Task WriteIdeaDeletedAsync(Guid actorUserId, Idea idea, CancellationToken cancellationToken)
+    {
+        return WriteAsync(
+            actorUserId,
+            idea.OrganizationId,
+            "Idea",
+            idea.Id,
+            "Workflow.IdeaDeleted",
+            new
+            {
+                idea.BoardId,
+                idea.IsDeleted,
+                idea.DeletedAtUtc,
+                idea.DeletedByUserId
             },
             cancellationToken);
     }

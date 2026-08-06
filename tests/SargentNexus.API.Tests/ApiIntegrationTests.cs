@@ -51,6 +51,83 @@ public sealed class ApiIntegrationTests
     }
 
     [Fact]
+    public async Task ChangePassword_WhenSuccessful_KeepsIssuedTokenValidForCurrentUser()
+    {
+        await using var factory = new IntegrationApiFactory();
+        using var client = factory.CreateClient();
+
+        var loginResponse = await client.PostAsJsonAsync("/api/v1/auth/login", new
+        {
+            email = "siteadmin@sargentnexus.local",
+            password = "Abc123!Demo"
+        });
+
+        Assert.Equal(HttpStatusCode.OK, loginResponse.StatusCode);
+
+        using var loginPayload = await JsonDocument.ParseAsync(await loginResponse.Content.ReadAsStreamAsync());
+        var token = loginPayload.RootElement.GetProperty("accessToken").GetString();
+        Assert.False(string.IsNullOrWhiteSpace(token));
+
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        var changePasswordResponse = await client.PostAsJsonAsync("/api/v1/auth/change-password", new
+        {
+            currentPassword = "Abc123!Demo",
+            newPassword = "Abc123!Demo2"
+        });
+
+        Assert.Equal(HttpStatusCode.NoContent, changePasswordResponse.StatusCode);
+
+        var currentUserResponse = await client.GetAsync("/api/v1/auth/me");
+
+        Assert.Equal(HttpStatusCode.OK, currentUserResponse.StatusCode);
+        using var currentUserPayload = await JsonDocument.ParseAsync(await currentUserResponse.Content.ReadAsStreamAsync());
+        Assert.Equal(
+            "siteadmin@sargentnexus.local",
+            currentUserPayload.RootElement.GetProperty("email").GetString());
+    }
+
+    [Fact]
+    public async Task ChangePassword_WhenSuccessful_NextLoginDoesNotRequirePasswordChange()
+    {
+        await using var factory = new IntegrationApiFactory();
+        using var client = factory.CreateClient();
+
+        var initialLoginResponse = await client.PostAsJsonAsync("/api/v1/auth/login", new
+        {
+            email = "siteadmin@sargentnexus.local",
+            password = "Abc123!Demo"
+        });
+
+        Assert.Equal(HttpStatusCode.OK, initialLoginResponse.StatusCode);
+
+        using var initialLoginPayload = await JsonDocument.ParseAsync(await initialLoginResponse.Content.ReadAsStreamAsync());
+        var token = initialLoginPayload.RootElement.GetProperty("accessToken").GetString();
+        Assert.False(string.IsNullOrWhiteSpace(token));
+
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        var changePasswordResponse = await client.PostAsJsonAsync("/api/v1/auth/change-password", new
+        {
+            currentPassword = "Abc123!Demo",
+            newPassword = "Abc123!Demo2"
+        });
+
+        Assert.Equal(HttpStatusCode.NoContent, changePasswordResponse.StatusCode);
+
+        client.DefaultRequestHeaders.Authorization = null;
+        var laterLoginResponse = await client.PostAsJsonAsync("/api/v1/auth/login", new
+        {
+            email = "siteadmin@sargentnexus.local",
+            password = "Abc123!Demo2"
+        });
+
+        Assert.Equal(HttpStatusCode.OK, laterLoginResponse.StatusCode);
+
+        using var laterLoginPayload = await JsonDocument.ParseAsync(await laterLoginResponse.Content.ReadAsStreamAsync());
+        Assert.False(laterLoginPayload.RootElement.GetProperty("requiresPasswordChange").GetBoolean());
+    }
+
+    [Fact]
     public async Task Login_WithInvalidPassword_ReturnsProblemDetails401()
     {
         await using var factory = new IntegrationApiFactory();
@@ -222,7 +299,7 @@ public sealed class ApiIntegrationTests
         Assert.Equal(HttpStatusCode.OK, demoLogin.StatusCode);
 
         using var loginPayload = await JsonDocument.ParseAsync(await demoLogin.Content.ReadAsStreamAsync());
-        Assert.True(loginPayload.RootElement.GetProperty("requiresPasswordChange").GetBoolean());
+        Assert.False(loginPayload.RootElement.GetProperty("requiresPasswordChange").GetBoolean());
 
         await using var scope = factory.Services.CreateAsyncScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<SargentNexusDbContext>();

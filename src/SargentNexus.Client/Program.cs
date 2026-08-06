@@ -14,11 +14,24 @@ var resolvedBaseAddress = Uri.TryCreate(apiBaseUrl, UriKind.Absolute, out var pa
     ? parsedBaseAddress
     : new Uri(builder.HostEnvironment.BaseAddress);
 
-builder.Services.AddScoped(sp => new HttpClient { BaseAddress = resolvedBaseAddress });
+builder.Services.AddScoped<AuthSessionStorage>();
+builder.Services.AddScoped<AuthenticatedSessionHandler>();
+builder.Services.AddScoped(sp =>
+{
+    var authenticatedSessionHandler = sp.GetRequiredService<AuthenticatedSessionHandler>();
+    authenticatedSessionHandler.InnerHandler = new HttpClientHandler();
+
+    return new HttpClient(authenticatedSessionHandler)
+    {
+        BaseAddress = resolvedBaseAddress
+    };
+});
 builder.Services.AddScoped<IAuthSessionService, AuthSessionService>();
 builder.Services.AddScoped<IClientErrorMessageService, ClientErrorMessageService>();
 builder.Services.AddScoped<AuthApiClient>();
 builder.Services.AddScoped<AdministrationApiClient>();
 builder.Services.AddScoped<WorkflowApiClient>();
+builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddScoped<IClientClock, ClientClock>();
 
 await builder.Build().RunAsync();

@@ -7,6 +7,213 @@ namespace SargentNexus.Application.Tests;
 public sealed class WorkflowManagementServiceTests
 {
     [Fact]
+    public async Task ListIdeaTypes_WhenSiteAdminTargetsOrganization_ReturnsActiveAndArchivedInConfiguredOrder()
+    {
+        var fixture = new WorkflowFixture();
+        var archived = new IdeaType
+        {
+            Id = Guid.NewGuid(),
+            OrganizationId = fixture.Organization.Id,
+            Name = "Archived",
+            SortOrder = 0,
+            IsDeleted = true
+        };
+        fixture.IdeaType.SortOrder = 1;
+        fixture.DataAccess.SeedIdeaType(archived);
+
+        var result = await fixture.Service.ListIdeaTypesAsync(
+            fixture.SiteAdminActor,
+            fixture.Organization.Id,
+            CancellationToken.None);
+
+        Assert.True(result.Succeeded);
+        Assert.Equal(new[] { archived.Id, fixture.IdeaType.Id }, result.Response!.Select(item => item.IdeaTypeId));
+        Assert.True(result.Response![0].IsDeleted);
+    }
+
+    [Fact]
+    public async Task CreateIdeaType_WhenUserAttemptsManagement_ReturnsForbidden()
+    {
+        var fixture = new WorkflowFixture();
+
+        var result = await fixture.Service.CreateIdeaTypeAsync(
+            fixture.StandardUserActor,
+            fixture.Organization.Id,
+            new IdeaTypeWriteRequestModel { Name = "New Type" },
+            CancellationToken.None);
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(WorkflowFailureReason.Forbidden, result.FailureReason);
+        Assert.Equal(0, fixture.DataAccess.SaveChangesCallCount);
+    }
+
+    [Fact]
+    public async Task CreateIdeaType_WhenTrimmedNameDuplicatesActiveName_ReturnsValidationError()
+    {
+        var fixture = new WorkflowFixture();
+
+        var result = await fixture.Service.CreateIdeaTypeAsync(
+            fixture.OrgAdminActor,
+            fixture.Organization.Id,
+            new IdeaTypeWriteRequestModel { Name = "  continuous improvement  " },
+            CancellationToken.None);
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(WorkflowFailureReason.ValidationError, result.FailureReason);
+        Assert.Contains("Idea Type name must be unique within the organization.", result.Errors);
+        Assert.Equal(0, fixture.DataAccess.SaveChangesCallCount);
+    }
+
+    [Fact]
+    public async Task ReorderIdeaTypes_WhenRequestContainsDuplicateAndOmitsOption_ReturnsValidationWithoutMutation()
+    {
+        var fixture = new WorkflowFixture();
+        var second = new IdeaType
+        {
+            Id = Guid.NewGuid(),
+            OrganizationId = fixture.Organization.Id,
+            Name = "Process Revision",
+            SortOrder = 1
+        };
+        fixture.DataAccess.SeedIdeaType(second);
+
+        var result = await fixture.Service.ReorderIdeaTypesAsync(
+            fixture.OrgAdminActor,
+            fixture.Organization.Id,
+            new ReorderIdeaTypesRequestModel
+            {
+                OrderedIdeaTypeIds = new[] { fixture.IdeaType.Id, fixture.IdeaType.Id }
+            },
+            CancellationToken.None);
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(WorkflowFailureReason.ValidationError, result.FailureReason);
+        Assert.Equal(0, fixture.IdeaType.SortOrder);
+        Assert.Equal(1, second.SortOrder);
+        Assert.Equal(0, fixture.DataAccess.SaveChangesCallCount);
+    }
+
+    [Fact]
+    public async Task SoftDeleteIdeaType_WhenItIsLastActiveOption_ReturnsValidationError()
+    {
+        var fixture = new WorkflowFixture();
+
+        var result = await fixture.Service.SoftDeleteIdeaTypeAsync(
+            fixture.OrgAdminActor,
+            fixture.IdeaType.Id,
+            CancellationToken.None);
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(WorkflowFailureReason.ValidationError, result.FailureReason);
+        Assert.False(fixture.IdeaType.IsDeleted);
+        Assert.Equal(0, fixture.DataAccess.SaveChangesCallCount);
+    }
+
+    [Fact]
+    public async Task ListBusinessImpacts_WhenOrgAdminTargetsForeignOrganization_ReturnsForbidden()
+    {
+        var fixture = new WorkflowFixture();
+
+        var result = await fixture.Service.ListBusinessImpactsAsync(
+            fixture.OrgAdminActor,
+            fixture.ForeignOrganization.Id,
+            CancellationToken.None);
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(WorkflowFailureReason.Forbidden, result.FailureReason);
+    }
+
+    [Fact]
+    public async Task CreateBusinessImpact_WhenColorIsNotRgbHex_ReturnsValidationError()
+    {
+        var fixture = new WorkflowFixture();
+
+        var result = await fixture.Service.CreateBusinessImpactAsync(
+            fixture.OrgAdminActor,
+            fixture.Organization.Id,
+            new BusinessImpactWriteRequestModel { Name = "Major", Color = "orange" },
+            CancellationToken.None);
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(WorkflowFailureReason.ValidationError, result.FailureReason);
+        Assert.Contains("Business Impact color must be a valid #RRGGBB value.", result.Errors);
+        Assert.Equal(0, fixture.DataAccess.SaveChangesCallCount);
+    }
+
+    [Fact]
+    public async Task UpdateBusinessImpact_WhenTrimmedNameDuplicatesActiveName_ReturnsValidationError()
+    {
+        var fixture = new WorkflowFixture();
+        var duplicate = new BusinessImpact
+        {
+            Id = Guid.NewGuid(),
+            OrganizationId = fixture.Organization.Id,
+            Name = "High",
+            Color = "#DC2626",
+            SortOrder = 2
+        };
+        fixture.DataAccess.SeedBusinessImpact(duplicate);
+
+        var result = await fixture.Service.UpdateBusinessImpactAsync(
+            fixture.OrgAdminActor,
+            fixture.BusinessImpact.Id,
+            new BusinessImpactWriteRequestModel { Name = "  high  ", Color = "#123456" },
+            CancellationToken.None);
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(WorkflowFailureReason.ValidationError, result.FailureReason);
+        Assert.Contains("Business Impact name must be unique within the organization.", result.Errors);
+        Assert.Equal("Medium", fixture.BusinessImpact.Name);
+        Assert.Equal(0, fixture.DataAccess.SaveChangesCallCount);
+    }
+
+    [Fact]
+    public async Task ReorderBusinessImpacts_WhenRequestContainsForeignId_ReturnsValidationWithoutMutation()
+    {
+        var fixture = new WorkflowFixture();
+        var second = new BusinessImpact
+        {
+            Id = Guid.NewGuid(),
+            OrganizationId = fixture.Organization.Id,
+            Name = "High",
+            Color = "#DC2626",
+            SortOrder = 2
+        };
+        fixture.DataAccess.SeedBusinessImpact(second);
+
+        var result = await fixture.Service.ReorderBusinessImpactsAsync(
+            fixture.OrgAdminActor,
+            fixture.Organization.Id,
+            new ReorderBusinessImpactsRequestModel
+            {
+                OrderedBusinessImpactIds = new[] { fixture.BusinessImpact.Id, Guid.NewGuid() }
+            },
+            CancellationToken.None);
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(WorkflowFailureReason.ValidationError, result.FailureReason);
+        Assert.Equal(1, fixture.BusinessImpact.SortOrder);
+        Assert.Equal(2, second.SortOrder);
+        Assert.Equal(0, fixture.DataAccess.SaveChangesCallCount);
+    }
+
+    [Fact]
+    public async Task SoftDeleteBusinessImpact_WhenItIsLastActiveOption_ReturnsValidationError()
+    {
+        var fixture = new WorkflowFixture();
+
+        var result = await fixture.Service.SoftDeleteBusinessImpactAsync(
+            fixture.OrgAdminActor,
+            fixture.BusinessImpact.Id,
+            CancellationToken.None);
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(WorkflowFailureReason.ValidationError, result.FailureReason);
+        Assert.False(fixture.BusinessImpact.IsDeleted);
+        Assert.Equal(0, fixture.DataAccess.SaveChangesCallCount);
+    }
+
+    [Fact]
     public async Task CreateBoard_WhenSwimlaneCountBelowTwo_ReturnsValidationError()
     {
         var fixture = new WorkflowFixture();
@@ -202,6 +409,147 @@ public sealed class WorkflowManagementServiceTests
     }
 
     [Fact]
+    public async Task UpdateIdea_WhenNonAuthorLeavesDescriptionAndInactiveAssignmentUnchanged_UpdatesGeneralFields()
+    {
+        var fixture = new WorkflowFixture();
+        var idea = fixture.CreateIdeaWithAuthor(fixture.OrgAdminUser);
+        fixture.DataAccess.AddIdeaAssignee(new IdeaAssignee { IdeaId = idea.Id, UserId = fixture.ReadOnlyUser.Id });
+        fixture.ReadOnlyUser.Status = UserLifecycleStatus.Inactive;
+
+        var result = await fixture.Service.UpdateIdeaAsync(
+            fixture.StandardUserActor,
+            idea.Id,
+            new IdeaWriteRequestModel
+            {
+                Title = "Updated by collaborator",
+                Description = idea.Description,
+                Priority = "High",
+                IdeaTypeId = fixture.IdeaType.Id,
+                BusinessImpactId = fixture.BusinessImpact.Id,
+                StatusId = fixture.StatusOne.Id,
+                AssigneeUserIds = new[] { fixture.ReadOnlyUser.Id }
+            },
+            CancellationToken.None);
+
+        Assert.True(result.Succeeded);
+        Assert.Equal("Updated by collaborator", idea.Title);
+        Assert.Equal(new[] { fixture.ReadOnlyUser.Id }, result.Response!.Assignees.Select(item => item.UserId).ToArray());
+    }
+
+    [Fact]
+    public async Task UpdateIdea_WhenReadOnlyUserLeavesRestrictedFieldsUnchanged_ReturnsForbidden()
+    {
+        var fixture = new WorkflowFixture();
+        var idea = fixture.CreateIdeaWithAuthor(fixture.OrgAdminUser);
+
+        var result = await fixture.Service.UpdateIdeaAsync(
+            fixture.ReadOnlyActor,
+            idea.Id,
+            new IdeaWriteRequestModel
+            {
+                Title = "Read only edit",
+                Description = idea.Description,
+                Priority = "High",
+                IdeaTypeId = fixture.IdeaType.Id,
+                BusinessImpactId = fixture.BusinessImpact.Id,
+                StatusId = fixture.StatusOne.Id
+            },
+            CancellationToken.None);
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(WorkflowFailureReason.Forbidden, result.FailureReason);
+        Assert.Equal("Idea", idea.Title);
+    }
+
+    [Fact]
+    public async Task UpdateIdea_WhenNonAuthorChangesDescription_ReturnsForbidden()
+    {
+        var fixture = new WorkflowFixture();
+        var idea = fixture.CreateIdeaWithAuthor(fixture.OrgAdminUser);
+
+        var result = await fixture.Service.UpdateIdeaAsync(
+            fixture.StandardUserActor,
+            idea.Id,
+            new IdeaWriteRequestModel
+            {
+                Title = idea.Title,
+                Description = "Changed by non-author",
+                Priority = idea.Priority.ToString(),
+                IdeaTypeId = fixture.IdeaType.Id,
+                BusinessImpactId = fixture.BusinessImpact.Id,
+                StatusId = fixture.StatusOne.Id
+            },
+            CancellationToken.None);
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(WorkflowFailureReason.Forbidden, result.FailureReason);
+        Assert.Equal("Description", idea.Description);
+    }
+
+    [Fact]
+    public async Task UpdateIdea_WhenNonAuthorChangesAssignments_ReturnsForbidden()
+    {
+        var fixture = new WorkflowFixture();
+        var idea = fixture.CreateIdeaWithAuthor(fixture.OrgAdminUser);
+
+        var result = await fixture.Service.UpdateIdeaAsync(
+            fixture.StandardUserActor,
+            idea.Id,
+            new IdeaWriteRequestModel
+            {
+                Title = idea.Title,
+                Description = idea.Description,
+                Priority = idea.Priority.ToString(),
+                IdeaTypeId = fixture.IdeaType.Id,
+                BusinessImpactId = fixture.BusinessImpact.Id,
+                StatusId = fixture.StatusOne.Id,
+                AssigneeUserIds = new[] { fixture.ReadOnlyUser.Id }
+            },
+            CancellationToken.None);
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(WorkflowFailureReason.Forbidden, result.FailureReason);
+        Assert.Empty(idea.Assignees);
+    }
+
+    [Fact]
+    public async Task SoftDeleteIdea_WhenAuthorized_PersistsMetadataAndWritesAuditEvent()
+    {
+        var fixture = new WorkflowFixture();
+        var idea = fixture.CreateIdeaWithAuthor(fixture.StandardUser);
+
+        var result = await fixture.Service.SoftDeleteIdeaAsync(
+            fixture.OrgAdminActor,
+            idea.Id,
+            CancellationToken.None);
+
+        Assert.True(result.Succeeded);
+        Assert.True(idea.IsDeleted);
+        Assert.Equal(fixture.OrgAdminUser.Id, idea.DeletedByUserId);
+        Assert.NotNull(idea.DeletedAtUtc);
+        var auditEvent = Assert.Single(fixture.AuditWriter.IdeaDeletedEvents);
+        Assert.Equal(fixture.OrgAdminUser.Id, auditEvent.ActorUserId);
+        Assert.Same(idea, auditEvent.Idea);
+    }
+
+    [Fact]
+    public async Task SoftDeleteIdea_WhenAlreadyDeleted_ReturnsIdeaNotFoundWithoutSecondAuditEvent()
+    {
+        var fixture = new WorkflowFixture();
+        var idea = fixture.CreateIdeaWithAuthor(fixture.StandardUser);
+        idea.IsDeleted = true;
+
+        var result = await fixture.Service.SoftDeleteIdeaAsync(
+            fixture.OrgAdminActor,
+            idea.Id,
+            CancellationToken.None);
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(WorkflowFailureReason.IdeaNotFound, result.FailureReason);
+        Assert.Empty(fixture.AuditWriter.IdeaDeletedEvents);
+    }
+
+    [Fact]
     public async Task GetIdeaDetail_WhenIdeaPendingApproval_ReturnsApprovalMetadata()
     {
         var fixture = new WorkflowFixture();
@@ -223,6 +571,60 @@ public sealed class WorkflowManagementServiceTests
         Assert.Equal(fixture.StatusTwo.Id, result.Response.PendingApprovalTargetStatusId);
         Assert.Equal(fixture.StatusOne.Id, result.Response.PendingApprovalPreviousStatusId);
         Assert.NotNull(result.Response.PendingApprovalExpiresAtUtc);
+    }
+
+    [Fact]
+    public async Task ListAndDetailIdeas_WhenRelationsExist_ReturnCompleteOrderedCallerProjection()
+    {
+        var fixture = new WorkflowFixture();
+        var board = fixture.CreateBoardWithTwoSwimlanes();
+        var idea = fixture.CreateIdeaWithAuthor(fixture.OrgAdminUser, board);
+        fixture.DataAccess.AddIdeaAssignee(new IdeaAssignee { IdeaId = idea.Id, UserId = fixture.StandardUser.Id });
+        fixture.DataAccess.AddIdeaAssignee(new IdeaAssignee { IdeaId = idea.Id, UserId = fixture.ReadOnlyUser.Id });
+        var zuluTag = fixture.SeedTag("zulu", "ZULU");
+        var alphaTag = fixture.SeedTag("Alpha", "ALPHA");
+        fixture.DataAccess.AddIdeaTag(new IdeaTag { IdeaId = idea.Id, TagId = zuluTag.Id });
+        fixture.DataAccess.AddIdeaTag(new IdeaTag { IdeaId = idea.Id, TagId = alphaTag.Id });
+        fixture.DataAccess.SeedComment(new Comment
+        {
+            Id = Guid.NewGuid(),
+            IdeaId = idea.Id,
+            AuthorUserId = fixture.StandardUser.Id,
+            Body = "First",
+            CreatedAtUtc = DateTime.UtcNow
+        });
+        fixture.DataAccess.SeedUpvote(new Upvote
+        {
+            IdeaId = idea.Id,
+            UserId = fixture.StandardUser.Id,
+            CreatedAtUtc = DateTime.UtcNow
+        });
+
+        var listResult = await fixture.Service.ListIdeasAsync(
+            fixture.StandardUserActor,
+            board.Id,
+            new IdeaListQueryModel(),
+            CancellationToken.None);
+        var detailResult = await fixture.Service.GetIdeaDetailAsync(
+            fixture.StandardUserActor,
+            idea.Id,
+            CancellationToken.None);
+
+        Assert.True(listResult.Succeeded);
+        Assert.True(detailResult.Succeeded);
+        var listItem = Assert.Single(listResult.Response!.Items);
+        var detail = detailResult.Response!;
+        Assert.Equal(fixture.IdeaType.Name, listItem.IdeaTypeName);
+        Assert.Equal(fixture.BusinessImpact.Name, listItem.BusinessImpactName);
+        Assert.Equal(fixture.BusinessImpact.Color, listItem.BusinessImpactColor);
+        Assert.Equal(new[] { fixture.ReadOnlyUser.Id, fixture.StandardUser.Id }, listItem.Assignees.Select(item => item.UserId).ToArray());
+        Assert.Equal(new[] { "Alpha", "zulu" }, listItem.TagNames);
+        Assert.Equal(1, listItem.CommentCount);
+        Assert.True(listItem.HasUpvoted);
+        Assert.Equal(listItem.Assignees.Select(item => item.UserId), detail.Assignees.Select(item => item.UserId));
+        Assert.Equal(listItem.TagNames, detail.TagNames);
+        Assert.Equal(1, detail.CommentCount);
+        Assert.True(detail.HasUpvoted);
     }
 
     [Fact]
@@ -318,6 +720,31 @@ public sealed class WorkflowManagementServiceTests
         Assert.Equal(1, fixture.DataAccess.TagCount);
         Assert.Equal(1, fixture.DataAccess.IdeaTagCount);
         Assert.Equal(new[] { "Operations" }, result.Response!.TagNames);
+    }
+
+    [Fact]
+    public async Task CreateIdea_WhenMoreThanTenDistinctNormalizedTags_ReturnsValidationError()
+    {
+        var fixture = new WorkflowFixture();
+        var board = fixture.CreateBoardWithTwoSwimlanes();
+
+        var result = await fixture.Service.CreateIdeaAsync(
+            fixture.OrgAdminActor,
+            board.Id,
+            new IdeaWriteRequestModel
+            {
+                Title = "Too many tags",
+                Description = "Reject the eleventh distinct normalized tag",
+                Priority = "Medium",
+                IdeaTypeId = fixture.IdeaType.Id,
+                BusinessImpactId = fixture.BusinessImpact.Id,
+                TagNames = Enumerable.Range(1, 11).Select(item => $"Tag {item}").Append("tag 1").ToArray()
+            },
+            CancellationToken.None);
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(WorkflowFailureReason.ValidationError, result.FailureReason);
+        Assert.Contains("An idea can have no more than 10 tags.", result.Errors);
     }
 
     [Fact]
@@ -687,6 +1114,25 @@ public sealed class WorkflowManagementServiceTests
         Assert.Contains(notifications, item => item.RecipientUserId == fixture.StandardUser.Id);
         Assert.Contains(notifications, item => item.RecipientUserId == fixture.ReadOnlyUser.Id);
         Assert.All(notifications, item => Assert.Equal($"/ideas/{idea.Id}/edit", item.IdeaLink));
+    }
+
+    [Fact]
+    public async Task MoveIdeaStatus_WhenAuthorIsAlsoAssignee_WritesOneNotification()
+    {
+        var fixture = new WorkflowFixture();
+        var board = fixture.CreateBoardWithTwoSwimlanes();
+        var idea = fixture.CreateIdeaWithAuthor(fixture.StandardUser, board);
+        fixture.DataAccess.AddIdeaAssignee(new IdeaAssignee { IdeaId = idea.Id, UserId = fixture.StandardUser.Id });
+
+        var result = await fixture.Service.MoveIdeaStatusAsync(
+            fixture.OrgAdminActor,
+            idea.Id,
+            new MoveIdeaStatusRequestModel { StatusId = fixture.StatusTwo.Id },
+            CancellationToken.None);
+
+        Assert.True(result.Succeeded);
+        var notification = Assert.Single(fixture.NotificationWriter.Events.Where(item => item.EventType == "IdeaStatusChanged"));
+        Assert.Equal(fixture.StandardUser.Id, notification.RecipientUserId);
     }
 
     [Fact]

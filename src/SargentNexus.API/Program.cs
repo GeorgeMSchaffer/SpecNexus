@@ -8,6 +8,13 @@ using System.Security.Claims;
 using SargentNexus.Application.Auth;
 
 var builder = WebApplication.CreateBuilder(args);
+var seedDemoRequested = args.Contains("--seed-demo", StringComparer.OrdinalIgnoreCase);
+var configuredCorsOrigin = builder.Configuration["Cors:AllowedOrigin"];
+var allowedCorsOrigins = new[] { "http://127.0.0.1:5237", "http://localhost:5237", configuredCorsOrigin }
+	.Where(origin => !string.IsNullOrWhiteSpace(origin))
+	.Select(origin => origin!)
+	.Distinct(StringComparer.OrdinalIgnoreCase)
+	.ToArray();
 
 // Add services to the container.
 builder.Services.AddProblemDetails();
@@ -16,7 +23,7 @@ builder.Services.AddCors(options =>
 {
 	options.AddDefaultPolicy(policy =>
 	{
-		policy.WithOrigins("http://127.0.0.1:5237", "http://localhost:5237")
+		policy.WithOrigins(allowedCorsOrigins)
 			.AllowAnyHeader()
 			.AllowAnyMethod()
 			.AllowCredentials();
@@ -93,7 +100,11 @@ app.UseStatusCodePages();
 await using (var scope = app.Services.CreateAsyncScope())
 {
 	var authSeeder = scope.ServiceProvider.GetRequiredService<IAuthSeeder>();
-	await StartupSeeding.SeedAuthAsync(authSeeder, app.Environment.IsDevelopment(), CancellationToken.None);
+	await StartupSeeding.SeedAuthAsync(
+		authSeeder,
+		app.Environment.IsDevelopment(),
+		seedDemoRequested,
+		CancellationToken.None);
 }
 
 if (isSwaggerEnabled)

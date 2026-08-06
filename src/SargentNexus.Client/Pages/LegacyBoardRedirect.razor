@@ -1,0 +1,20 @@
+@page "/board"
+@page "/workflow"
+@page "/workflows"
+@page "/workflow/{BoardId:guid}"
+@inject NavigationManager NavigationManager
+
+<PageTitle>Redirecting</PageTitle>
+
+<p>Redirecting...</p>
+
+@code {
+    [Parameter]
+    public Guid? BoardId { get; set; }
+
+    protected override void OnInitialized()
+    {
+        var destination = BoardId.HasValue ? $"/board/{BoardId.Value}" : "/boards";
+        NavigationManager.NavigateTo(destination, replace: true);
+    }
+}

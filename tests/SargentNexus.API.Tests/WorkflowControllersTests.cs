@@ -663,6 +663,72 @@ public sealed class WorkflowControllersTests
                 : SoftDeleteStatusAsyncHandler(actor, statusId, cancellationToken);
         }
 
+        public Task<WorkflowResult<IReadOnlyList<IdeaTypeSummaryModel>>> ListIdeaTypesAsync(
+            WorkflowActorContext actor,
+            Guid organizationId,
+            CancellationToken cancellationToken) =>
+            Task.FromResult(WorkflowResult<IReadOnlyList<IdeaTypeSummaryModel>>.Failure(WorkflowFailureReason.Forbidden));
+
+        public Task<WorkflowResult<IdeaTypeSummaryModel>> CreateIdeaTypeAsync(
+            WorkflowActorContext actor,
+            Guid organizationId,
+            IdeaTypeWriteRequestModel request,
+            CancellationToken cancellationToken) =>
+            Task.FromResult(WorkflowResult<IdeaTypeSummaryModel>.Failure(WorkflowFailureReason.Forbidden));
+
+        public Task<WorkflowResult<IdeaTypeSummaryModel>> UpdateIdeaTypeAsync(
+            WorkflowActorContext actor,
+            Guid ideaTypeId,
+            IdeaTypeWriteRequestModel request,
+            CancellationToken cancellationToken) =>
+            Task.FromResult(WorkflowResult<IdeaTypeSummaryModel>.Failure(WorkflowFailureReason.Forbidden));
+
+        public Task<WorkflowResult> ReorderIdeaTypesAsync(
+            WorkflowActorContext actor,
+            Guid organizationId,
+            ReorderIdeaTypesRequestModel request,
+            CancellationToken cancellationToken) =>
+            Task.FromResult(WorkflowResult.Failure(WorkflowFailureReason.Forbidden));
+
+        public Task<WorkflowResult> SoftDeleteIdeaTypeAsync(
+            WorkflowActorContext actor,
+            Guid ideaTypeId,
+            CancellationToken cancellationToken) =>
+            Task.FromResult(WorkflowResult.Failure(WorkflowFailureReason.Forbidden));
+
+        public Task<WorkflowResult<IReadOnlyList<BusinessImpactSummaryModel>>> ListBusinessImpactsAsync(
+            WorkflowActorContext actor,
+            Guid organizationId,
+            CancellationToken cancellationToken) =>
+            Task.FromResult(WorkflowResult<IReadOnlyList<BusinessImpactSummaryModel>>.Failure(WorkflowFailureReason.Forbidden));
+
+        public Task<WorkflowResult<BusinessImpactSummaryModel>> CreateBusinessImpactAsync(
+            WorkflowActorContext actor,
+            Guid organizationId,
+            BusinessImpactWriteRequestModel request,
+            CancellationToken cancellationToken) =>
+            Task.FromResult(WorkflowResult<BusinessImpactSummaryModel>.Failure(WorkflowFailureReason.Forbidden));
+
+        public Task<WorkflowResult<BusinessImpactSummaryModel>> UpdateBusinessImpactAsync(
+            WorkflowActorContext actor,
+            Guid businessImpactId,
+            BusinessImpactWriteRequestModel request,
+            CancellationToken cancellationToken) =>
+            Task.FromResult(WorkflowResult<BusinessImpactSummaryModel>.Failure(WorkflowFailureReason.Forbidden));
+
+        public Task<WorkflowResult> ReorderBusinessImpactsAsync(
+            WorkflowActorContext actor,
+            Guid organizationId,
+            ReorderBusinessImpactsRequestModel request,
+            CancellationToken cancellationToken) =>
+            Task.FromResult(WorkflowResult.Failure(WorkflowFailureReason.Forbidden));
+
+        public Task<WorkflowResult> SoftDeleteBusinessImpactAsync(
+            WorkflowActorContext actor,
+            Guid businessImpactId,
+            CancellationToken cancellationToken) =>
+            Task.FromResult(WorkflowResult.Failure(WorkflowFailureReason.Forbidden));
+
         public Task<WorkflowResult<IReadOnlyList<BoardSummaryModel>>> ListBoardsAsync(
             WorkflowActorContext actor,
             Guid organizationId,

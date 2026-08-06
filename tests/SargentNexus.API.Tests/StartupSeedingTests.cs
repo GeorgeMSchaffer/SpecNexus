@@ -6,7 +6,7 @@ namespace SargentNexus.API.Tests;
 public sealed class StartupSeedingTests
 {
     [Fact]
-    public async Task SeedAuthAsync_WhenDevelopmentEnvironment_SeedsSiteAdminAndDemoEnvironment()
+    public async Task SeedAuthAsync_WhenDevelopmentEnvironmentAndDemoRequested_SeedsSiteAdminAndDemoEnvironment()
     {
         var seeder = new RecordingAuthSeeder();
         using var cancellationSource = new CancellationTokenSource();
@@ -15,6 +15,7 @@ public sealed class StartupSeedingTests
         await StartupSeeding.SeedAuthAsync(
             seeder,
             isDevelopmentEnvironment: true,
+            seedDemoRequested: true,
             cancellationToken: cancellationToken);
 
         Assert.Equal(1, seeder.SeedSiteAdminCallCount);
@@ -23,8 +24,13 @@ public sealed class StartupSeedingTests
         Assert.Equal(new[] { cancellationToken, cancellationToken }, seeder.ReceivedTokens);
     }
 
-    [Fact]
-    public async Task SeedAuthAsync_WhenNotDevelopmentEnvironment_SeedsSiteAdminOnly()
+    [Theory]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(false, false)]
+    public async Task SeedAuthAsync_WhenDemoSeedingIsNotEnabled_SeedsSiteAdminOnly(
+        bool isDevelopmentEnvironment,
+        bool seedDemoRequested)
     {
         var seeder = new RecordingAuthSeeder();
         using var cancellationSource = new CancellationTokenSource();
@@ -32,7 +38,8 @@ public sealed class StartupSeedingTests
 
         await StartupSeeding.SeedAuthAsync(
             seeder,
-            isDevelopmentEnvironment: false,
+            isDevelopmentEnvironment,
+            seedDemoRequested,
             cancellationToken: cancellationToken);
 
         Assert.Equal(1, seeder.SeedSiteAdminCallCount);

@@ -10,15 +10,16 @@
         NavigationManager.LocationChanged += HandleLocationChanged;
 
         await AuthSessionService.InitializeAsync();
-        EnforceRouteAccess(redirectAuthenticatedAwayFromLogin: true);
+        EnforceRouteAccess();
     }
 
-    private void HandleLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+    private async void HandleLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
     {
-        EnforceRouteAccess(redirectAuthenticatedAwayFromLogin: false);
+        await AuthSessionService.InitializeAsync();
+        EnforceRouteAccess();
     }
 
-    private void EnforceRouteAccess(bool redirectAuthenticatedAwayFromLogin)
+    private void EnforceRouteAccess()
     {
         var relative = NavigationManager.ToBaseRelativePath(NavigationManager.Uri);
         var path = relative.Split('?', '#')[0].Trim('/').ToLowerInvariant();
@@ -40,9 +41,9 @@
             return;
         }
 
-        if (redirectAuthenticatedAwayFromLogin && path is "" or "login")
+        if (path == "login")
         {
-            NavigationManager.NavigateTo("/board", forceLoad: false);
+            NavigationManager.NavigateTo("/", forceLoad: false, replace: true);
         }
     }
 

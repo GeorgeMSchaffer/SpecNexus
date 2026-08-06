@@ -1,6 +1,6 @@
 namespace SargentNexus.API.Tests;
 
-public sealed class OpenApiContractAlignmentTests
+public sealed class CanonicalContractAlignmentTests
 {
 	[Fact]
 	public void CanonicalContract_IncludesExpectedRouteInventory()
@@ -83,6 +83,16 @@ public sealed class OpenApiContractAlignmentTests
 		Assert.DoesNotContain(routeHeadings, heading => heading.Contains("/api/v1/auth/oauth", StringComparison.OrdinalIgnoreCase));
 		Assert.DoesNotContain(routeHeadings, heading => heading.Contains("/api/v1/auth/oidc", StringComparison.OrdinalIgnoreCase));
 		Assert.DoesNotContain(routeHeadings, heading => heading.Contains("/api/v1/auth/saml", StringComparison.OrdinalIgnoreCase));
+	}
+
+	[Fact]
+	public void CanonicalContract_DoesNotExposeDeferredAuditOrNotificationQueryEndpoints()
+	{
+		var routeHeadings = SplitLines(ReadCanonicalContract())
+			.Where(line => line.StartsWith("### `", StringComparison.Ordinal));
+
+		Assert.DoesNotContain(routeHeadings, heading => heading.Contains("/api/v1/audit", StringComparison.OrdinalIgnoreCase));
+		Assert.DoesNotContain(routeHeadings, heading => heading.Contains("/api/v1/notifications", StringComparison.OrdinalIgnoreCase));
 	}
 
 	private static void AssertRouteExists(string contract, string method, string path)

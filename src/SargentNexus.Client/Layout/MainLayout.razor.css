@@ -70,18 +70,6 @@
     text-decoration: underline;
 }
 
-.sn-warning-link {
-    color: #fbbf24;
-    font-size: 0.82rem;
-    font-weight: 600;
-    text-decoration: none;
-}
-
-.sn-warning-link:hover {
-    color: #fde68a;
-    text-decoration: underline;
-}
-
 .sn-icon-button {
     width: 2rem;
     height: 2rem;

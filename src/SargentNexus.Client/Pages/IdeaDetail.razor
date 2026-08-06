@@ -12,11 +12,26 @@
     @if (IsListView)
     {
         <div class="container py-4 sn-page sn-ideas-page">
-            <div class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-3">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
                 <div>
                     <h1 class="h3 mb-1">Ideas</h1>
                     <p class="text-muted mb-0">Combined ideas created by you or assigned to you.</p>
                 </div>
+                @if (CanCreateIdea && _boards.Count > 0)
+                {
+                    <div class="d-flex flex-wrap align-items-end gap-2">
+                        <div>
+                            <label class="form-label small mb-1" for="newIdeaBoard">Board</label>
+                            <select id="newIdeaBoard" class="form-select form-select-sm" @bind="_selectedBoardId">
+                                @foreach (var board in _boards)
+                                {
+                                    <option value="@board.BoardId">@board.Name</option>
+                                }
+                            </select>
+                        </div>
+                        <button class="btn btn-primary" type="button" aria-label="Add new idea" @onclick="StartCreateIdea">Add New</button>
+                    </div>
+                }
             </div>
 
             @if (_listLoading)
@@ -68,7 +83,7 @@
                                         </NavLink>
                                     </td>
                                     <td>@(item.AuthorDisplayName ?? "-")</td>
-                                    <td>@(item.AssigneeDisplayName ?? "-")</td>
+                                    <td>@FormatAssignees(item.Assignees)</td>
                                     <td>@item.StatusName</td>
                                     <td>@item.CreatedAtUtc.ToLocalTime().ToString("d")</td>
                                     <td class="text-end">
@@ -96,7 +111,7 @@
     <div class="container py-4">
         <div class="d-flex gap-2 mb-3">
             <a class="btn btn-outline-secondary btn-sm" href="/ideas">← My Ideas</a>
-            <a class="btn btn-outline-secondary btn-sm" href="/board">← Boards</a>
+            <a class="btn btn-outline-secondary btn-sm" href="/boards">← Boards</a>
         </div>
 
         @if (_loading)
@@ -208,6 +223,9 @@
 </AuthGate>
 
 @code {
+    private static string FormatAssignees(IReadOnlyList<IdeaAssigneeSummaryDto> assignees) =>
+        assignees.Count == 0 ? "-" : string.Join(", ", assignees.Select(assignee => assignee.DisplayName));
+
     [Parameter]
     public Guid? IdeaId { get; set; }
 
@@ -216,6 +234,7 @@
     private const string IdeaFilterAssignedToMe = "assignedToMe";
 
     private readonly List<IdeaListItemDto> _listItems = new();
+    private readonly List<BoardSummaryDto> _boards = new();
     private IdeaDetailDto? _idea;
     private bool _loading = true;
     private bool _listLoading = true;
@@ -231,8 +250,20 @@
     private int _page = 1;
     private int _pageSize = 25;
     private int _totalCount;
+    private Guid _selectedBoardId;
 
     private bool IsListView => !IdeaId.HasValue;
+
+    private bool CanCreateIdea
+    {
+        get
+        {
+            var role = AuthSessionService.User?.Role ?? string.Empty;
+            return string.Equals(role, "SiteAdmin", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(role, "OrgAdmin", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(role, "User", StringComparison.OrdinalIgnoreCase);
+        }
+    }
 
     private string PageTitleText => IsListView ? "Ideas" : "Idea details";
 
@@ -294,6 +325,15 @@
             var accessToken = AuthSessionService.AccessToken
                 ?? throw new InvalidOperationException("Missing access token for authenticated session.");
 
+            if (CanCreateIdea && _boards.Count == 0)
+            {
+                _boards.AddRange(await WorkflowApiClient.ListBoardsAsync(
+                    accessToken,
+                    organizationId.Value,
+                    CancellationToken.None));
+                _selectedBoardId = _boards.FirstOrDefault()?.BoardId ?? Guid.Empty;
+            }
+
             var result = await WorkflowApiClient.ListMyIdeasAsync(
                 accessToken,
                 organizationId.Value,
@@ -314,6 +354,14 @@
         finally
         {
             _listLoading = false;
+        }
+    }
+
+    private void StartCreateIdea()
+    {
+        if (_selectedBoardId != Guid.Empty)
+        {
+            NavigationManager.NavigateTo($"/board/{_selectedBoardId}?create=true");
         }
     }
 

@@ -43,6 +43,56 @@ public sealed class StatusSummaryDto
     public bool IsDefault { get; set; }
 }
 
+public sealed class IdeaTypeSummaryDto
+{
+    public Guid IdeaTypeId { get; set; }
+
+    public Guid OrganizationId { get; set; }
+
+    public string Name { get; set; } = string.Empty;
+
+    public int SortOrder { get; set; }
+
+    public bool IsDeleted { get; set; }
+}
+
+public sealed class IdeaTypeWriteRequestDto
+{
+    public string Name { get; set; } = string.Empty;
+}
+
+public sealed class ReorderIdeaTypesRequestDto
+{
+    public IReadOnlyList<Guid> OrderedIdeaTypeIds { get; set; } = Array.Empty<Guid>();
+}
+
+public sealed class BusinessImpactSummaryDto
+{
+    public Guid BusinessImpactId { get; set; }
+
+    public Guid OrganizationId { get; set; }
+
+    public string Name { get; set; } = string.Empty;
+
+    public string Color { get; set; } = string.Empty;
+
+    public int SortOrder { get; set; }
+
+    public bool IsDeleted { get; set; }
+}
+
+public sealed class BusinessImpactWriteRequestDto
+{
+    public string Name { get; set; } = string.Empty;
+
+    public string Color { get; set; } = string.Empty;
+}
+
+public sealed class ReorderBusinessImpactsRequestDto
+{
+    public IReadOnlyList<Guid> OrderedBusinessImpactIds { get; set; } = Array.Empty<Guid>();
+}
+
 public sealed class PagedResultDto<T>
 {
     public int Page { get; set; }
@@ -64,17 +114,31 @@ public sealed class IdeaListItemDto
 
     public string Priority { get; set; } = string.Empty;
 
+    public Guid IdeaTypeId { get; set; }
+
+    public string IdeaTypeName { get; set; } = string.Empty;
+
+    public Guid BusinessImpactId { get; set; }
+
+    public string BusinessImpactName { get; set; } = string.Empty;
+
+    public string BusinessImpactColor { get; set; } = string.Empty;
+
     public DateOnly? DueDate { get; set; }
 
-    public Guid? AssigneeUserId { get; set; }
+    public IReadOnlyList<IdeaAssigneeSummaryDto> Assignees { get; set; } = Array.Empty<IdeaAssigneeSummaryDto>();
 
-    public string? AssigneeDisplayName { get; set; }
+    public IReadOnlyList<string> TagNames { get; set; } = Array.Empty<string>();
 
     public Guid StatusId { get; set; }
 
     public string StatusName { get; set; } = string.Empty;
 
     public int UpvoteCount { get; set; }
+
+    public bool HasUpvoted { get; set; }
+
+    public int CommentCount { get; set; }
 
     public Guid AuthorUserId { get; set; }
 
@@ -95,11 +159,19 @@ public sealed class IdeaDetailDto
 
     public string Priority { get; set; } = string.Empty;
 
+    public Guid IdeaTypeId { get; set; }
+
+    public string IdeaTypeName { get; set; } = string.Empty;
+
+    public Guid BusinessImpactId { get; set; }
+
+    public string BusinessImpactName { get; set; } = string.Empty;
+
+    public string BusinessImpactColor { get; set; } = string.Empty;
+
     public DateOnly? DueDate { get; set; }
 
-    public Guid? AssigneeUserId { get; set; }
-
-    public string? AssigneeDisplayName { get; set; }
+    public IReadOnlyList<IdeaAssigneeSummaryDto> Assignees { get; set; } = Array.Empty<IdeaAssigneeSummaryDto>();
 
     public Guid StatusId { get; set; }
 
@@ -112,6 +184,23 @@ public sealed class IdeaDetailDto
     public IReadOnlyList<CommentDto> Comments { get; set; } = Array.Empty<CommentDto>();
 
     public int UpvoteCount { get; set; }
+
+    public bool HasUpvoted { get; set; }
+
+    public int CommentCount { get; set; }
+}
+
+public sealed class IdeaAssigneeSummaryDto
+{
+    public Guid UserId { get; set; }
+
+    public string FirstName { get; set; } = string.Empty;
+
+    public string LastName { get; set; } = string.Empty;
+
+    public string DisplayName { get; set; } = string.Empty;
+
+    public bool IsActive { get; set; }
 }
 
 public sealed class CommentDto
@@ -151,9 +240,13 @@ public sealed class IdeaWriteRequestDto
 
     public string Priority { get; set; } = string.Empty;
 
+    public Guid IdeaTypeId { get; set; }
+
+    public Guid BusinessImpactId { get; set; }
+
     public DateOnly? DueDate { get; set; }
 
-    public Guid? AssigneeUserId { get; set; }
+    public IReadOnlyList<Guid> AssigneeUserIds { get; set; } = Array.Empty<Guid>();
 
     public Guid? StatusId { get; set; }
 

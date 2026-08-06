@@ -11,19 +11,14 @@ namespace SargentNexus.Infrastructure.Persistence.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.Sql("DECLARE @constraintName sysname; SELECT @constraintName = fk.name FROM sys.foreign_keys fk INNER JOIN sys.foreign_key_columns fkc ON fk.object_id = fkc.constraint_object_id INNER JOIN sys.columns c ON c.object_id = fkc.parent_object_id AND c.column_id = fkc.parent_column_id WHERE fk.parent_object_id = OBJECT_ID(N'[ideas]') AND c.name = N'AssigneeUserId'; IF @constraintName IS NOT NULL BEGIN EXEC(N'ALTER TABLE [ideas] DROP CONSTRAINT [' + @constraintName + ']'); END");
-
-            migrationBuilder.Sql("DROP INDEX IF EXISTS [IX_ideas_AssigneeUserId] ON [ideas];");
-
-            migrationBuilder.Sql("IF COL_LENGTH('ideas', 'DeletedByUserId') IS NULL BEGIN IF COL_LENGTH('ideas', 'AssigneeUserId') IS NOT NULL BEGIN EXEC sp_rename N'[ideas].[AssigneeUserId]', N'DeletedByUserId', N'COLUMN'; END ELSE BEGIN ALTER TABLE [ideas] ADD [DeletedByUserId] uniqueidentifier NULL; END END");
             migrationBuilder.Sql("IF COL_LENGTH('ideas', 'DueDate') IS NULL ALTER TABLE [ideas] ADD [DueDate] date NULL;");
             migrationBuilder.Sql("IF COL_LENGTH('ideas', 'Priority') IS NULL ALTER TABLE [ideas] ADD [Priority] nvarchar(20) NOT NULL CONSTRAINT [DF_ideas_Priority] DEFAULT ('Medium');");
+
             migrationBuilder.AddColumn<Guid>(
                 name: "BusinessImpactId",
                 table: "ideas",
                 type: "uniqueidentifier",
-                nullable: false,
-                defaultValue: new Guid("00000000-0000-0000-0000-000000000000"));
+                nullable: true);
 
             migrationBuilder.AddColumn<DateTime>(
                 name: "DeletedAtUtc",
@@ -32,11 +27,16 @@ namespace SargentNexus.Infrastructure.Persistence.Migrations
                 nullable: true);
 
             migrationBuilder.AddColumn<Guid>(
+                name: "DeletedByUserId",
+                table: "ideas",
+                type: "uniqueidentifier",
+                nullable: true);
+
+            migrationBuilder.AddColumn<Guid>(
                 name: "IdeaTypeId",
                 table: "ideas",
                 type: "uniqueidentifier",
-                nullable: false,
-                defaultValue: new Guid("00000000-0000-0000-0000-000000000000"));
+                nullable: true);
 
             migrationBuilder.CreateTable(
                 name: "business_impacts",
@@ -105,6 +105,77 @@ namespace SargentNexus.Infrastructure.Persistence.Migrations
                         onDelete: ReferentialAction.Cascade);
                 });
 
+            migrationBuilder.Sql(
+                """
+                INSERT INTO [idea_types] ([Id], [OrganizationId], [Name], [SortOrder], [IsDeleted])
+                SELECT NEWID(), [organization].[Id], [defaults].[Name], [defaults].[SortOrder], 0
+                FROM [organizations] AS [organization]
+                CROSS JOIN (VALUES
+                    (N'Continuous Improvement', 0),
+                    (N'Process Revision', 1)
+                ) AS [defaults] ([Name], [SortOrder]);
+
+                INSERT INTO [business_impacts] ([Id], [OrganizationId], [Name], [Color], [SortOrder], [IsDeleted])
+                SELECT NEWID(), [organization].[Id], [defaults].[Name], [defaults].[Color], [defaults].[SortOrder], 0
+                FROM [organizations] AS [organization]
+                CROSS JOIN (VALUES
+                    (N'Low', N'#16A34A', 0),
+                    (N'Medium', N'#2563EB', 1),
+                    (N'High', N'#D97706', 2),
+                    (N'Critical', N'#DC2626', 3)
+                ) AS [defaults] ([Name], [Color], [SortOrder]);
+
+                UPDATE [idea]
+                SET [IdeaTypeId] = [idea_type].[Id],
+                    [BusinessImpactId] = [business_impact].[Id]
+                FROM [ideas] AS [idea]
+                CROSS APPLY (
+                    SELECT TOP (1) [item].[Id]
+                    FROM [idea_types] AS [item]
+                    WHERE [item].[OrganizationId] = [idea].[OrganizationId]
+                    ORDER BY [item].[SortOrder], [item].[Id]
+                ) AS [idea_type]
+                CROSS APPLY (
+                    SELECT TOP (1) [item].[Id]
+                    FROM [business_impacts] AS [item]
+                    WHERE [item].[OrganizationId] = [idea].[OrganizationId]
+                    ORDER BY [item].[SortOrder], [item].[Id]
+                ) AS [business_impact];
+
+                IF COL_LENGTH('ideas', 'AssigneeUserId') IS NOT NULL
+                BEGIN
+                    EXEC(N'
+                        INSERT INTO [idea_assignees] ([IdeaId], [UserId])
+                        SELECT [Id], [AssigneeUserId]
+                        FROM [ideas]
+                        WHERE [AssigneeUserId] IS NOT NULL;
+                    ');
+                END
+                """);
+
+            migrationBuilder.AlterColumn<Guid>(
+                name: "IdeaTypeId",
+                table: "ideas",
+                type: "uniqueidentifier",
+                nullable: false,
+                oldClrType: typeof(Guid),
+                oldType: "uniqueidentifier",
+                oldNullable: true);
+
+            migrationBuilder.AlterColumn<Guid>(
+                name: "BusinessImpactId",
+                table: "ideas",
+                type: "uniqueidentifier",
+                nullable: false,
+                oldClrType: typeof(Guid),
+                oldType: "uniqueidentifier",
+                oldNullable: true);
+
+            migrationBuilder.Sql(
+                "DECLARE @constraintName sysname; SELECT @constraintName = fk.name FROM sys.foreign_keys fk INNER JOIN sys.foreign_key_columns fkc ON fk.object_id = fkc.constraint_object_id INNER JOIN sys.columns c ON c.object_id = fkc.parent_object_id AND c.column_id = fkc.parent_column_id WHERE fk.parent_object_id = OBJECT_ID(N'[ideas]') AND c.name = N'AssigneeUserId'; IF @constraintName IS NOT NULL BEGIN EXEC(N'ALTER TABLE [ideas] DROP CONSTRAINT [' + @constraintName + ']'); END");
+            migrationBuilder.Sql("DROP INDEX IF EXISTS [IX_ideas_AssigneeUserId] ON [ideas];");
+            migrationBuilder.Sql("IF COL_LENGTH('ideas', 'AssigneeUserId') IS NOT NULL EXEC(N'ALTER TABLE [ideas] DROP COLUMN [AssigneeUserId]');");
+
             migrationBuilder.CreateIndex(
                 name: "IX_ideas_BusinessImpactId",
                 table: "ideas",
@@ -172,15 +243,6 @@ namespace SargentNexus.Infrastructure.Persistence.Migrations
                 name: "FK_ideas_idea_types_IdeaTypeId",
                 table: "ideas");
 
-            migrationBuilder.DropTable(
-                name: "business_impacts");
-
-            migrationBuilder.DropTable(
-                name: "idea_assignees");
-
-            migrationBuilder.DropTable(
-                name: "idea_types");
-
             migrationBuilder.DropIndex(
                 name: "IX_ideas_BusinessImpactId",
                 table: "ideas");
@@ -189,22 +251,24 @@ namespace SargentNexus.Infrastructure.Persistence.Migrations
                 name: "IX_ideas_IdeaTypeId",
                 table: "ideas");
 
-            migrationBuilder.DropColumn(
-                name: "BusinessImpactId",
-                table: "ideas");
-
-            migrationBuilder.DropColumn(
-                name: "DeletedAtUtc",
-                table: "ideas");
-
-            migrationBuilder.DropColumn(
-                name: "IdeaTypeId",
-                table: "ideas");
-
-            migrationBuilder.RenameColumn(
-                name: "DeletedByUserId",
+            migrationBuilder.AddColumn<Guid>(
+                name: "AssigneeUserId",
                 table: "ideas",
-                newName: "AssigneeUserId");
+                type: "uniqueidentifier",
+                nullable: true);
+
+            migrationBuilder.Sql(
+                """
+                UPDATE [idea]
+                SET [AssigneeUserId] = [assignee].[UserId]
+                FROM [ideas] AS [idea]
+                CROSS APPLY (
+                    SELECT TOP (1) [item].[UserId]
+                    FROM [idea_assignees] AS [item]
+                    WHERE [item].[IdeaId] = [idea].[Id]
+                    ORDER BY [item].[UserId]
+                ) AS [assignee];
+                """);
 
             migrationBuilder.CreateIndex(
                 name: "IX_ideas_AssigneeUserId",
@@ -218,6 +282,31 @@ namespace SargentNexus.Infrastructure.Persistence.Migrations
                 principalTable: "users",
                 principalColumn: "Id",
                 onDelete: ReferentialAction.Restrict);
+
+            migrationBuilder.DropTable(
+                name: "business_impacts");
+
+            migrationBuilder.DropTable(
+                name: "idea_assignees");
+
+            migrationBuilder.DropTable(
+                name: "idea_types");
+
+            migrationBuilder.DropColumn(
+                name: "BusinessImpactId",
+                table: "ideas");
+
+            migrationBuilder.DropColumn(
+                name: "DeletedAtUtc",
+                table: "ideas");
+
+            migrationBuilder.DropColumn(
+                name: "DeletedByUserId",
+                table: "ideas");
+
+            migrationBuilder.DropColumn(
+                name: "IdeaTypeId",
+                table: "ideas");
         }
     }
 }

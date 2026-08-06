@@ -167,9 +167,9 @@ internal sealed class PasswordPolicyValidator : IPasswordPolicyValidator
     {
         var errors = new List<string>();
 
-        if (password.Length < 8)
+        if (password.Length < 6)
         {
-            errors.Add("Password must be at least 8 characters long.");
+            errors.Add("Password must be at least 6 characters long.");
         }
 
         if (!password.Any(char.IsUpper))
@@ -213,6 +213,20 @@ internal sealed class AuthSeedOptions
 internal sealed class AuthSeeder : IAuthSeeder
 {
     private const string DemoPassword = "abc123!";
+    private static readonly (string Name, string Color)[] DefaultBusinessImpacts =
+    {
+        ("Low", "#16A34A"),
+        ("Medium", "#2563EB"),
+        ("High", "#D97706"),
+        ("Critical", "#DC2626")
+    };
+
+    private static readonly string[] DefaultIdeaTypeNames =
+    {
+        "Continuous Improvement",
+        "Process Revision"
+    };
+
     private static readonly string[] DefaultStatusNames =
     {
         "New / Pending",
@@ -412,12 +426,6 @@ internal sealed class AuthSeeder : IAuthSeeder
 
         if (_dbContext.Database.IsRelational())
         {
-            var databaseName = _dbContext.Database.GetDbConnection().Database;
-            if (!string.IsNullOrWhiteSpace(databaseName) && databaseName.EndsWith("_Dev", StringComparison.OrdinalIgnoreCase))
-            {
-                await _dbContext.Database.EnsureDeletedAsync(cancellationToken);
-            }
-
             await _dbContext.Database.MigrateAsync(cancellationToken);
             _databaseEnsured = true;
             return;
@@ -507,30 +515,27 @@ internal sealed class AuthSeeder : IAuthSeeder
 
         if (existingIdeaTypes.Count == 0)
         {
-            var ideaType = new IdeaType
+            foreach (var (name, index) in DefaultIdeaTypeNames.Select((name, index) => (name, index)))
             {
-                Id = Guid.NewGuid(),
-                OrganizationId = organization.Id,
-                Name = "General",
-                SortOrder = 0,
-                IsDeleted = false
-            };
-
-            _dbContext.IdeaTypes.Add(ideaType);
-            existingIdeaTypes.Add(ideaType);
-        }
-        else
-        {
-            foreach (var item in existingIdeaTypes)
-            {
-                if (item.IsDeleted)
+                var ideaType = new IdeaType
                 {
-                    item.IsDeleted = false;
-                }
+                    Id = Guid.NewGuid(),
+                    OrganizationId = organization.Id,
+                    Name = name,
+                    SortOrder = index,
+                    IsDeleted = false
+                };
+
+                _dbContext.IdeaTypes.Add(ideaType);
+                existingIdeaTypes.Add(ideaType);
             }
         }
 
-        return existingIdeaTypes.OrderBy(item => item.SortOrder).ThenBy(item => item.Name).ToList();
+        return existingIdeaTypes
+            .OrderBy(item => item.IsDeleted)
+            .ThenBy(item => item.SortOrder)
+            .ThenBy(item => item.Name)
+            .ToList();
     }
 
     private async Task<IReadOnlyList<BusinessImpact>> EnsureBusinessImpactsAsync(Organization organization, CancellationToken cancellationToken)
@@ -541,31 +546,28 @@ internal sealed class AuthSeeder : IAuthSeeder
 
         if (existingBusinessImpacts.Count == 0)
         {
-            var businessImpact = new BusinessImpact
+            foreach (var (item, index) in DefaultBusinessImpacts.Select((item, index) => (item, index)))
             {
-                Id = Guid.NewGuid(),
-                OrganizationId = organization.Id,
-                Name = "Moderate",
-                Color = "#6B7280",
-                SortOrder = 0,
-                IsDeleted = false
-            };
-
-            _dbContext.BusinessImpacts.Add(businessImpact);
-            existingBusinessImpacts.Add(businessImpact);
-        }
-        else
-        {
-            foreach (var item in existingBusinessImpacts)
-            {
-                if (item.IsDeleted)
+                var businessImpact = new BusinessImpact
                 {
-                    item.IsDeleted = false;
-                }
+                    Id = Guid.NewGuid(),
+                    OrganizationId = organization.Id,
+                    Name = item.Name,
+                    Color = item.Color,
+                    SortOrder = index,
+                    IsDeleted = false
+                };
+
+                _dbContext.BusinessImpacts.Add(businessImpact);
+                existingBusinessImpacts.Add(businessImpact);
             }
         }
 
-        return existingBusinessImpacts.OrderBy(item => item.SortOrder).ThenBy(item => item.Name).ToList();
+        return existingBusinessImpacts
+            .OrderBy(item => item.IsDeleted)
+            .ThenBy(item => item.SortOrder)
+            .ThenBy(item => item.Name)
+            .ToList();
     }
 
     private async Task<Board> EnsureBoardAsync(
@@ -657,7 +659,7 @@ internal sealed class AuthSeeder : IAuthSeeder
                     PasswordHash = demoPasswordHash,
                     Role = userSeed.Role,
                     Status = UserLifecycleStatus.Active,
-                    MustChangePassword = true,
+                    MustChangePassword = false,
                     TemporaryPasswordHash = null,
                     TemporaryPasswordExpiresAtUtc = null,
                     FailedLoginAttemptCount = 0,
@@ -673,6 +675,14 @@ internal sealed class AuthSeeder : IAuthSeeder
                 user.FirstName = userSeed.FirstName;
                 user.LastName = userSeed.LastName;
                 user.Role = userSeed.Role;
+
+                if (user.MustChangePassword
+                    && user.TemporaryPasswordHash is null
+                    && user.TemporaryPasswordExpiresAtUtc is null
+                    && _passwordHasher.Verify(DemoPassword, user.PasswordHash))
+                {
+                    user.MustChangePassword = false;
+                }
             }
 
             roleUsers[userSeed.Role] = user;
