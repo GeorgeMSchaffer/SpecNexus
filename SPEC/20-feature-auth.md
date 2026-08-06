@@ -12,13 +12,13 @@ Users can securely access the application using organization-scoped accounts.
 1. Users must authenticate with email and password.
 2. User accounts are organization-scoped, and user email is globally unique across the system.
 4. Unauthorized users cannot access protected application features.
-5. Passwords must satisfy a traditional complexity policy with minimum length plus uppercase, lowercase, numeric, and special character requirements.
+5. Passwords must be at least 6 characters long and include uppercase, lowercase, numeric, and special characters.
 6. Five failed login attempts within 15 minutes must trigger a 15-minute account lockout.
 7. The seeded Site Admin account is a global platform account and does not belong to an organization.
 8. A seed Site Admin account must be created on first run using an environment-provided initial credential.
 9. The seed Site Admin must be forced to change that initial credential on first login.
-10. In Development only, startup seed must also create demo organization users for each role: Org Admin, User, and Read Only, each initialized with temporary password `abc123!`.
-11. Development demo users must be forced to change password on first successful login.
+10. In Development only, startup seed must also create demo organization users for each role: Org Admin, User, and Read Only, each initialized with demo password `abc123!`.
+11. Development demo users are not forced to change the demo password on first successful login.
 12. Password reset is required in P1 and uses admin-issued temporary passwords.
 13. Admin-issued temporary passwords are shown one time only, expire after 24 hours, and require password change on first use.
 14. "Remember this device" is out of scope for MVP.
@@ -38,6 +38,10 @@ Users can securely access the application using organization-scoped accounts.
 28. Invalid, expired, superseded, and used tokens produce the same invalid-link state with an action to request a new reset email.
 29. A successful self-service reset revokes all existing sessions, consumes the token, shows confirmation, and returns the user to Login without authenticating them automatically.
 30. Plaintext reset token values and plaintext passwords must not be persisted or written to logs, audit metadata, analytics, or error responses.
+31. `User.MustChangePassword` is the persisted source of truth for the standalone required-change flow. It is set for the seeded Site Admin initial credential and admin-provided initial or temporary credentials, and cleared after a successful password change.
+32. Authenticated users without `MustChangePassword` use My Profile for voluntary password changes and cannot access the standalone required-change page.
+33. Persisted client authentication data is a cached session candidate and must not establish an authenticated client principal until `GET /api/v1/auth/me` accepts the stored bearer token.
+34. When the API rejects a stored or active bearer token, the client clears its authentication state and redirects to `/login`. Endpoint-specific authorization failures must not clear a token that `GET /api/v1/auth/me` still accepts.
 
 ## Acceptance Criteria
 - [ ] Valid credentials allow login
@@ -48,12 +52,18 @@ Users can securely access the application using organization-scoped accounts.
 - [ ] Seed Site Admin is created at first run
 - [ ] Seed Site Admin must change the environment-provided initial credential on first login
 - [ ] Development startup seed creates demo Org Admin, User, and Read Only accounts using `abc123!`
-- [ ] Development startup seeded demo users are forced to change password on first successful login
+- [ ] Development startup seeded demo users can log in with `abc123!` without a forced password change
 - [ ] Admin-issued temporary password reset is implemented in P1
 - [ ] Temporary passwords are one-time display, expire after 24 hours, and force password change on first use
 - [ ] Authentication outcomes and password-related actions generate audit events
 - [ ] Invited users can self-register from `/register` using invite code + profile + password inputs
 - [ ] `/logout` clears the active session and redirects to `/login`
+- [ ] Unauthenticated protected-route navigation redirects to `/login`, while `/register` remains public
+- [ ] Authenticated users without a required password change land on the Dashboard at `/`
+- [ ] Only users marked `MustChangePassword` can access the standalone `/change-password` flow
+- [ ] Reloading with a valid stored token restores the authenticated session from `GET /api/v1/auth/me`
+- [ ] Reloading with an expired or API-unknown stored token clears the client session and redirects to `/login`
+- [ ] A protected API `401` clears the client session only when `GET /api/v1/auth/me` also rejects the bearer token
 - [ ] Unauthenticated/unauthorized users do not see protected navigation links
 - [ ] Authenticated users can update their own first and last name from My Profile
 - [ ] A profile update trims and validates both names, emits an audit event, and immediately refreshes the displayed session name

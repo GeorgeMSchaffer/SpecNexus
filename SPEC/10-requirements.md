@@ -19,13 +19,15 @@ SargentNexus is a collaboration and project management tool for submitting, trac
 - Tags are organization-scoped.
 - An idea can have up to 10 distinct organization-scoped tags. Users authorized to edit an idea can select existing tags or create reusable tags inline.
 - Read Only users can comment and upvote, but cannot edit ideas or board configuration.
-- In Development, startup seed creates a demo environment with 3 organizations, each containing Org Admin, User, and Read Only accounts initialized with temporary password `abc123!` and forced password change on first login.
+- In Development, startup seed creates a demo environment with 3 organizations, each containing Org Admin, User, and Read Only accounts initialized with demo password `abc123!` and no forced password change.
 - In Development, each seeded demo organization includes one example board with ideas across every default swimlane, plus example comments and description-based spec content.
 - Ideas require Priority, an organization-configured Idea Type, and an organization-configured Business Impact; due date remains optional.
 - Every organization retains at least one active Idea Type and one active Business Impact. Admins control option sort order, the first active option is the default, and option deletion is soft-delete only.
 - Idea assignment is optional and supports up to five distinct users. Newly selected assignees must be active users in the idea's organization; inactive historical assignees remain visible but cannot be newly selected. The idea author and in-scope admins can change assignments.
 - Board cards are compact and display title, priority, Business Impact chip, up to three tags plus `+N`, up to three assigned-user personas plus `+N`, viewer-local submission age, current-user upvote state/count, and comment count. Clicking the title opens Idea Detail; clicking comments opens Idea Detail focused on the comment composer.
 - `/boards` is the canonical board list and `/board/{boardId}` is the canonical swimlane view. User-facing copy uses Board terminology; singular-list and legacy Workflow routes redirect to canonical routes.
+- Unauthenticated users may access `/login` and `/register`; attempts to access protected client routes redirect to `/login`.
+- Authenticated users without a required password change land on the Dashboard at `/` after login. The standalone `/change-password` route is limited to accounts marked `MustChangePassword`; voluntary password changes remain available from `/settings/profile`.
 - Desktop card drag uses a dedicated handle, moves the idea optimistically, and reverts on failure. Changing status in Idea Detail moves the visible card immediately. Keyboard and touch users use the Idea Detail status selector.
 - Idea authors and in-scope admins can edit descriptions. Only in-scope Org Admins and Site Admins can soft-delete ideas; deleted ideas are excluded from normal queries and restore is deferred.
 - OAuth implementation is scheduled for post-MVP Phase 2, with SAML scheduled in a subsequent post-OAuth phase.
@@ -36,6 +38,7 @@ SargentNexus is a collaboration and project management tool for submitting, trac
 - Every screen includes role-aware primary navigation in a consistent location.
 - The selected primary-navigation item uses a flat rectangular active background and stronger text/icon color. It has no border radius, no active left border, and retains `aria-current="page"` plus a visible keyboard focus outline. This rule does not apply to tabs, pivots, filter chips, or segmented controls.
 - The header includes a logout icon action.
+- The logout icon navigates through `/logout`, which clears the client session and redirects to `/login`.
 - Admin-authorized users see a gear icon action in the header that navigates to the Admin homepage.
 - Breadcrumb navigation appears immediately below the header and reflects current location with upward navigation.
 - Organization logos rendered in the header must be constrained to a maximum rendered height of `150px` and keep aspect ratio.

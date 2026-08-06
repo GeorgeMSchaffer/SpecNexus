@@ -32,6 +32,30 @@ Users can securely access SargentNexus using organization-scoped credentials.
    When the request is made without valid authentication
    Then access is denied
 
+6. Given an unauthenticated user navigates to a protected client route
+   When client route access is evaluated
+   Then the user is redirected to `/login`, while `/register` remains publicly accessible
+
+7. Given an authenticated user does not require a password change
+   When login succeeds or the user navigates to `/login`
+   Then the user is redirected to the Dashboard at `/`
+
+8. Given an authenticated user is not marked `MustChangePassword`
+   When the user navigates to `/change-password`
+   Then the user is redirected to `/settings/profile` for voluntary password changes
+
+9. Given the browser contains persisted authentication data
+   When the client restores the session
+   Then it creates an authenticated principal only after `GET /api/v1/auth/me` accepts the stored bearer token and returns the current user
+
+10. Given a persisted or active bearer token is expired or no longer recognized by the API
+   When session restoration or a protected API request validates the token
+   Then the client clears the persisted and in-memory session and redirects to `/login`
+
+11. Given a protected endpoint returns `401` for an endpoint-specific reason while `GET /api/v1/auth/me` still accepts the bearer token
+   When the client evaluates the response
+   Then the original error is preserved without clearing the authenticated session
+
 ## Edge Cases
 - Case-insensitive email match if email lookup is normalized that way by the chosen contract
 - Inactive users
@@ -49,3 +73,9 @@ Users can securely access SargentNexus using organization-scoped credentials.
 - [ ] Inactive users are denied authentication
 - [ ] Seed Site Admin must change password on first login
 - [ ] Protected features reject unauthenticated access
+- [ ] Protected client routes redirect unauthenticated users to `/login`
+- [ ] Authenticated users without a required password change land on `/`
+- [ ] `/change-password` is limited to authenticated users marked `MustChangePassword`
+- [ ] Persisted client authentication is restored only after `/api/v1/auth/me` accepts the stored token
+- [ ] Expired or API-unknown tokens clear the client session and redirect to `/login`
+- [ ] Endpoint-specific `401` responses do not clear a token that `/api/v1/auth/me` still accepts

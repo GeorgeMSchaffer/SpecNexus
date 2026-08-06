@@ -8,8 +8,8 @@
 
 ## Contracts
 - `SPEC/30-Contracts.md` is updated when contracts change.
-- OpenAPI/spec files are updated when endpoints or payloads change.
-- Canonical `SPEC` docs are updated before syncing derivative `SPEC/SPECKIT` artifacts.
+- Contract tests are updated when endpoints or payloads change.
+- Implementation and tests remain aligned with canonical `SPEC` docs.
 
 ## Testing
 - Acceptance criteria are covered by tests.

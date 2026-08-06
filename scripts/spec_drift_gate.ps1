@@ -33,53 +33,19 @@ if (-not $changedFiles -or $changedFiles.Count -eq 0) {
 
 Note "Changed file count: $($changedFiles.Count)"
 
-$canonicalChanged = $false
-$derivedChanged = $false
+$requiredCanonicalSpecs = @(
+    'SPEC/10-requirements.md',
+    'SPEC/30-Contracts.md',
+    'SPEC/40-test-strategy.md',
+    'SPEC/90-definition-of-done.md'
+)
 
-foreach ($file in $changedFiles) {
-    if ($file.StartsWith('SPEC/') -and -not $file.StartsWith('SPEC/SPECKIT/')) {
-        $canonicalChanged = $true
-    }
-
-    if ($file.StartsWith('SPEC/SPECKIT/')) {
-        $derivedChanged = $true
-    }
-}
-
-if ($derivedChanged -and -not $canonicalChanged) {
-    $derivedList = ($changedFiles | Where-Object { $_.StartsWith('SPEC/SPECKIT/') }) -join "`n- "
-    Fail "Derived SPECKIT files changed without canonical SPEC updates. Update SPEC/*.md first, then sync SPECKIT.`n- $derivedList"
-}
-
-$metadataTargets = @()
-foreach ($file in $changedFiles) {
-    if ($file -match '^SPEC/SPECKIT/specs/00[2-6]-[^/]+/(spec|plan|tasks)\.md$') {
-        $metadataTargets += $file
+foreach ($spec in $requiredCanonicalSpecs) {
+    if (-not (Test-Path $spec -PathType Leaf)) {
+        Fail "Required canonical spec not found: $spec"
     }
 }
 
-foreach ($target in $metadataTargets) {
-    if (-not (Test-Path $target)) {
-        Fail "Expected changed file not found: $target"
-    }
-
-    $content = Get-Content $target -Raw
-
-    if ($content -notmatch '(?m)^## Derived Sync Metadata\s*$') {
-        Fail "Missing '## Derived Sync Metadata' header in $target"
-    }
-
-    if ($content -notmatch '(?m)^- Status: Derived\s*$') {
-        Fail "Missing '- Status: Derived' line in $target"
-    }
-
-    if ($content -notmatch '(?m)^- Canonical Sources:\s*$') {
-        Fail "Missing '- Canonical Sources:' line in $target"
-    }
-
-    if ($content -notmatch '(?m)^- Last Canonical Sync Date:\s*\d{4}-\d{2}-\d{2}\s*$') {
-        Fail "Missing or malformed '- Last Canonical Sync Date: YYYY-MM-DD' in $target"
-    }
-}
-
-Note "Spec drift gate checks passed."
+$changedCanonicalSpecs = @($changedFiles | Where-Object { $_.StartsWith('SPEC/') -and $_.EndsWith('.md', [StringComparison]::OrdinalIgnoreCase) })
+Note "Canonical spec files changed: $($changedCanonicalSpecs.Count)"
+Note "Canonical spec gate checks passed."

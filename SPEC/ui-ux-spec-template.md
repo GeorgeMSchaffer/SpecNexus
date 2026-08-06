@@ -125,7 +125,7 @@ For each rule, include:
 ## 16. Drift and Change Control
 - Canonical-first policy: update SPEC root behavior docs first.
 - Keep this UI/UX spec aligned with contracts and tests.
-- When behavior changes, sync related mockups and derived SPECKIT artifacts.
+- When behavior changes, update related mockups and verification coverage.
 
 ## Authoring Notes
 - Keep requirements observable and testable.

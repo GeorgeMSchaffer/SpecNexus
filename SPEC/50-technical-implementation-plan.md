@@ -267,7 +267,7 @@ Dependencies: BE-1.
 6. Extend idea soft delete to persist actor/time metadata, emit an audit event, and return not found for already deleted or out-of-scope ideas.
 7. Correct every board/list query to exclude `IsDeleted=true`; continue loading archived field options for existing idea projections.
 8. Extend list/detail mappings with option identifiers/labels/color, `commentCount`, and caller-specific `hasUpvoted`.
-9. Expose the endpoints and problem-details failures defined in `SPEC/30-Contracts.md`; update canonical and derived OpenAPI in the same change.
+9. Expose the endpoints and problem-details failures defined in `SPEC/30-Contracts.md`; update the canonical contract and contract tests in the same change.
 10. Replace singular assignee request/projection fields with `assigneeUserIds` and ordered assignee summary collections. Enforce optional zero-to-five distinct active same-organization users and authorize assignment changes only for the author or in-scope admin.
 11. Limit each idea to 10 distinct normalized tags and return alphabetically ordered tag names in board/detail projections.
 12. Update assigned-user queries, notifications, audit descriptions, CSV parsing, and `Assigned to me` filtering to use the join collection. CSV `AssignedTo` accepts zero to five pipe-delimited emails.
@@ -326,11 +326,11 @@ Dependencies: BE-1 through BE-4.
 8. Add Client/browser accessibility and visual-regression tests for primary-nav active styling, Board reference fidelity, tag/persona overflow, full-name exposure, and deterministic local-day age.
 
 Completion criteria:
-- canonical and derived specs/contracts have no drift
+- canonical specs, implementation, and contract tests have no drift
 - all affected automated quality gates pass
 
 ### Phase 8: Hardening and Release
-1. Align OpenAPI documents with every implemented `/api/v1` endpoint and the problem-details error contract.
+1. Align every implemented `/api/v1` endpoint and problem-details failure with `SPEC/30-Contracts.md` and the contract tests.
 2. Cover acceptance criteria with targeted unit, integration, contract, and end-to-end tests from `SPEC/40-test-strategy.md`.
 3. Verify seed data, role boundaries, organization scoping, audit generation, notification event generation, and default organization bootstrap end-to-end.
 4. Confirm deferred items stay deferred: OAuth, reporting, guaranteed email delivery, remember-this-device, and event query endpoints.

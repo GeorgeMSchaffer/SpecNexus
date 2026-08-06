@@ -3,10 +3,10 @@
 ## Purpose
 Defines the system contracts that implementations must follow.
 
-## Contract Authorship and Sync Rule
+## Contract Authorship Rule
 - Canonical contract behavior is authored in this file and related canonical `SPEC/20-feature-*.md` docs.
-- OpenAPI artifacts under `SPEC/SPECKIT` are derived contract surfaces used for tooling and review.
-- Do not introduce net-new API behavior by editing derived OpenAPI artifacts without corresponding canonical updates in `SPEC`.
+- Contract tests verify the API surface directly against the canonical documents under `SPEC`.
+- Do not introduce API behavior without corresponding canonical updates in `SPEC`.
 
 ## Route Conventions
 - HTTP APIs use path versioning under `/api/v1`.
@@ -888,4 +888,4 @@ MVP event query scope:
 
 ## Notes
 - API routes, request/response schemas, and validation rules should be defined here.
-- OpenAPI documents should stay aligned with this file.
+- Contract tests should stay aligned with this file.

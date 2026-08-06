@@ -1,6 +1,6 @@
 ---
 name: Application Unit Tests
-description: "Use when implementing or expanding unit tests for SargentNexus.Application with xUnit, including auth and business-rule behaviors aligned to SPEC/40-test-strategy.md and SPECKIT task T047."
+description: "Use when implementing or expanding unit tests for SargentNexus.Application with xUnit, including auth and business-rule behaviors aligned to SPEC/40-test-strategy.md."
 tools: [read, search, edit, execute]
 user-invocable: true
 ---

@@ -30,6 +30,7 @@ Defines a batch of client UI bug fixes and structural revisions covering layout,
 - Sign Out is an icon button placed immediately to the LEFT of the Username display.
 - A gear icon in the header navigates to the Settings area (see below). The gear is visible to all authenticated users.
 - The Sign Out icon navigates to `/logout`, where logout is executed and the user is returned to `/login`.
+- The header does not display a `Password update required` text link; required-change routing is enforced by the authentication gate.
 - When unauthenticated (or otherwise not authorized for protected UI), the header shows only `Login` and `Register` links. No protected navigation links are shown.
 
 ### Menu
@@ -38,11 +39,12 @@ Defines a batch of client UI bug fixes and structural revisions covering layout,
 - Admin functionality is NOT in the horizontal menu; it is reached only via the header gear icon.
 - Change Password is NOT in the menu; it is accessible only from Settings → My Profile.
 - The protected menu is shown only for authenticated users with access to protected routes.
-- Menu links navigate to list-entry pages: Home (`/`), Boards (`/board`), Ideas (`/ideas`).
+- Menu links navigate to list-entry pages: Home (`/`), Boards (`/boards`), Ideas (`/ideas`).
 
 ### Unauthenticated and Unauthorized Shell
 - Unauthenticated users can access `/login` and `/register`.
 - Unauthenticated users attempting protected routes are redirected to `/login`.
+- Authenticated users visiting `/login` are redirected to the Home Dashboard at `/`, unless they must complete `/change-password` first.
 - Unauthorized users (authenticated but lacking permission for a specific feature) receive an explicit Forbidden/Not Found experience per existing API/UI policy; they do not receive admin links as a substitute for authorization.
 
 ### Mockup Alignment
@@ -162,7 +164,9 @@ Applies to Organizations, Users, Ideas, Boards, and any future entity list page.
 - [ ] Weather and Counter pages, links, and code are fully removed.
 - [ ] Header uses `rgb(33, 37, 41)`; Username is white; Sign Out icon sits left of the Username.
 - [ ] Sign Out icon routes through `/logout` and returns the user to `/login`.
+- [ ] Header does not render `Password update required` text.
 - [ ] Unauthenticated shell shows only Login and Register links.
+- [ ] Unauthenticated protected routes redirect to `/login`; authenticated Login navigation returns to `/` unless password change is required.
 - [ ] Horizontal menu under the header shows Home, Boards, Ideas only for authenticated users.
 - [ ] Change Password is accessible only from Settings → My Profile (embedded section); no standalone nav link exists.
 - [ ] Gear icon navigates to `/settings`; area is titled "Settings" everywhere; old `/admin` routes return 404.
@@ -171,6 +175,8 @@ Applies to Organizations, Users, Ideas, Boards, and any future entity list page.
 - [ ] Org list shows Company, Description, City, State, Phone, Invite Code; search covers those 6 columns; no Status column.
 - [ ] Users list shows Name, Email, Role, Organization (Site Admin only), Status; all searchable.
 - [ ] Boards list page shows Name, Board Type, Status; clicking a board opens `/board/{id}` for its swimlane view.
+- [ ] Primary navigation and Dashboard quick actions use `Boards` and `/boards`; no user-facing Workflow terminology remains.
+- [ ] `/board`, `/workflow`, and `/workflows` redirect to `/boards`, and `/workflow/{id}` redirects to `/board/{id}`.
 - [ ] Boards & Statuses Settings page shows boards list (Name/Board Type/Status) and statuses list (Name/Color/Sort Order/Is Default) — pending domain additions for `Board.IsArchived`, `Status.Color`, `Status.SortOrder`, `Status.IsDefault`.
 - [ ] Ideas page (`/ideas`) lists combined created-by/assigned-to ideas with All/Created/Assigned filter and Title/Created By/Assigned To/Status/Created Date columns; Details navigates to `/ideas/{id}/edit`.
 - [ ] All list pages have a uniform search bar and server-side pagination with 25/50/100/250 page sizes (default 25).

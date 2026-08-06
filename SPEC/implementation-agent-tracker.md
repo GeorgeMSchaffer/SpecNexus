@@ -27,6 +27,7 @@ Track implementation work that Copilot-driven implementation agents should compl
 - T034 Allow board-configured Users to move any idea on an eligible board.
 - T036 Emit audit events for idea creation, edits, status changes, comments, and upvotes.
 - T048 Implement integration tests for auth, organization scope, and collaboration flows.
+- T050 Verify seed behavior, organization bootstrap, audit generation, and deferred-scope boundaries end-to-end.
 - O007 Add `InviteCode` and `InviteCodeGeneratedAtUtc` to `Organization` entity + EF migration.
 - O008 Add `RegenerateInviteCodeAsync` endpoint (`POST /api/v1/organizations/{id}/invite-code/regenerate`).
 - O009 Add self-registration endpoint (`POST /api/v1/auth/register`), `SelfRegistrationService`, and invite code generation on org create.
@@ -42,7 +43,7 @@ Track implementation work that Copilot-driven implementation agents should compl
 - T049 Contract tests for schema and problem-details error behavior.
 
 ## Ready Next
-- T050 End-to-end seed verification (after T049).
+- No hardening task is queued while T049 remains in progress.
 
 ## Progress Notes
 - T001 completed: created `SargentNexus.sln`, `global.json`, and the five core projects under `src/`.
@@ -63,14 +64,15 @@ Track implementation work that Copilot-driven implementation agents should compl
 - T051 started: added Development-only startup hook and Infrastructure seeding implementation for 3 demo organizations, role users, board swimlane idea coverage, and example comments.
 - T051 completed: startup now seeds demo data only in Development while always seeding Site Admin.
 - T052 completed: added API startup-gating unit tests and expanded Infrastructure seed tests for per-organization graph validity plus reseed repair/idempotency invariants.
-- T046 in progress: synced merged OpenAPI route inventory to include organization logo endpoint, corrected misplaced user update method in merged path fragments, and aligned idea/notification schemas with canonical contract fields.
-- T046 completed: added merged OpenAPI response-schema coverage checks and contract drift tests, then aligned domain/infrastructure idea planning data fields (`priority`, `dueDate`, `assigneeUserId`) plus migration and seed compatibility updates.
+- T050 completed: new organizations now receive canonical Idea Type and Business Impact options, API verification covers persisted comment audit/notification events, and Infrastructure/contract guards keep outbound delivery and public event-query APIs deferred.
+- T046 in progress: aligned the canonical route inventory with the organization logo endpoint, corrected the user update route, and aligned idea/notification contract fields.
+- T046 completed: added response-contract coverage and drift tests, then aligned domain/infrastructure idea planning data fields (`priority`, `dueDate`, `assigneeUserId`) plus migration and seed compatibility updates.
 - Collaboration baseline started: added `IdeasController` endpoints for idea list/create/detail/update/status move, comment list/create/edit/delete, and upvote toggle.
 - Collaboration baseline started: expanded `IWorkflowManagementService` and `IWorkflowDataAccess` for idea/comment/upvote/tag/mention workflows and implemented end-to-end persistence-backed behavior in `WorkflowManagementService` and EF `WorkflowDataAccess`.
 - Collaboration baseline quality gate: added API and Application tests for new ideas/upvote flows; API/Application/Infrastructure suites all pass.
 - T028 completed: added `GET /api/v1/organizations/{organizationId}/tags` autocomplete endpoint with minimum-2-character validation, organization-scoped normalized-prefix matching, and limit support.
-- T028 contract sync: updated canonical contracts and SPECKIT OpenAPI (feature and merged) with tag autocomplete route and problem-details response definitions.
-- T028 test gate: added API controller tests, application service tests, and OpenAPI drift assertion for the new tags endpoint; API/Application suites pass.
+- T028 contract sync: updated canonical contracts with the tag autocomplete route and problem-details response definitions.
+- T028 test gate: added API controller tests, application service tests, and a contract drift assertion for the new tags endpoint; API/Application suites pass.
 - T034 completed: added board-level `allowUserStatusUpdate` configuration through domain, workflow models, and board create/update/detail/list responses.
 - T034 authorization gate: `MoveIdeaStatusAsync` now permits User role status moves only when the board has `allowUserStatusUpdate=true`; Site Admin and Org Admin behavior is unchanged.
 - T034 persistence and quality gate: added EF migration `AddBoardAllowUserStatusUpdate` and application tests covering both allowed and forbidden user move paths; API/Application/Infrastructure suites pass.

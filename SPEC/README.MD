@@ -26,5 +26,5 @@ This directory contains the canonical product and delivery specifications for ac
 ## AI Usage
 
 - Start implementation work by reading `implementation-agent-tracker.md` for complete and pending items.
-- For endpoint and payload details, cross-check `30-Contracts.md` and `SPECKIT/openapi/openapi.yaml`.
+- For endpoint and payload details, use `30-Contracts.md` as the canonical source.
 - For new client layout/interaction specs, start from `ui-ux-spec-template.md`.

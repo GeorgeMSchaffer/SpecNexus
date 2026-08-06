@@ -7,7 +7,7 @@ Users can create, discuss, organize, and support ideas within their organization
 | Decision | Resolution |
 |---|---|
 | Field model | `Priority` remains unchanged. `Idea Type` and `Business Impact` are dedicated, required, organization-scoped configurable fields. |
-| Initial values | Idea Type: `Continuous Improvement`, `Process Revision`. Business Impact: `Low`, `Medium`, `High`, `Critical`. |
+| Initial values | Idea Type: `Continuous Improvement`, `Process Revision`. Business Impact: `Low` (`#16A34A`), `Medium` (`#2563EB`), `High` (`#D97706`), `Critical` (`#DC2626`). |
 | Defaults | The first active option by admin-controlled sort order is the default for new ideas and CSV rows that omit the field. Existing ideas retain their assigned values when options are reordered. |
 | Existing idea migration | Existing ideas are assigned `Continuous Improvement` and `Medium`. |
 | Option lifecycle | Options are soft-deleted. Existing ideas retain archived values, archived values cannot be newly selected, and the last active option cannot be deleted. |

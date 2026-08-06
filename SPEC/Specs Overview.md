@@ -16,7 +16,7 @@ Security-sensitive flows include password policy enforcement, lockout handling, 
 ## Source of Truth and Usage
 - Canonical behavior remains in `SPEC/*.md`.
 - This file is the preferred AI ingestion entrypoint for implementation work.
-- If behavior changes, update canonical specs first, then sync this document and derived SPECKIT artifacts.
+- If behavior changes, update the relevant canonical specs and keep this overview aligned.
 
 ## MVP Scope
 ### In Scope
@@ -62,7 +62,7 @@ Key rule: all tenant-owned data is organization-scoped; Site Admin is global and
 - Lockout: 5 failed attempts in 15 minutes trigger a 15-minute lockout window.
 - Seeded Site Admin must change password on first successful login.
 - Development-only seed creates exactly 3 demo organizations.
-- Each demo organization includes Org Admin, User, and Read Only users initialized with `abc123!` and forced password change.
+- Each demo organization includes Org Admin, User, and Read Only users initialized with `abc123!` without a forced password change.
 - Admin-issued temporary password reset is one-time display, expires in 24 hours, and forces password change on first use.
 - Post-MVP self-service reset uses a private single-use email link that expires after 24 hours, returns generic request and invalid-link responses, and revokes all sessions after success.
 
@@ -100,7 +100,6 @@ Key rule: all tenant-owned data is organization-scoped; Site Admin is global and
 
 ## API Contract Summary Matrix
 Route and payload authority: `SPEC/30-Contracts.md`.
-Derived API tooling surface: `SPEC/SPECKIT/openapi/openapi.yaml`.
 
 | Endpoint | Primary Actors | Request Summary | Success Summary | Key Errors |
 |---|---|---|---|---|
@@ -176,7 +175,7 @@ Derived API tooling surface: `SPEC/SPECKIT/openapi/openapi.yaml`.
 - Idea comment and upvote role behavior
 
 ### Contract
-- Response schema alignment with published OpenAPI
+- Response and request semantics aligned with `SPEC/30-Contracts.md`
 - Problem-details envelope on all non-2xx responses
 - Authentication, organization, user, board, status, idea contract alignment with `SPEC/30-Contracts.md`
 
@@ -211,7 +210,7 @@ Open questions remaining for MVP: none.
 If behavior is ambiguous or conflicting, ask for clarification before implementation.
 
 ### Change Control Rule
-Update canonical `SPEC/*.md` first, then sync this file and derived SPECKIT artifacts.
+Update canonical `SPEC/*.md` first, then align this overview, implementation, and tests.
 
 ## Traceability Matrix
 | Behavior Rule | Canonical Source(s) | Verification Target(s) |

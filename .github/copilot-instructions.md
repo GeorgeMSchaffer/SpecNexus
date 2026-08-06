@@ -13,7 +13,7 @@ SargentNexus is a spec-driven, organization-scoped collaboration and idea-tracki
   - `SPEC/30-Contracts.md`
   - `SPEC/40-test-strategy.md`
   - `SPEC/90-definition-of-done.md`
-- If implementation changes behavior, update the canonical spec first, then sync derived artifacts.
+- If implementation changes behavior, update the canonical spec first, then align tests and implementation.
 - If behavior is ambiguous, ask before implementing.
 - Make surgical changes; avoid unrelated refactors.
 - Do not add NuGet packages without approval.
@@ -33,11 +33,10 @@ Layered with strict boundaries — business rules live in Domain and Application
 
 ## Spec Governance
 
-- `SPEC/SPECKIT/` is derived.
 - Canonical behavior lives in `SPEC/*.md`.
 - When behavior changes:
   1. update the relevant canonical spec,
-  2. update derived docs/artifacts,
+  2. update implementation and tests,
   3. verify tests still match the spec.
 
 Key domain rules:

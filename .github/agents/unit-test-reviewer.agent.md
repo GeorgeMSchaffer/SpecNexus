@@ -1,6 +1,6 @@
 ---
 name: Unit Test Reviewer
-description: "Use when reviewing unit test implementations for quality, reliability, and traceability to SPEC/40-test-strategy.md and SPECKIT MVP tasks, with findings-first output."
+description: "Use when reviewing unit test implementations for quality, reliability, and traceability to SPEC/40-test-strategy.md, with findings-first output."
 tools: [read, search]
 user-invocable: true
 ---

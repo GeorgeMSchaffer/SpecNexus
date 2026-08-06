@@ -3,13 +3,11 @@
 
 ## Canonical Spec Impact
 - [ ] Behavior changes are authored in canonical SPEC docs under SPEC/.
-- [ ] If behavior changed, canonical sources were updated before derived SPECKIT files.
-- [ ] No net-new behavior is introduced only in SPECKIT artifacts.
+- [ ] API routes and payloads remain aligned with SPEC/30-Contracts.md.
 
-## Derived Sync and Drift Gate
-- [ ] Impacted derived files under SPEC/SPECKIT were synchronized.
-- [ ] Impacted derived feature files include current sync metadata (status, canonical sources, sync date).
-- [ ] Drift check completed using SPEC/SPECKIT/review-workflow.md and no blocking drift remains.
+## Contract and Drift Checks
+- [ ] Contract tests were updated when API behavior changed.
+- [ ] `scripts/spec_drift_gate.ps1` completed successfully.
 
 ## Cleanup
 - [ ] Obsolete or conflicting guidance was removed or updated.

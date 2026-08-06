@@ -3,7 +3,7 @@
 ## Unit
 - AuthService credential validation
 - Seed Site Admin first-login password change rule
-- Development demo seed creates expected organizations, users by role, boards, swimlanes, ideas, and comments
+- Development demo seed creates expected organizations, users by role without forced password change, boards, swimlanes, ideas, and comments
 - Development demo seed is idempotent across repeated startup execution
 - Organization-scoped authorization checks
 - User CSV parsing, trimming, default status, allowed role, row-count, and file-size validation
@@ -26,12 +26,13 @@
 - `/api/v1/auth/login`: success, invalid credential, and 15-minute lockout branches
 - protected endpoints reject unauthenticated requests
 - seeded Site Admin is forced through password change on first login
+- a bearer token remains accepted by `/api/v1/auth/me` after a successful required password change in the same API process
 - post-MVP reset requests return the same generic response for eligible, unknown, inactive, external-only, and throttled emails
 - post-MVP reset confirmation treats invalid, expired, superseded, and used tokens identically
 - post-MVP successful reset consumes the token, revokes all existing sessions, and does not issue a new session
 - post-MVP reset responses, logs, audit events, and analytics do not expose tokens or plaintext passwords
 - Development startup auto-seeds exactly 3 demo organizations
-- each demo organization includes Org Admin, User, and Read Only accounts initialized to `abc123!` and forced password change
+- each demo organization includes Org Admin, User, and Read Only accounts initialized to `abc123!` without forced password change
 - each demo organization has one seeded example board with ideas across each default swimlane and example comments
 - organization CRUD follows Site Admin and Org Admin role boundaries
 - user CRUD is limited to the correct organization scope
@@ -49,7 +50,7 @@
 - idea comment and upvote flows enforce role rules
 
 ## Contract
-- Response schema validation against the published OpenAPI documents
+- Response and request semantics validated against `30-Contracts.md`
 - Problem-details-style error envelope required for all non-2xx responses
 - Authentication, organization, user, board, status, and idea contracts stay aligned with `30-Contracts.md`
 - Post-MVP password-reset request and confirmation contracts stay aligned with `30-Contracts.md`
@@ -63,6 +64,11 @@
   - a board can be created with the expected default status structure and saved successfully
   - an idea can be created on the new board and appears in the board view without validation errors
 - Smoke test is intended as a release-readiness check for the MVP critical workflow, alongside the detailed unit, integration, and contract coverage
+- Authentication navigation verifies protected anonymous routes redirect to `/login`, ordinary login lands on `/`, required password change is gated by `MustChangePassword`, and `/logout` clears the session before returning to `/login`.
+- Authentication restoration verifies a valid stored token is confirmed through `/api/v1/auth/me`, an expired or API-unknown token clears all client auth state, and the browser returns to `/login`.
+- Active-session authentication verifies a protected-request `401` signs the user out only when `/api/v1/auth/me` also rejects the token; an incorrect-current-password `401` preserves a token that `/api/v1/auth/me` accepts.
+- Password-change authentication verifies a successful required password change remains authenticated after browser reload while the issuing API process remains available.
+- Board navigation verifies `/boards` lists boards, `/board/{boardId}` opens detail, legacy routes redirect to canonical routes, and no user-facing Workflow terminology remains.
 
 ## Startup Safety
 - Demo environment seed runs only in Development
