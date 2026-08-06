@@ -518,6 +518,102 @@ Purpose: Soft-delete a status while preserving existing references.
 Success response:
 - `204 No Content`
 
+## Idea Field Option Contracts
+
+Idea Type and Business Impact collections include active and archived options ordered by `sortOrder`, then `name`.
+Site Admin may manage any target organization supplied by route context. Org Admin may manage only their own organization. User and Read Only callers receive `403 Forbidden`.
+
+### `GET /api/v1/organizations/{organizationId}/idea-types`
+Purpose: List all Idea Type options for an organization, including archived options.
+
+Success response `200` item shape:
+- `ideaTypeId`
+- `organizationId`
+- `name`
+- `sortOrder`
+- `isDeleted`
+
+### `POST /api/v1/organizations/{organizationId}/idea-types`
+Purpose: Create an active Idea Type at the end of the organization's current option order.
+
+Request body:
+- `name` required string, max 100 characters
+
+Success response `201`: Idea Type item shape.
+
+### `PUT /api/v1/idea-types/{ideaTypeId}`
+Purpose: Rename an active Idea Type.
+
+Request body:
+- `name` required string, max 100 characters
+
+Success response `200`: updated Idea Type item shape.
+
+### `POST /api/v1/organizations/{organizationId}/idea-types/reorder`
+Purpose: Replace the complete Idea Type order atomically.
+
+Request body:
+- `orderedIdeaTypeIds` required array containing every organization Idea Type ID exactly once, including archived options
+
+Success response:
+- `204 No Content`
+
+### `DELETE /api/v1/idea-types/{ideaTypeId}`
+Purpose: Soft-delete an Idea Type while preserving existing idea references.
+
+Success response:
+- `204 No Content`
+
+Deletion is rejected with `400 Bad Request` when the option is the organization's last active Idea Type.
+
+### `GET /api/v1/organizations/{organizationId}/business-impacts`
+Purpose: List all Business Impact options for an organization, including archived options.
+
+Success response `200` item shape:
+- `businessImpactId`
+- `organizationId`
+- `name`
+- `color` required `#RRGGBB` string
+- `sortOrder`
+- `isDeleted`
+
+### `POST /api/v1/organizations/{organizationId}/business-impacts`
+Purpose: Create an active Business Impact at the end of the organization's current option order.
+
+Request body:
+- `name` required string, max 100 characters
+- `color` required string in `#RRGGBB` format
+
+Success response `201`: Business Impact item shape.
+
+### `PUT /api/v1/business-impacts/{businessImpactId}`
+Purpose: Rename or recolor an active Business Impact.
+
+Request body:
+- `name` required string, max 100 characters
+- `color` required string in `#RRGGBB` format
+
+Success response `200`: updated Business Impact item shape.
+
+### `POST /api/v1/organizations/{organizationId}/business-impacts/reorder`
+Purpose: Replace the complete Business Impact order atomically.
+
+Request body:
+- `orderedBusinessImpactIds` required array containing every organization Business Impact ID exactly once, including archived options
+
+Success response:
+- `204 No Content`
+
+### `DELETE /api/v1/business-impacts/{businessImpactId}`
+Purpose: Soft-delete a Business Impact while preserving existing idea references.
+
+Success response:
+- `204 No Content`
+
+Deletion is rejected with `400 Bad Request` when the option is the organization's last active Business Impact.
+
+For both option types, labels are trimmed before persistence and active labels are unique case-insensitively within the same organization and option type. Missing resources return `404 Not Found`; cross-organization access returns `403 Forbidden`.
+
 ## Board Contracts
 
 ### `GET /api/v1/organizations/{organizationId}/boards`

@@ -10,6 +10,10 @@ Defines a batch of client UI bug fixes and structural revisions covering layout,
 - Decision D2: Logout interaction is route-based (`/logout`) to keep sign-out behavior explicit and testable.
 - Decision D3: Unauthenticated shell is restricted to `Login` and `Register` links only.
 
+## Decision Log Addendum (2026-08-06)
+
+- Decision D4: Entity list pages use a shared page-heading row with the H1 on the left and an authorization-aware `Add New` action on the right.
+
 ## Bug Fixes
 
 ### BUG-1: Errant `else {` on Change Password screen
@@ -72,7 +76,7 @@ Defines a batch of client UI bug fixes and structural revisions covering layout,
 Applies to Settings pages for Organizations, Users, and Boards & Statuses.
 
 - Each admin-style page defaults to a LIST view.
-- A Create button (e.g., "Create Organization") appears above the list, visible only to roles permitted to create that entity (Create Organization: Site Admin only).
+- An `Add New` button appears in the page-heading row, aligned with the H1 at the right edge, and is visible only to roles permitted to create that entity (Organization creation: Site Admin only).
 - Clicking Edit on a row, or Create, swaps the list view for the FORM view on the same page.
 - Saving or cancelling the form returns to the list view with the list refreshed.
 
@@ -152,6 +156,10 @@ Applies to Settings pages for Organizations, Users, and Boards & Statuses.
 
 Applies to Organizations, Users, Ideas, Boards, and any future entity list page.
 
+- Each list view renders a responsive page-heading row with its H1 on the left and an `Add New` action on the right.
+- `Add New` is rendered only when the authenticated role is authorized to create that entity.
+- Activating `Add New` opens the create form using the page's established interaction: same-page list/form swap for Settings administration pages and the existing create route or overlay for workflow pages.
+- The heading row stacks without overlap on narrow viewports while preserving H1-first reading order.
 - Uniform search bar rendered above the list.
 - Search filters across all columns displayed for that entity (see per-entity column tables above).
 - Pagination controls with page size options 25 (default), 50, 100, 250.
@@ -179,5 +187,6 @@ Applies to Organizations, Users, Ideas, Boards, and any future entity list page.
 - [ ] `/board`, `/workflow`, and `/workflows` redirect to `/boards`, and `/workflow/{id}` redirects to `/board/{id}`.
 - [ ] Boards & Statuses Settings page shows boards list (Name/Board Type/Status) and statuses list (Name/Color/Sort Order/Is Default) — pending domain additions for `Board.IsArchived`, `Status.Color`, `Status.SortOrder`, `Status.IsDefault`.
 - [ ] Ideas page (`/ideas`) lists combined created-by/assigned-to ideas with All/Created/Assigned filter and Title/Created By/Assigned To/Status/Created Date columns; Details navigates to `/ideas/{id}/edit`.
+- [ ] Ideas, Boards, Organizations, Users, and future entity list pages place an authorization-aware `Add New` action at the right edge of the H1 row and open the appropriate create form when activated.
 - [ ] All list pages have a uniform search bar and server-side pagination with 25/50/100/250 page sizes (default 25).
 - [ ] Home page is an authenticated dashboard with welcome summary, quick actions, and boards/my-ideas/assigned-ideas counts.

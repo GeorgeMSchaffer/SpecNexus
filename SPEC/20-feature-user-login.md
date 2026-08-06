@@ -28,6 +28,10 @@ Users can securely access SargentNexus using organization-scoped credentials.
    When authentication succeeds
    Then the user is required to change their password before accessing protected application features
 
+   Given that Site Admin successfully changes the required password
+   When the same account logs in later with the changed password
+   Then authentication does not require another password change unless a new temporary password has been issued
+
 5. Given an unauthenticated request to a protected feature
    When the request is made without valid authentication
    Then access is denied
@@ -72,6 +76,7 @@ Users can securely access SargentNexus using organization-scoped credentials.
 - [ ] Five failed login attempts within 15 minutes cause a 15-minute lockout
 - [ ] Inactive users are denied authentication
 - [ ] Seed Site Admin must change password on first login
+- [ ] A successful required password change persists `MustChangePassword = false` and later logins do not require another change unless a new temporary password is issued
 - [ ] Protected features reject unauthenticated access
 - [ ] Protected client routes redirect unauthenticated users to `/login`
 - [ ] Authenticated users without a required password change land on `/`

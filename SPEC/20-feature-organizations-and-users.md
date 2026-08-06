@@ -20,7 +20,7 @@ Administrators can manage organizations and users with clear role boundaries wit
 14. Uploading a new logo replaces the previous logo.
 15. The rendered organization logo height is capped at `150px` while preserving aspect ratio.
 16. Authenticated admin surfaces use a primary-blue header with a `150px` left brand zone and logo in the top-left.
-17. The header exposes a logout icon, and admin-authorized users also see a gear icon that navigates to the Admin homepage.
+17. Every authenticated user sees a logout icon linking to `/logout` and a settings gear linking to `/settings`; the Settings page exposes only the sections authorized for that user's role.
 18. Breadcrumb navigation is shown directly below the header.
 19. In Development, startup seed creates 3 demo organizations with realistic profile data for walkthrough and validation.
 

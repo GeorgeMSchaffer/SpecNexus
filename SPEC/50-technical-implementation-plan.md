@@ -77,6 +77,9 @@ Produce an implementation plan that is detailed enough to drive engineering exec
 - Organization scope is applied centrally to all tenant-owned resource operations.
 - Audit events are written during successful business transactions where applicable and during both successful and failed auth outcomes.
 - Notification events are persisted as internal records during collaboration workflows without requiring outbound email dispatch.
+- Startup always applies migrations and ensures the global Site Admin exists without overwriting an existing account's password-change state.
+- Development demo organizations, users, boards, and ideas are seeded only when the API receives the `--seed-demo` application argument in the Development environment.
+- The supported watch invocation is `dotnet watch --project ./src/SargentNexus.API -- --seed-demo`; arguments after the separator are passed to the API.
 
 ## Implementation Slices
 ### Slice 1: Auth and Identity

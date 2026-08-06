@@ -2,3 +2,8 @@
 - [x] The landing page after login defaults to the Dashboard at `/`.
 - [x] Session resume validates the stored token with the API and clears rejected tokens before returning to `/login`.
 - [x] The redundant password update required text is removed.
+- [ ] After an administrator successfully completes a required password change, later logins do not prompt for another required password change unless an administrator issues a new temporary password.
+- [ ] Development demo data is seeded only when the API receives the `--seed-demo` application argument; the supported watch command is `dotnet watch --project ./src/SargentNexus.API -- --seed-demo`.
+- [ ] Every entity list page, including Ideas, Boards, Organizations, and Users, displays a right-aligned `Add New` action beside the page H1 when the authenticated user can create that entity; activating it opens the entity create form.
+- [ ] The authenticated header displays a Settings icon linking to `/settings`.
+- [ ] The authenticated header displays a Logout icon on the right side linking to `/logout`.
