@@ -28,6 +28,18 @@ Three interactive HTML comps covering every page (Login, First Login, Home, Admi
 
 All three comps demonstrate spec behaviors: globally unique email sign-in (no org picker), lockout after 5 failed attempts, one-time temporary passwords, first-login forced password change with inline complexity checklist, soft-delete status retirement with minimum-lane guardrail, immediate-save reorder cues, compact cards (title, priority, assignee, upvote) with title-click detail, mention highlighting, and comment character-count feedback.
 
+## Ideas and Boards Comps (2026-08-05)
+
+Five responsive, interactive HTML comps focus specifically on Board and Idea discovery, triage, and creation. Each artifact includes four switchable screens: Boards, Board view, Ideas, and the Add New form open. The workflow and field set are consistent across the set while the information architecture, density, and creation pattern intentionally differ.
+
+- `ideas-boards-comp-01-jira-ops.html` — **Jira Ops**: persistent navigation, dense board table, operational filters, compact Kanban cards, and a full-page structured intake form.
+- `ideas-boards-comp-02-trello-canvas.html` — **Trello Canvas**: top-only navigation, visual board tiles, a full-bleed colored board canvas, approachable cards, and modal idea creation.
+- `ideas-boards-comp-03-workday-clarity.html` — **Workday Clarity**: enterprise navigation, portfolio metrics, structured tables, high-clarity lanes, and a guided split task panel for creation.
+- `ideas-boards-comp-04-linear-focus.html` — **Linear Focus**: restrained command-oriented navigation, compact index views, low-chrome lanes, and a centered keyboard-friendly composer.
+- `ideas-boards-comp-05-editorial-portfolio.html` — **Editorial Portfolio**: publication-style board hierarchy, portfolio storytelling, status-led lanes, a cross-board reading index, and a wide brief composer.
+
+At narrow widths, page actions stack, data views suppress secondary columns, forms reflow, and Kanban lanes retain a horizontally scrollable snap layout rather than compressing cards below a usable width.
+
 ## Design Intent
 - Fluent UI component language: top app bar, nav, cards, command bars, tables, panels, buttons, badges, and dialogs
 - Accessibility and usability focus: strong hierarchy, visible labels, predictable actions, readable density, and clear empty-state/help text
