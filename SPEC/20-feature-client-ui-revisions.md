@@ -53,9 +53,10 @@ Defines a batch of client UI bug fixes and structural revisions covering layout,
 
 ### Mockup Alignment
 - Client layout and interaction details should align to the mockup set in `SPEC/mockups`:
+  - `ideas-boards-comp-06-jira-editorial-board.html` is the selected look-and-feel authority for the authenticated shell, Boards list, Board detail, Ideas list, and Add New Idea form. Its tokens and page hierarchy extend to authenticated pages that it does not explicitly show.
   - `01-login-and-org-selection.svg` for login/register baseline structure (while using invite-code self-registration behavior from current auth contracts).
   - `02-admin-organizations.svg`, `03-admin-users.svg`, and `06-status-management.svg` for settings administration list/form rhythm.
-  - `04-board-overview.svg`, `05-idea-detail-panel.svg`, and `12-idea-card-and-overlay.svg` for board and idea interaction patterns.
+  - `04-board-overview.svg`, `05-idea-detail-panel.svg`, and `12-idea-card-and-overlay.svg` remain supporting interaction references where Comp 06 does not show the full Idea Detail workflow; Comp 06 controls visual styling when they differ.
   - `10-board-empty-state-guided-setup.svg` for guided empty-state behavior.
 
 ## Settings Area (formerly "Admin")

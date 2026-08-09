@@ -307,7 +307,7 @@ Dependencies: BE-2 and BE-3.
 5. Make upvote optimistic with per-card in-flight disabling and rollback from the pre-click `hasUpvoted`/count snapshot.
 6. Make comment activation open detail with a focus intent; after render, scroll to and focus the composer or comments heading fallback.
 7. Add role-aware description edit mode and confirmed admin Delete; after success close detail and remove the idea locally.
-8. Restyle `/board/{boardId}` from `mockups/sprint-management/idea-board.html`, preserving configured statuses and approved controls while excluding demo-only pivots, conversion actions, duplicate commands, and sprint features.
+8. Restyle the authenticated shell, Boards, Board detail, Ideas, and Add New Idea surfaces from `SPEC/mockups/ideas-boards-comp-06-jira-editorial-board.html`. Bind lane rules to configured `Status.Color`, preserve all approved controls and accessibility behavior, and exclude the comp switcher and static demo scripting.
 9. Render the first three alphabetical tags plus `+N` and the first three assignees ordered by first/last name plus `+N`; render each persona as first/last initials followed by first name and expose complete values accessibly.
 10. Add an injectable client clock/time-zone boundary for viewer-local calendar-day age and render `0 days ago`, singular `1 day ago`, plural `{N} days ago`, with future values clamped to zero.
 

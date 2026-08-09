@@ -20,7 +20,7 @@ These mockups are static SVG artifacts based on the current SargentNexus specs a
 
 Three interactive HTML comps covering every page (Login, First Login, Home, Admin Hub, Organizations, Users, Statuses, Board, Idea Detail, Change Password). Open in a browser and use the top tab bar to switch screens. Each explores a distinct direction inspired by Jira/Trello best practices while staying implementable with Fluent UI Blazor components.
 
-**Selection (2026-07-30): Comp A "Command Center" is the chosen UI/UX layout for implementation**, restyled to use the typography and color palette from the SVG mockups (01–12): `"Segoe UI", Arial, sans-serif`, slate neutrals (`#0f172a`/`#334155`/`#64748b`), `#f8fafc` background, and `#1d4ed8`/`#1e3a8a` blue accent. See `SPEC/20-feature-client-ui.md` for the full design-direction spec. Comps B and C are retained as explored alternatives.
+**Historical selection (2026-07-30): Comp A "Command Center" was initially chosen for implementation.** It was superseded on 2026-08-09 by Comp 06 for the authenticated workspace. Comps A, B, and C remain as explored alternatives and references for screens not represented in the newer focused set.
 
 - `comp-a-command-center.html` — **Command Center** (Jira-inspired): persistent left nav rail with grouped sections, breadcrumbs, dense data tables with command bars, KPI dashboard, swimlane board with priority edge accents, and a two-pane idea overlay (content + metadata sidebar). Best for power users and admin-heavy workflows.
 - `comp-b-board-first.html` — **Board First** (Trello-inspired): top app bar only (no sidebar), board tiles on Home, full-bleed colored board canvas, card-based org management, and a Trello-style idea overlay with side action buttons. Best for approachability and collaboration-first orgs.
@@ -30,13 +30,14 @@ All three comps demonstrate spec behaviors: globally unique email sign-in (no or
 
 ## Ideas and Boards Comps (2026-08-05)
 
-Five responsive, interactive HTML comps focus specifically on Board and Idea discovery, triage, and creation. Each artifact includes four switchable screens: Boards, Board view, Ideas, and the Add New form open. The workflow and field set are consistent across the set while the information architecture, density, and creation pattern intentionally differ.
+Six responsive, interactive HTML comps focus specifically on Board and Idea discovery, triage, and creation. Each artifact includes four switchable screens: Boards, Board view, Ideas, and the Add New form open. The workflow and field set are consistent across the set while the information architecture, density, and creation pattern intentionally differ.
 
 - `ideas-boards-comp-01-jira-ops.html` — **Jira Ops**: persistent navigation, dense board table, operational filters, compact Kanban cards, and a full-page structured intake form.
 - `ideas-boards-comp-02-trello-canvas.html` — **Trello Canvas**: top-only navigation, visual board tiles, a full-bleed colored board canvas, approachable cards, and modal idea creation.
 - `ideas-boards-comp-03-workday-clarity.html` — **Workday Clarity**: enterprise navigation, portfolio metrics, structured tables, high-clarity lanes, and a guided split task panel for creation.
 - `ideas-boards-comp-04-linear-focus.html` — **Linear Focus**: restrained command-oriented navigation, compact index views, low-chrome lanes, and a centered keyboard-friendly composer.
 - `ideas-boards-comp-05-editorial-portfolio.html` — **Editorial Portfolio**: publication-style board hierarchy, portfolio storytelling, status-led lanes, a cross-board reading index, and a wide brief composer.
+- `ideas-boards-comp-06-jira-editorial-board.html` — **Jira + Editorial Board**: **selected 2026-08-09** as the authenticated-workspace UI/UX authority. It preserves Comp 01's Jira-inspired shell, logo, blue palette, board index, Ideas list, and intake form while adopting Comp 05's open board canvas, status rules, airier cards, and editorial header composition.
 
 At narrow widths, page actions stack, data views suppress secondary columns, forms reflow, and Kanban lanes retain a horizontally scrollable snap layout rather than compressing cards below a usable width.
 

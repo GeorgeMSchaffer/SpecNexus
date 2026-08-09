@@ -2,7 +2,7 @@
 
 ## Document Metadata
 - Status: Draft
-- Last Updated: 2026-07-30
+- Last Updated: 2026-08-09
 - Audience: Engineering, Product, QA, AI coding agents
 - Purpose: Provide one implementation-ready spec that reduces duplication while preserving canonical rules from `SPEC/*.md`.
 
@@ -91,6 +91,14 @@ Key rule: all tenant-owned data is organization-scoped; Site Admin is global and
 - Mentions resolve by same-organization email only.
 - Unresolved mentions show inline validation and block save.
 - Upvote is a toggle with max one active upvote per user per idea.
+
+### Client UI/UX Direction
+- Comp 06 "Jira + Editorial Board" (`SPEC/mockups/ideas-boards-comp-06-jira-editorial-board.html`) is the selected authenticated-workspace look and feel; it supersedes Comp A and the sprint-management board artifact as visual authorities.
+- The shell uses a 52px deep-navy horizontal header, uppercase SargentNexus wordmark, IBM Plex Sans/Segoe UI typography, compact rectangular controls, and a light neutral workspace.
+- Boards and Ideas use dense bordered list surfaces with blue primary links, search-first command rows, and soft-blue selected filters.
+- Board detail uses an open canvas with stable approximately 290px lanes, `Status.Color` header rules, white bordered cards, and horizontal overflow. Mobile shows approximately 85vw snap-scrolling lanes.
+- Add New Idea uses a contextual preview plus right-side form on wide screens and a full-width form on narrow screens.
+- Exact tokens, responsive rules, and implementation boundaries are canonical in `SPEC/20-feature-client-ui.md`.
 
 ### Notifications and Audit
 - Notification events are generated for idea mention, comment mention, comment-on-idea, and status change.

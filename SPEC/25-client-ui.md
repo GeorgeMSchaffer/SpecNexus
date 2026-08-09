@@ -11,4 +11,4 @@
 
 ## VISUAL DESIGN DIRECTION
 
-Comp A "Command Center" (`SPEC/mockups/comp-a-command-center.html`) is the selected layout direction for all pages, using the typography (`"Segoe UI", Arial, sans-serif`) and color palette from the SVG mockup set. See `SPEC/20-feature-client-ui.md` (Visual Design Direction) for the full layout, typography, and palette specification.  
+Comp 06 "Jira + Editorial Board" (`SPEC/mockups/ideas-boards-comp-06-jira-editorial-board.html`) is the selected authenticated-client UI/UX look and feel. It uses a Jira-inspired navy/blue horizontal shell and dense list pages with the open editorial Board composition. See `SPEC/20-feature-client-ui.md` (Visual Design Direction) for the authoritative layout, typography, palette, responsive, and implementation-boundary specification.

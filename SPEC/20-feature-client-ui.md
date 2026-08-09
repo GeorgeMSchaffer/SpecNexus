@@ -28,7 +28,7 @@ The board header contains: board name (left), search input (placeholder: "Search
 
 ### Swimlane Columns
 - One column per `Status` on the selected board, ordered by `Status.SortOrder` ascending.
-- Column header shows the status name, a colour dot (`Status.Color`), and idea count.
+- Column header shows the status name, a prominent rule using `Status.Color`, and idea count. A secondary dot may be used only when needed for non-color identification; status name and count remain the accessible identifiers.
 - Columns scroll horizontally if they overflow the viewport.
 
 ### Idea Cards
@@ -99,31 +99,53 @@ HTML5 drag-and-drop (desktop only) with a dedicated handle and visible drop targ
 - New Idea button in board header opens overlay in create mode; hidden for ReadOnly users
 - Mobile/touch: scrollable view, no drag support, status movement available in Idea Detail
 
-## VISUAL DESIGN DIRECTION (Selected 2026-07-30)
+## VISUAL DESIGN DIRECTION (Selected 2026-08-09)
 
-Comp A "Command Center" (`SPEC/mockups/comp-a-command-center.html`) is the selected UI/UX layout direction for all client pages, restyled with the typography and color palette established in the SVG mockup set (`SPEC/mockups/01-login-and-org-selection.svg` through `12-idea-card-and-overlay.svg`).
+Comp 06 "Jira + Editorial Board" (`SPEC/mockups/ideas-boards-comp-06-jira-editorial-board.html`) is the selected UI/UX look-and-feel authority for the authenticated client workspace. It supersedes Comp A "Command Center" and the sprint-management board artifact as implementation references. Functional, authorization, accessibility, and data requirements in the canonical feature specs take precedence when the static comp omits a state or control.
 
-### Board-Specific Reference (Selected 2026-08-04)
-The workspace artifact `mockups/sprint-management/idea-board.html` is the layout and styling authority for `/board/{boardId}`. Match its board hierarchy, density, full-height lane composition, compact card structure, tag row, persona footer, and age placement while binding real organization-configured statuses and the behaviors in this specification. Do not import demo-only Board/List/Mine pivots, approval/rejection assumptions, conversion actions, duplicate New Idea commands, or sprint-management features unless separately specified.
+Comp 06 is exact visual authority for the horizontal app shell, Boards list, Board detail, Ideas list, and Add New Idea presentation. Pages not shown in Comp 06 reuse its design tokens, spacing, controls, and page hierarchy while retaining the workflow-specific requirements and supporting SVG references in `SPEC/20-feature-client-ui-revisions.md`.
 
-### Layout (from Comp A)
-- App shell: 48px top bar (logo, global search, primary "+ New idea" action, notifications, avatar) plus a 240px persistent left navigation rail with grouped sections (Workspace / Boards / Administration) and an accent inset marker on the active item.
-- Content pages use breadcrumbs, a page title with short subtitle, and a command bar (primary action, filters) above dense data tables or cards.
-- Home is a dashboard: KPI stat cards plus "Your boards" table and a recent-activity feed.
-- Admin hub uses link cards per tool (Organizations, Users, Statuses) plus a recent admin activity table.
-- Board view uses swimlane columns of compact idea cards (title, priority, tags, assignee, upvote) with a priority edge accent; clicking a card title opens the idea detail overlay.
-- Idea detail is a centered overlay with a two-pane body: content/comments on the left, metadata sidebar (status, priority, assignee, due date, tags, audit info) on the right.
-- Auth screens (login, first-login password change) are centered cards on a navy-to-blue gradient background.
-- Implement with Fluent UI Blazor components per `SPEC/mockups/README.md` implementation notes (providers, dialog/toast services, no manual asset tags).
+### App Shell and Brand
+- Use a 52px deep-navy header with the uppercase `SARGENTNEXUS` wordmark; render `NEXUS` in the primary light-blue accent.
+- Primary navigation is horizontal in the header and contains Home, Boards, and Ideas. Keep Settings behind the gear icon and retain the authorization behavior defined in `SPEC/20-feature-client-ui-revisions.md`.
+- Place global search, Settings, and the signed-in persona at the right side of the desktop header. On narrow screens, hide nonessential header controls and retain the current workspace/page context.
+- Content pages use an eyebrow or breadcrumb, concise H1 and supporting text, a right-aligned primary action, and a search/filter command row.
+- Use compact rectangular controls and restrained corners. Default control and card radius is 3px to 4px; avoid pill styling except where a semantic chip or persona requires it.
+
+### Boards and Ideas Lists
+- `/boards` and `/ideas` use dense, bordered white tables on the light workspace background.
+- Table headers use compact uppercase labels, muted text, and a subtle off-white fill. Primary entity links use the strong blue accent.
+- Page-heading actions stack to full width on narrow screens. Tables preserve scan-friendly column widths through horizontal overflow; secondary columns may be suppressed only when the same information remains available through the row detail flow.
+- Search appears before filter chips. The selected filter uses the soft-blue fill and blue text/border treatment shown in Comp 06.
+
+### Board Detail
+- Use the open editorial canvas from Comp 06: lanes sit directly on the page background without filled lane containers or decorative cards around the board.
+- The board heading and controls form one composition separated from the lanes by a single ink-colored rule. At intermediate widths, controls wrap beneath the title without overlapping it.
+- Lanes are approximately 290px wide, remain a stable width, and scroll horizontally. Each lane header uses a 4px rule bound to `Status.Color`, plus status name and idea count.
+- Idea cards are white with a subtle neutral border, minimal shadow at rest, 3px corners, and enough internal spacing to distinguish title, chips, and metadata. Hover/focus strengthens the primary-blue border and may add a restrained shadow.
+- Preserve all card content and interactions defined in this specification, including the dedicated drag handle, priority, Business Impact, tags, assignees, age, upvote, comment action, and title-opened detail overlay. The comp controls appearance, not feature scope.
+- On mobile, show one lane at approximately 85vw with horizontal snap scrolling. Touch users move status through Idea Detail rather than drag-and-drop.
+
+### Add New Idea
+- Creation uses the Comp 06 split composition on wide screens: contextual guidance and a live card preview on the left, with the structured form in a white right-side panel.
+- On narrow screens, remove the contextual preview pane and present the form as the primary full-width task surface.
+- Keep visible labels, required-field and validation feedback, the starting-status notice, and explicit Cancel and Create Idea actions.
 
 ### Typography
-- Font family: `"IBM Plex Sans", Inter, sans-serif` for all text; hierarchy is carried by weight and size, not by additional families.
+- Font family: `"IBM Plex Sans", "Segoe UI", sans-serif` for all client text.
+- Use weight and size for hierarchy; do not introduce a separate display or editorial typeface.
+- Default body text is approximately 14px with a 1.4 line height. Page titles are compact rather than hero-sized.
 
-### Color palette (from SVG mockups)
-- Ink/neutrals: text `#0f172a`, secondary `#334155` / `#475569`, muted `#64748b` / `#94a3b8`.
-- Surfaces: background `#f8fafc`, cards `#ffffff`, subtle fills `#f1f5f9`, borders `#d0d7de` / `#cbd5e1` / `#e2e8f0`.
-- Brand/accent: primary blue `#1d4ed8`, deep navy `#1e3a8a` (hover, emphasis, auth gradient), soft accents `#dbeafe` / `#eff6ff` / `#93c5fd`.
-- Semantic: success `#166534` on `#dcfce7`; warning `#9a3412` on `#fff7ed`; error `#7f1d1d` on `#fef2f2`.
+### Color and Surface Tokens
+- Header/deep navy: `#172b4d`; switcher/reference dark navy: `#0b1f3a`.
+- Primary blue: `#0c66e4`; primary hover/strong link: `#0055cc`; light blue brand accent: `#579dff`; soft selected fill: `#e9f2ff`.
+- Workspace background: `#f7f8f9`; card/surface: `#ffffff`; primary ink: `#172b4d`; muted text: `#626f86`; borders: `#dcdfe4`.
+- Semantic references: error `#ae2e24`, warning `#974f0c`, success `#216e4e`. Semantic text and fills must meet WCAG AA contrast and cannot rely on color alone.
+
+### Implementation Boundary
+- Implement with Fluent UI Blazor components and services per `SPEC/mockups/README.md`; reproduce the composition and tokens without copying the comp's demo-only switcher or static JavaScript.
+- Do not add Comp 05's serif typography, green portfolio shell, publication-style Ideas index, or full-page composer. Comp 06 intentionally combines Comp 01's Jira-inspired shell and forms with Comp 05's open Board composition only.
+- Do not reintroduce Comp A's persistent left navigation rail or the sprint artifact's demo pivots, conversion actions, duplicate commands, approval assumptions, or sprint-specific features.
 
 ## ERROR DISPLAY
 

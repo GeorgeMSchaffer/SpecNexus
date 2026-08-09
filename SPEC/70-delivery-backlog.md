@@ -238,7 +238,7 @@ Tasks:
 **Board detail (Kanban board):**
 - build `/board/{boardId}` as the canonical Kanban swimlane board
 - render one column per status on the selected board, ordered by `Status.SortOrder`; horizontal scroll on overflow
-- restyle the Board detail hierarchy, full-height lanes, density, cards, tag rows, persona footers, and age placement from `mockups/sprint-management/idea-board.html`; preserve configured statuses and approved controls, excluding demo-only pivots, conversion actions, duplicate commands, and sprint features
+- apply the selected Comp 06 look and feel from `SPEC/mockups/ideas-boards-comp-06-jira-editorial-board.html` to the authenticated shell, Boards list, Board detail, Ideas list, and Add New Idea form; bind lane rules to configured status colors, preserve approved behavior and accessibility, and exclude the comp switcher and static demo scripting
 - render compact idea cards showing title, priority, Business Impact chip, first three alphabetical tags plus `+N`, first three ordered assignee personas plus `+N`, viewer-local submission age, current-user upvote control/count, and comment control/count
 - clicking a card title opens an in-context detail overlay (no page navigation); overlay fields: title, priority, due date, description, zero-to-five assignees, zero-to-10 tags, mentions, comments; overlay actions: Cancel, Save Idea, Move in Board
 - add primary **New Idea** button in board header that opens overlay in create mode (hidden for ReadOnly users)
